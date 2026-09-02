@@ -277,6 +277,7 @@ export default function OperatingFloorPlan({ readOnly = false }) {
   const [autoZoom, setAutoZoom] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [detailId, setDetailId] = useState(null)
+  const wrapperRef = useRef(null)
   const planRef = useRef(null)
   const floorRef = useRef(null)
 
@@ -288,9 +289,19 @@ export default function OperatingFloorPlan({ readOnly = false }) {
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
+  // 2026-09-02 (correccion a peticion explicita del usuario: "que se vea
+  // completo de verdad" al hacer click en pantalla completa) -- ANTES el
+  // Fullscreen API se pedia sobre planRef (solo el plano) -- la leyenda
+  // "Area operando" y la barra de zoom/salir viven FUERA de planRef, asi
+  // que al entrar a pantalla completa el navegador solo pinta planRef y
+  // sus hijos: la leyenda y los controles (incluido el boton para salir)
+  // desaparecian por completo. Ahora se pide sobre wrapperRef, que envuelve
+  // TODO (leyenda + toolbar + plano), asi que en pantalla completa se sigue
+  // viendo/usando todo -- solo cambia el layout a columna con el plano
+  // ocupando el espacio restante (ver className mas abajo).
   function toggleFullscreen() {
     if (document.fullscreenElement) document.exitFullscreen()
-    else planRef.current?.requestFullscreen?.()
+    else wrapperRef.current?.requestFullscreen?.()
   }
 
   /* "Ajustar vista" real (2026-08-25, a peticion explicita del usuario):
@@ -352,7 +363,10 @@ export default function OperatingFloorPlan({ readOnly = false }) {
   const totalPeople = SHOWN_AREA_IDS.reduce((sum, id) => sum + getAreaHeadcount(id), 0)
 
   return (
-    <div className="p-5">
+    <div
+      ref={wrapperRef}
+      className={cn('bg-background p-5', isFullscreen && 'flex h-screen flex-col')}
+    >
       {/* Leyenda superior (2026-08-25, correccion definitiva a peticion
           explicita del usuario): UNICA leyenda del plano -- reemplaza el
           aviso azul de "mapeo no confirmado" que vivia aqui antes (se
@@ -361,7 +375,7 @@ export default function OperatingFloorPlan({ readOnly = false }) {
           ya no existe showLegend/Paper de "Referencias" al fondo). Los
           totales (personas/cobertura) son los mismos que ya se
           calculaban arriba -- ninguna fuente de datos nueva. */}
-      <div className="mb-4 rounded-[20px] border border-border p-3">
+      <div className="mb-4 shrink-0 rounded-[20px] border border-border p-3">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
           <div className="flex shrink-0 items-center gap-2">
             <span
@@ -405,7 +419,7 @@ export default function OperatingFloorPlan({ readOnly = false }) {
         </div>
       </div>
 
-      <div className="mb-3 flex items-center gap-1">
+      <div className="mb-3 flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -466,7 +480,7 @@ export default function OperatingFloorPlan({ readOnly = false }) {
         ref={planRef}
         className={cn(
           'overflow-auto overscroll-x-contain bg-background',
-          isFullscreen && 'h-screen p-5',
+          isFullscreen && 'min-h-0 flex-1',
         )}
       >
         <div

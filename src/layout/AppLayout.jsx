@@ -2,7 +2,6 @@ import { Menu as MenuIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo'
-import { cn } from '@/lib/utils'
 import { setCurrentUserId } from '../data/personnel/apiSync'
 import { useAuth } from '../state/auth'
 import { useIsTouchDevice } from '../ui/useIsTouchDevice'
@@ -15,14 +14,12 @@ const HOTSPOT_WIDTH = 14
 export default function AppLayout({ mode, setMode }) {
   const { user } = useAuth()
   const location = useLocation()
-  // El plano 2D (OperatingFloorPlan) es el unico contenido que de verdad
-  // necesita aprovechar casi todo el ancho de la pantalla (2026-08-25, a
-  // peticion explicita del usuario) -- el resto de paginas (tablas,
-  // formularios) se queda exactamente en el maxWidth de siempre, no se
-  // toca nada fuera de estas rutas. Dashboard ya NO lo necesita (se le
-  // quito el layout, ver DashboardPage.jsx), Centro de Trabajo si (Áreas
-  // de trabajo ahora lo usa, ver AreasLayoutView.jsx).
-  const isWideLayoutRoute = location.pathname === '/centro-trabajo'
+  // Solo controla si la ruta construye su PROPIO header (ver el bloque
+  // `!hasOwnHeader &&` mas abajo) -- Centro de Trabajo es la unica pagina
+  // que arma su propio logo+titulo+acciones+tabs (CentroTrabajoPage.jsx),
+  // asi que sigue ocultando la barra superior global. Esto es independiente
+  // del ancho del contenido (ver `max-w` mas abajo).
+  const hasOwnHeader = location.pathname === '/centro-trabajo'
   // Puntero real del dispositivo, no ancho de pantalla: un mouse/trackpad
   // real habilita el auto-hide por hover; touch (tablet/movil) usa el
   // Sheet clasico con hamburguesa, sin depender de hover.
@@ -79,7 +76,7 @@ export default function AppLayout({ mode, setMode }) {
           <Outlet context={...}> mas abajo, en vez de duplicar la barra.
           El resto de rutas (Dashboard, Registro de personal, Usuarios)
           conserva la barra superior tal cual, sin ningun cambio. */}
-      {!isWideLayoutRoute && (
+      {!hasOwnHeader && (
         <header className="sticky top-0 z-[1100] border-b border-border bg-card text-foreground">
           <div className="flex min-h-14 items-center gap-2.5 px-3 md:px-5">
             {!hasFineHover && (
@@ -132,12 +129,15 @@ export default function AppLayout({ mode, setMode }) {
         topOffset={0}
       />
 
-      <div
-        className={cn(
-          'mx-auto w-full px-3 py-4 sm:px-4 md:py-5',
-          isWideLayoutRoute ? 'max-w-[1920px] md:px-4' : 'max-w-[1600px] md:px-6',
-        )}
-      >
+      {/* max-w-[1920px] (2026-09-02, a peticion explicita del usuario: "que
+          [el ancho de pantalla completo de Centro de Trabajo] tambien sea
+          igual en los demas modulos y en todos los modulos que haga") --
+          UNIFICADO para TODAS las rutas, ya no solo /centro-trabajo (antes
+          era max-w-[1600px] para el resto). Al vivir aqui en AppLayout en
+          vez de en cada pagina, cualquier modulo nuevo que se agregue
+          despues hereda el mismo ancho automaticamente, sin tocar nada por
+          pagina. */}
+      <div className="mx-auto w-full max-w-[1920px] px-3 py-4 sm:px-4 md:px-4 md:py-5">
         {/* mode/setMode + apertura del sidebar movil: SOLO los consume
             CentroTrabajoPage.jsx (via useOutletContext) para construir su
             propio header cuando la barra superior global esta oculta arriba
