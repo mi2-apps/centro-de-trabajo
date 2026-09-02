@@ -11,6 +11,31 @@
 // 1/10 SIN_MATCH real (no esta en el roster activo), 2/10 REVISAR (apellido comun con varios
 // candidatos, ej "Mendoza"/"Reyes") -- ver memoria de la sesion para el detalle exacto.
 
+// Overrides manuales (2026-09-02, confirmados por Roman en chat) -- para los AMBIGUO/REVISAR
+// donde el algoritmo automatico no puede decidir solo (apellido comun con varios candidatos
+// reales), Roman confirmo la identidad correcta a mano viendo en que linea/area esta cada
+// candidato hoy. Se revisan AQUI, antes del algoritmo por nombre, y ganan siempre sobre el match
+// automatico -- nunca se auto-adivina, esto es una confirmacion humana explicita, no un match
+// inventado. Formato: username de BinManager -> employeeNumber real de esta app.
+const CONFIRMED_OVERRIDES = {
+  // Felipe De Jesus Flores Luna (BinManager) = Yamilia Peraza Luna, hoy en WC LINEA 4 -- unico
+  // candidato de ese caso que caia en una linea todavia sin Takt Time real (confirmado por Roman).
+  'felipe.flores': '3865',
+  // Elizabeth Mendoza Reyes (BinManager) = Jose Alfredo Morales Reyes, hoy en WC LINEA 1 -- de
+  // los 4 candidatos posibles (Accesorios/Insumos/Paletizado/LINEA1), el unico en una linea real
+  // con gente (confirmado por Roman: "los que no estan en linea colocalos en linea donde si haya
+  // gente"). LINEA1 ya tenia dato real de otra persona (Yessica Luna) -- una linea puede tener
+  // mas de una persona real, sus piezas se suman.
+  'elizabeth.mendoza62': '2871',
+  // Adalberto Ramon Francisco (BinManager) = Francisco Gomez Cruz, hoy en WC LINEA 0 (PROYECTO)
+  // -- el otro candidato (Jose Francisco Franco Vara) esta en WC Paletizado, no es una linea
+  // numerada. Mismo criterio que arriba.
+  'adalberto.ramon': '3984',
+  // erick.canon82 (Erick Tomas Canon Treviño) queda SIN resolver a proposito: no tiene NINGUN
+  // candidato en el roster activo (SIN_MATCH real, no hay entre quien elegir) -- no se puede
+  // aplicar el criterio de "linea con gente" sin inventar una persona que no existe en los datos.
+}
+
 function normalize(value) {
   return (value || '')
     .normalize('NFD')
@@ -53,6 +78,19 @@ function isCloseFirstName(a, b) {
  * @returns {{status:'OK'|'AMBIGUO'|'REVISAR'|'SIN_MATCH', candidates:{employeeNumber:string,fullName:string}[]}}
  */
 export function matchBinManagerUser(bmUser, employees) {
+  const overrideEmployeeNumber = CONFIRMED_OVERRIDES[bmUser.username]
+  if (overrideEmployeeNumber) {
+    const employee = employees.find((e) => e.employeeNumber === overrideEmployeeNumber)
+    // Si el empleado del override ya no esta en el roster activo (baja, etc.), no inventamos un
+    // match muerto -- cae al algoritmo automatico de abajo como si no hubiera override.
+    if (employee) {
+      return {
+        status: 'OK',
+        candidates: [{ employeeNumber: employee.employeeNumber, fullName: employee.fullName }],
+      }
+    }
+  }
+
   const nameTok = normalize(bmUser.name)
   const lastTok = normalize(bmUser.lastName)
   const secondLastTok = normalize(bmUser.secondLastName)
