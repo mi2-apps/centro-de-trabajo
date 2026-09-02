@@ -1,7 +1,16 @@
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { Alert } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
@@ -21,8 +30,8 @@ import {
   tableRowClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
-import ChartCard from '../dashboard/ChartCard'
 import { EmptyState } from '../../ui'
+import ChartCard from '../dashboard/ChartCard'
 
 /* Modulo "Producción FFT" (2026-09-02, segunda parte del pedido de Takt Time real -- ver
    api/production/fft-summary.js para la nota completa sobre por que los totales de aqui no son
@@ -50,6 +59,56 @@ function ClassificationTooltip({ active, payload, label }) {
   )
 }
 
+function WeeklyTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-[15px] border border-border bg-popover px-3 py-2 shadow-md text-popover-foreground">
+      <div className="mb-0.5 text-[12.5px] font-bold">{label}</div>
+      {payload.map((p) => (
+        <div key={p.dataKey} className="text-xs text-muted-foreground">
+          {p.name}: {p.value} pzs
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Card simple de desglose (Proveedores/Categorias) -- lista con nombre/piezas/porcentaje, sin
+// donut: para 1-3 items reales (que es lo que muestra hoy la pagina real) un donut no añade
+// legibilidad, y evita construir/mantener un segundo componente de grafica solo para esto.
+function BreakdownListCard({ title, subtitle, items, nullLabel, emptyMessage }) {
+  const total = items.reduce((sum, i) => sum + i.qty, 0)
+  return (
+    <div className={cardClass}>
+      <div className={cardHeaderClass}>
+        <div className="min-w-0 flex-1">
+          <p className={cardHeaderTitleClass}>{title}</p>
+          <p className={cardHeaderSubtitleClass}>{subtitle}</p>
+        </div>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-5 py-8">
+          <EmptyState compact title={emptyMessage} />
+        </div>
+      ) : (
+        <div className="space-y-2.5 px-5 py-4">
+          {items.map((item) => (
+            <div key={item.name || nullLabel} className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-[13px] font-semibold">{item.name || nullLabel}</span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="text-[13px] font-extrabold">{item.qty}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  ({total > 0 ? ((item.qty / total) * 100).toFixed(0) : 0}%)
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProduccionFftPage() {
   const { t } = useTranslation('produccionFft')
   const [data, setData] = useState(null) // null = cargando
@@ -61,7 +120,7 @@ export default function ProduccionFftPage() {
       try {
         const res = await fetch('/api/production/fft-summary', { credentials: 'include' })
         const json = await res.json().catch(() => null)
-        if (!res.ok) throw new Error((json && json.error) || t('loadErrorGeneric'))
+        if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
         if (!cancelled) setData(json)
       } catch (e) {
         if (!cancelled) setError(e.message || t('loadErrorGeneric'))
@@ -86,6 +145,15 @@ export default function ProduccionFftPage() {
     if (!data?.classifications) return []
     return data.classifications.map((c) => ({ ...c, label: c.name || c.code }))
   }, [data])
+
+  const weeklyChartData = useMemo(() => {
+    if (!data?.weeklyComparison?.days) return []
+    return data.weeklyComparison.days.map((d) => ({
+      label: d.label,
+      [t('weeklyCurrentSeries')]: d.currentQty,
+      [t('weeklyPreviousSeries')]: d.previousQty,
+    }))
+  }, [data, t])
 
   return (
     <div className={pageClass}>
@@ -123,6 +191,23 @@ export default function ProduccionFftPage() {
               <p className="mt-0.5 text-2xl font-extrabold">{data.people.length}</p>
               <p className="text-[11px] text-muted-foreground">{t('activePeopleUnitLabel')}</p>
             </div>
+          </div>
+
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <BreakdownListCard
+              title={t('suppliersCardTitle')}
+              subtitle={t('suppliersCardSubtitle')}
+              items={data.suppliers.map((s) => ({ name: s.supplierName, qty: s.qty }))}
+              nullLabel={t('unknownLabel')}
+              emptyMessage={t('emptyDataMessage')}
+            />
+            <BreakdownListCard
+              title={t('categoriesCardTitle')}
+              subtitle={t('categoriesCardSubtitle')}
+              items={data.categories.map((c) => ({ name: c.categoryName, qty: c.qty }))}
+              nullLabel={t('unknownLabel')}
+              emptyMessage={t('emptyDataMessage')}
+            />
           </div>
 
           <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -197,6 +282,97 @@ export default function ProduccionFftPage() {
                 </ResponsiveContainer>
               </div>
             </ChartCard>
+          </div>
+
+          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartCard
+              title={t('weeklyChartTitle')}
+              subtitle={t('weeklyChartSubtitle')}
+              empty={weeklyChartData.length === 0}
+              emptyMessage={t('emptyDataMessage')}
+            >
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={weeklyChartData}
+                    margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
+                    barCategoryGap="25%"
+                  >
+                    <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                      axisLine={{ stroke: GRID_COLOR }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={32}
+                      allowDecimals={false}
+                    />
+                    <Tooltip content={<WeeklyTooltip />} cursor={{ fill: CURSOR_FILL }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar
+                      dataKey={t('weeklyCurrentSeries')}
+                      fill="#3B82F6"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                    />
+                    <Bar
+                      dataKey={t('weeklyPreviousSeries')}
+                      fill="#94A3B8"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+
+            <div className={cardClass}>
+              <div className={cardHeaderClass}>
+                <div className="min-w-0 flex-1">
+                  <p className={cardHeaderTitleClass}>{t('sizeTableTitle')}</p>
+                  <p className={cardHeaderSubtitleClass}>{t('sizeTableSubtitle')}</p>
+                </div>
+              </div>
+              {data.sizeByClassification.rows.length === 0 ? (
+                <div className="px-5 py-8">
+                  <EmptyState compact title={t('emptyDataMessage')} />
+                </div>
+              ) : (
+                <div className="max-h-[280px] overflow-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-card">
+                      <TableRow className={tableHeaderRowClass}>
+                        <TableHead>{t('colClassification')}</TableHead>
+                        {data.sizeByClassification.sizes.map((size) => (
+                          <TableHead key={size} className="text-right">
+                            {size}
+                          </TableHead>
+                        ))}
+                        <TableHead className="text-right font-extrabold">{t('colTotal')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.sizeByClassification.rows.map((row, idx) => (
+                        <TableRow key={row.code} className={tableRowClass(idx)}>
+                          <TableCell className={cn(cellTextClass, 'font-bold')}>{row.name}</TableCell>
+                          {data.sizeByClassification.sizes.map((size) => (
+                            <TableCell key={size} className="text-right">
+                              {row.bySize[size] || '-'}
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-right font-extrabold">{row.total}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className={cardClass}>
