@@ -24,12 +24,23 @@
 //   - Comparativa semanal: agregado en este archivo a partir de getDailyThroughput (14 dias),
 //     agrupado por dia de la semana, semana actual vs semana anterior -- mismo concepto que la
 //     pagina real, sin stored procedure propio.
-// NO incluidos (no se encontro un puente confiable via SELECT, se prefirio omitir a adivinar):
+//   - Piezas por Tag: LPN -> OE.WorkPlan.SKU -> BinManagerRO.PRO.SKUTags -> BinManagerRO.PRO.Tags
+//     -- este era el ultimo pendiente de una investigacion mucho mas vieja (2026-08-20/24, ver
+//     memoria de la sesion) que ya habia identificado la tabla real pero no tenia acceso SQL a
+//     BinManagerRO para consultarla. 2026-09-02: se confirmo que la cuenta ro_smartcontrol SI
+//     puede leer BinManagerRO via query cross-database -- verificado en vivo contra la pagina
+//     real (BULKY salio EXACTO: 143=143, el resto de tags en el mismo orden de magnitud).
+// NO incluido (no se encontro un puente confiable via SELECT, se prefirio omitir a adivinar):
 //   - "Progreso de pallets" (PO.PurchasePallets existe pero el estado Recibido/En proceso/
 //     Terminado de la pagina real no calzo con ninguna combinacion obvia de sus columnas bit).
-//   - "Piezas por Tag" (Send to FRM/Boughts/ELEMENT/...) -- TC.Tags/TC.TagByTicket resultaron ser
-//     un sistema de tickets de soporte interno, sin relacion con LPN/SKU; el sistema de tags real
-//     de envio no se identifico con acceso de solo lectura.
+//
+// Pendiente sin resolver (documentado, no bloqueante): el total de "Piezas procesadas" de esta
+// pagina sigue sin cerrar exacto contra la pagina real (revisado 2 veces, la primera dio ~1323
+// vs 1107 real, la segunda con MAS acceso -- incluida la tabla real OE.ProductionRecords que
+// resuelve el problema de Tags de arriba -- dio 1362 vs 1173 real, descartando que el problema
+// sea la tabla usada). El total real probablemente aplica un filtro adicional del stored
+// procedure original (OE.sp_GetTodaysProducedByWorkCenter) que no es visible sin permiso EXECUTE
+// sobre el -- unica via que queda para cerrar esto al 100%.
 import { eq } from 'drizzle-orm'
 import { requireModuleAccess } from '../../server-lib/auth.js'
 import { matchAllBinManagerUsers } from '../../server-lib/binmanager-matching.js'
@@ -40,6 +51,7 @@ import {
   getProductionBySupplierToday,
   getProductionByUserToday,
   getSizeByClassificationToday,
+  getTagBreakdownToday,
   getUsersLoginByUsername,
   isBinManagerSqlConfigured,
 } from '../../server-lib/binmanager-sql.js'
@@ -60,6 +72,7 @@ const EMPTY_RESPONSE = {
   categories: [],
   sizeByClassification: { sizes: [], rows: [] },
   weeklyComparison: { currentWeekTotal: 0, previousWeekTotal: 0, days: [] },
+  tags: [],
 }
 
 function buildSizeByClassification(sizeRows, classifications) {
@@ -144,6 +157,7 @@ export default requireModuleAccess(
     let suppliers
     let categories
     let sizeRows
+    let tags
     try {
       ;[
         classifications,
@@ -154,6 +168,7 @@ export default requireModuleAccess(
         suppliers,
         categories,
         sizeRows,
+        tags,
       ] = await Promise.all([
         getProductionByClassificationToday({ workCenterId, dateFrom: today, dateTo: today }),
         getDailyThroughput({ workCenterId, dateFrom: throughputFrom, dateTo: today }),
@@ -166,6 +181,7 @@ export default requireModuleAccess(
         getProductionBySupplierToday({ workCenterId, dateFrom: today, dateTo: today }),
         getProductionByCategoryToday({ workCenterId, dateFrom: today, dateTo: today }),
         getSizeByClassificationToday({ workCenterId, dateFrom: today, dateTo: today }),
+        getTagBreakdownToday({ workCenterId, dateFrom: today, dateTo: today }),
       ])
     } catch (err) {
       // Best-effort: si SmartControl no responde, el modulo debe seguir cargando (vacio) en vez de
@@ -215,6 +231,7 @@ export default requireModuleAccess(
       categories,
       sizeByClassification: buildSizeByClassification(sizeRows, classifications),
       weeklyComparison: buildWeeklyComparison(weeklyDaily),
+      tags,
     })
   },
 )

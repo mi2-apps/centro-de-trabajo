@@ -274,6 +274,46 @@ export async function getSizeByClassificationToday({ workCenterId = 49, dateFrom
   }))
 }
 
+/* Desglose de piezas por Tag hoy (Send to FRM/BULKY/Prioridad J/...), para la tarjeta "PIEZAS POR
+   TAG" del dashboard real -- este era el ultimo pendiente documentado de una investigacion previa
+   (2026-08-20/24, ver memoria de la sesion): en ese momento la cuenta SQL disponible no tenia
+   acceso a SmartControl ni a BinManagerRO, asi que la fuente real (tabla PRO.Tags/PRO.SKUTags de
+   BinManagerRO) quedo identificada pero sin poder consultarse. 2026-09-02: se confirmo que
+   ro_smartcontrol SI puede leer BinManagerRO via query cross-database (BinManagerRO.PRO.SKUTags,
+   BinManagerRO.PRO.Tags) -- verificado en vivo contra la pagina real, mismo orden de magnitud y
+   BULKY exacto (143=143). Puente: LPN (mismo dedup de siempre) -> OE.WorkPlan.SKU ->
+   BinManagerRO.PRO.SKUTags.SKU -> BinManagerRO.PRO.Tags. Un SKU puede tener varios tags (la suma
+   de este desglose excede el total de piezas, a proposito -- mismo comportamiento que el
+   dashboard real, nunca se fuerza a 1 tag por pieza). */
+export async function getTagBreakdownToday({ workCenterId = 49, dateFrom, dateTo }) {
+  const pool = await getPool()
+  const request = pool
+    .request()
+    .input('workCenterId', sql.Int, workCenterId)
+    .input('dateFrom', sql.Date, dateFrom)
+    .input('dateTo', sql.Date, dateTo)
+  const result = await request.query(`
+    WITH RankedInspections AS (
+      SELECT I.LicensePlateNumber,
+        ROW_NUMBER() OVER (PARTITION BY I.LicensePlateNumber ORDER BY I.InspectionDate DESC, I.InspectionID DESC) AS RN
+      FROM oe.WorkPlanInspection I WITH (NOLOCK)
+      INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
+      WHERE I.WorkCenterID = @workCenterId
+        AND CAST(I.InspectionDate AS DATE) >= @dateFrom
+        AND CAST(I.InspectionDate AS DATE) <= @dateTo
+    )
+    SELECT T.Tag, COUNT(DISTINCT R.LicensePlateNumber) AS Qty
+    FROM RankedInspections R
+    INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = R.LicensePlateNumber
+    INNER JOIN BinManagerRO.PRO.SKUTags ST WITH (NOLOCK) ON ST.SKU = W.SKU
+    INNER JOIN BinManagerRO.PRO.Tags T WITH (NOLOCK) ON T.ID = ST.IDTag
+    WHERE R.RN = 1
+    GROUP BY T.Tag
+    ORDER BY Qty DESC
+  `)
+  return result.recordset.map((r) => ({ tag: r.Tag, qty: r.Qty }))
+}
+
 /* Resuelve usernames de BinManager (formato "nombre.apellidoNN", ej "yesica.luna") a los campos
    REALES de nombre por separado (Name/SecondName/LastName/SecondLastName) -- nunca se parsea el
    username como si fuera el nombre, siempre se lee de ADM.UsersLogin, la tabla real de la que sale

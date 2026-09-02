@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Alert } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   alertToneClass,
@@ -26,6 +27,7 @@ import {
   pageClass,
   pageSubtitleClass,
   pageTitleClass,
+  progressBarClass,
   tableHeaderRowClass,
   tableRowClass,
 } from '@/lib/pageStyles'
@@ -106,6 +108,84 @@ function BreakdownListCard({ title, subtitle, items, nullLabel, emptyMessage }) 
         </div>
       )}
     </div>
+  )
+}
+
+// Fila de tag con barra de progreso relativa al maximo del set mostrado -- mismo lenguaje visual
+// que "PIEZAS POR TAG" y "PROGRESO DE PALLETS" de la pagina real (barra + numero a la derecha).
+function TagRow({ tag, qty, maxQty }) {
+  const pct = maxQty > 0 ? (qty / maxQty) * 100 : 0
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-3">
+        <span className="min-w-0 truncate text-[13px] font-semibold">{tag}</span>
+        <span className="shrink-0 text-[13px] font-extrabold text-[#3B82F6]">{qty}</span>
+      </div>
+      <div className={progressBarClass}>
+        <div
+          className="h-full rounded-full bg-[#3B82F6] transition-[width] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
+          style={{ width: `${Math.max(pct, 2)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// "Piezas por Tag" (2026-09-02, a peticion explicita del usuario viendo la tarjeta real -- "dale
+// click y me salga [la lista completa]"): tarjeta compacta con los primeros TOP_COUNT tags (mismo
+// comportamiento que la pagina real, que muestra una lista corta con scroll), clickeable para abrir
+// un dialogo con TODOS los tags reales de hoy -- un SKU puede tener varios tags, la suma excede el
+// total de piezas a proposito (mismo aviso que la pagina real).
+const TAG_PREVIEW_COUNT = 7
+
+function TagBreakdownCard({ title, subtitle, tags, viewAllLabel, sumNoticeLabel, emptyMessage }) {
+  const [open, setOpen] = useState(false)
+  const maxQty = tags.length > 0 ? tags[0].qty : 0
+  const preview = tags.slice(0, TAG_PREVIEW_COUNT)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => tags.length > 0 && setOpen(true)}
+        className={cn(cardClass, 'block w-full text-left', tags.length > 0 && 'cursor-pointer hover:border-[#3B82F6]')}
+      >
+        <div className={cardHeaderClass}>
+          <div className="min-w-0 flex-1">
+            <p className={cardHeaderTitleClass}>{title}</p>
+            <p className={cardHeaderSubtitleClass}>{subtitle}</p>
+          </div>
+        </div>
+        {tags.length === 0 ? (
+          <div className="px-5 py-8">
+            <EmptyState compact title={emptyMessage} />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 px-5 py-4">
+              {preview.map((t) => (
+                <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} />
+              ))}
+            </div>
+            <p className="px-5 pb-4 text-[11px] font-semibold text-[#3B82F6]">
+              {viewAllLabel} ({tags.length})
+            </p>
+          </>
+        )}
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[520px]">
+          <DialogTitle className="font-extrabold">{title}</DialogTitle>
+          <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
+            {tags.map((t) => (
+              <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} />
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{sumNoticeLabel}</p>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -193,7 +273,7 @@ export default function ProduccionFftPage() {
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <BreakdownListCard
               title={t('suppliersCardTitle')}
               subtitle={t('suppliersCardSubtitle')}
@@ -206,6 +286,14 @@ export default function ProduccionFftPage() {
               subtitle={t('categoriesCardSubtitle')}
               items={data.categories.map((c) => ({ name: c.categoryName, qty: c.qty }))}
               nullLabel={t('unknownLabel')}
+              emptyMessage={t('emptyDataMessage')}
+            />
+            <TagBreakdownCard
+              title={t('tagsCardTitle')}
+              subtitle={t('tagsCardSubtitle')}
+              tags={data.tags}
+              viewAllLabel={t('tagsViewAllLabel')}
+              sumNoticeLabel={t('tagsSumNotice')}
               emptyMessage={t('emptyDataMessage')}
             />
           </div>
