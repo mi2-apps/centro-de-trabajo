@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import {
   ArrowLeftRight,
   Badge,
@@ -17,7 +18,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +76,7 @@ import {
   getEffectiveTodayRoster,
   getPeopleWithoutArea,
 } from '../../data/production/personnelByArea'
+import { getRoleLabels } from '../../layout/roleLabels'
 import { useAuth } from '../../state/auth'
 import { useRoleMode } from '../../state/roleMode'
 import { EmptyState } from '../../ui'
@@ -565,57 +567,57 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
         </div>
       )}
 
-      {/* Contenido principal — dos columnas (70/30 en desktop) */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-        <div className="min-w-0 md:col-span-8">
-          <RegistroDeHoyCard
-            rows={visibleRoster}
-            total={filteredRoster.length}
-            allCount={roster.length}
-            showAll={showAllRoster}
-            onToggleShowAll={() => setShowAllRoster((v) => !v)}
-            onRowClick={setHistoryEmployee}
-          />
-          <DirectorioCard
-            tab={directoryTab}
-            onTabChange={setDirectoryTab}
-            withNumberCount={directoryWithNumber.length}
-            proyectosCount={directoryProyectos.length}
-            query={directoryQuery}
-            onQueryChange={setDirectoryQuery}
-            rows={visibleDirectory}
-            total={directoryList.length}
-            showAll={showAllDirectory}
-            onToggleShowAll={() => setShowAllDirectory((v) => !v)}
-            onRowClick={setHistoryEmployee}
-          />
-        </div>
+      {/* Contenido principal (2026-09-02, a peticion explicita del usuario: la card de
+          Movimientos del dia debe verse "de extremo a extremo" -- se quita el layout de 2
+          columnas 70/30 de antes; Registro de hoy/Movimientos del dia/Directorio ahora ocupan
+          el ancho completo, y las 3 cards que antes vivian en la columna lateral (Resumen por
+          area/Alertas/Acciones rapidas) bajan a su propia fila debajo, para que no le quiten
+          espacio horizontal a la tabla ancha de Movimientos). */}
+      <RegistroDeHoyCard
+        rows={visibleRoster}
+        total={filteredRoster.length}
+        allCount={roster.length}
+        showAll={showAllRoster}
+        onToggleShowAll={() => setShowAllRoster((v) => !v)}
+        onRowClick={setHistoryEmployee}
+      />
+      <MovimientosDelDiaCard />
+      <DirectorioCard
+        tab={directoryTab}
+        onTabChange={setDirectoryTab}
+        withNumberCount={directoryWithNumber.length}
+        proyectosCount={directoryProyectos.length}
+        query={directoryQuery}
+        onQueryChange={setDirectoryQuery}
+        rows={visibleDirectory}
+        total={directoryList.length}
+        showAll={showAllDirectory}
+        onToggleShowAll={() => setShowAllDirectory((v) => !v)}
+        onRowClick={setHistoryEmployee}
+      />
 
-        <div className="min-w-0 md:col-span-4">
-          <div className="flex flex-col gap-4">
-            <ResumenPorAreaCard
-              areas={areaSummary}
-              totalPresente={presentToday}
-              onAreaClick={(id) => setAreaFilter(id)}
-            />
-            <AlertasCard
-              sinEstacion={rosterSinEstacion.length}
-              snapshot={rosterSnapshot.length}
-              movimientos={movesToday}
-              sinAsignar={unassignedCount}
-              onClickSinEstacion={() => handleAlertClick('SIN_ESTACION')}
-              onClickSnapshot={() => handleAlertClick('SNAPSHOT')}
-              onClickMovimientos={() => handleAlertClick('REGISTRADO')}
-              onClickSinAsignar={onGoToSinAsignar}
-            />
-            <AccionesRapidasCard
-              onAsignar={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
-              onMover={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
-              onVerBajas={onGoToBajas}
-              onVerLayout={onGoToAreas}
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <ResumenPorAreaCard
+          areas={areaSummary}
+          totalPresente={presentToday}
+          onAreaClick={(id) => setAreaFilter(id)}
+        />
+        <AlertasCard
+          sinEstacion={rosterSinEstacion.length}
+          snapshot={rosterSnapshot.length}
+          movimientos={movesToday}
+          sinAsignar={unassignedCount}
+          onClickSinEstacion={() => handleAlertClick('SIN_ESTACION')}
+          onClickSnapshot={() => handleAlertClick('SNAPSHOT')}
+          onClickMovimientos={() => handleAlertClick('REGISTRADO')}
+          onClickSinAsignar={onGoToSinAsignar}
+        />
+        <AccionesRapidasCard
+          onAsignar={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
+          onMover={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
+          onVerBajas={onGoToBajas}
+          onVerLayout={onGoToAreas}
+        />
       </div>
 
       <RegisterPersonnelDialog
@@ -757,6 +759,137 @@ function RegistroDeHoyCard({ rows, total, allCount, showAll, onToggleShowAll, on
   )
 }
 
+/* Card "Movimientos del día" (2026-09-02, a peticion explicita del usuario: "pon fecha y hora
+   y quien esta moviendo al personal" -- surgio de una duda real sobre por que los conteos de
+   Personal/Areas de trabajo/Asistencia no coincidian exactamente entre si en el mismo instante,
+   y quien estaba haciendo los movimientos). Dato 100% real, nunca inventado: EmployeeMovement.
+   movedByUserId es una columna obligatoria en el servidor (confirmado en schema.js), pero el
+   store LOCAL (repository.js) nunca la conoce -- checkInEmployee/moveEmployee ahi siempre
+   guardan movedBy: null (mismo comentario documentado en area-history.js, el endpoint hermano
+   de este que ya existia para el historial de UNA area). api/personnel/movements-today.js es el
+   mismo patron pero para TODA la planta en la fecha de hoy, ordenado por hora mas reciente
+   primero. Se re-consulta cada vez que cambia `version` (usePersonnelVersion), igual que el
+   resto de este archivo, para reflejar un movimiento nuevo (propio o de otro dispositivo/
+   usuario) sin recargar la pagina. */
+function MovimientosDelDiaCard() {
+  const { t } = useTranslation('centroTrabajo')
+  const version = usePersonnelVersion()
+  const [state, setState] = useState({ loading: true, error: null, items: [] })
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza re-fetch aunque no se lea en el callback (mismo patron en todo este folder)
+  useEffect(() => {
+    let cancelled = false
+    setState((s) => ({ ...s, loading: true, error: null }))
+    fetch('/api/personnel/movements-today', { credentials: 'include' })
+      .then((r) => {
+        if (!r.ok) throw new Error(`movements-today -> ${r.status}`)
+        return r.json()
+      })
+      .then((data) => {
+        if (!cancelled) setState({ loading: false, error: null, items: data.movements })
+      })
+      .catch((e) => {
+        if (!cancelled) setState({ loading: false, error: e.message, items: [] })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [version])
+
+  const roleLabels = getRoleLabels()
+
+  return (
+    <div className={cn(cardClass, 'mb-4')}>
+      <div className={cn(cardHeaderClass, 'justify-between')}>
+        <div className="flex items-center gap-2">
+          <ArrowLeftRight className="h-[18px] w-[18px] text-muted-foreground" />
+          <div>
+            <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.movimientosDelDiaTitle')}</p>
+            <p className={cardHeaderSubtitleClass}>
+              {t('personalDeHoyTab.movimientosDelDiaSubtitle')}
+            </p>
+          </div>
+        </div>
+        {!state.loading && !state.error && (
+          <span className={cn(metricChipClass('info'), 'shrink-0')}>
+            {t('personalDeHoyTab.movimientosDelDiaChip', { count: state.items.length })}
+          </span>
+        )}
+      </div>
+      <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow className={tableHeaderRowClass}>
+              <TableHead>{t('personalDeHoyTab.colFechaHora')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colEmpleado')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colNombre')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colMovimiento')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colRegistradoPor')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {state.items.map((m, idx) => (
+              <TableRow key={m.id} className={tableRowClass(idx)}>
+                <TableCell className={cellTextSecondaryClass}>
+                  {dayjs(m.movedAt).format('DD/MM/YYYY HH:mm')}
+                </TableCell>
+                <TableCell className={cn(cellTextClass, 'font-mono font-semibold')}>
+                  {m.employeeNumber}
+                </TableCell>
+                <TableCell className={cellTextClass}>{m.employeeName}</TableCell>
+                <TableCell className={cellTextSecondaryClass}>
+                  {m.action === 'ASSIGNED'
+                    ? t('personalDeHoyTab.movementAssignedTo', { to: m.toAreaName })
+                    : t('personalDeHoyTab.movementMovedTo', {
+                        from: m.fromAreaName,
+                        to: m.toAreaName,
+                      })}
+                </TableCell>
+                <TableCell className={cellTextSecondaryClass}>
+                  {m.byName ? (
+                    <div>
+                      <p className="font-medium text-foreground">{m.byName}</p>
+                      {m.byRole && (
+                        <p className="text-xs text-muted-foreground">
+                          {roleLabels[m.byRole] || m.byRole}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {!state.loading && !state.error && state.items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <EmptyState
+                    compact
+                    title={t('personalDeHoyTab.movimientosEmptyTitle')}
+                    description={t('personalDeHoyTab.movimientosEmptyDescription')}
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {state.error && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <EmptyState
+                    compact
+                    title={t('personalDeHoyTab.movimientosErrorTitle')}
+                    description={state.error}
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
+
 /* Card "Directorio completo de personal" -- mismas 2 tabs/datos de
    siempre (Con número de empleado / Proyectos), ahora con altura
    controlada + "Ver directorio completo" para expandir. */
@@ -775,7 +908,7 @@ function DirectorioCard({
 }) {
   const { t } = useTranslation('centroTrabajo')
   return (
-    <div className={cardClass}>
+    <div className={cn(cardClass, 'mb-4')}>
       <div className={cardHeaderClass}>
         <Contact className="h-[18px] w-[18px] text-muted-foreground" />
         <div>

@@ -25,6 +25,7 @@ import personnelAreaHistoryHandler from '../api/personnel/area-history.js'
 import personnelCheckinHandler from '../api/personnel/checkin.js'
 import personnelEmployeesHandler from '../api/personnel/employees.js'
 import personnelMoveHandler from '../api/personnel/move.js'
+import personnelMovementsTodayHandler from '../api/personnel/movements-today.js'
 import personnelRejectMoveHandler from '../api/personnel/reject-move.js'
 import personnelReleaseHandler from '../api/personnel/release.js'
 import personnelRequestMoveHandler from '../api/personnel/request-move.js'
@@ -103,6 +104,7 @@ export function mountApiRoutes(app) {
   app.post('/api/personnel/set-unassigned-reason', wrapAsync(personnelSetUnassignedReasonHandler))
   app.post('/api/personnel/restore-baseline', wrapAsync(personnelRestoreBaselineHandler))
   app.get('/api/personnel/area-history', wrapAsync(personnelAreaHistoryHandler))
+  app.get('/api/personnel/movements-today', wrapAsync(personnelMovementsTodayHandler))
 
   app.get('/api/dashboard/trends', wrapAsync(dashboardTrendsHandler))
 
