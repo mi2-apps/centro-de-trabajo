@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   BookOpen,
   CalendarCheck,
@@ -61,6 +62,7 @@ const BRAND_BLUE = '#3B82F6'
 const NAV_ITEMS = [
   { to: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard, configurable: true },
   { to: '/centro-trabajo', labelKey: 'centroDeTrabajo', icon: Factory, configurable: true },
+  { to: '/produccion-fft', labelKey: 'produccionFft', icon: Activity, configurable: true },
   {
     to: '/registro-personal',
     labelKey: 'registroDePersonal',

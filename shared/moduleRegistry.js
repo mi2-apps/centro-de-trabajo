@@ -107,6 +107,22 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
   },
+  // 2026-09-02 (a peticion explicita del usuario, segunda parte del pedido de
+  // Takt Time real: "agrega otro modulo asi como dices con todo lo que tiene
+  // el link de la pagina" -- espejo de FFT Dashboard Production de
+  // BinManager). SOLO LECTURA, misma fuente SQL directa a SmartControl que ya
+  // usa Takt Time real (server-lib/binmanager-sql.js) -- el MCP de BinManager
+  // no esta disponible para el servidor real, solo para esta sesion
+  // interactiva. Mismo criterio de permisos que el resto de modulos nuevos.
+  {
+    key: '/produccion-fft',
+    name: 'Producción FFT',
+    description: 'Producción real en vivo del work center FFT (BinManager)',
+    icon: 'Activity',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+  },
 ]
 
 export function listAllModules() {

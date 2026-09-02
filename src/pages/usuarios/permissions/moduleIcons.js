@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   CalendarCheck,
   ClipboardCheck,
@@ -26,6 +27,7 @@ const ICONS = {
   QueryStats: BarChart3,
   EventAvailable: CalendarCheck,
   FactCheck: ClipboardCheck,
+  Activity: Activity,
 }
 
 export function getModuleIcon(iconKey) {

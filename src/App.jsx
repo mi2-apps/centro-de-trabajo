@@ -14,6 +14,7 @@ import DeveloperManualPage from './pages/docs/DeveloperManualPage'
 import UserManualPage from './pages/docs/UserManualPage'
 import EvaluacionesPage from './pages/evaluaciones/EvaluacionesPage'
 import KpisPage from './pages/kpis/KpisPage'
+import ProduccionFftPage from './pages/produccion-fft/ProduccionFftPage'
 import RegistroPersonalPage from './pages/registro-personal/RegistroPersonalPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 import DefaultRedirect from './routing/DefaultRedirect'
@@ -65,6 +66,14 @@ export default function App() {
                   element={
                     <RequireModuleAccess>
                       <CentroTrabajoPage />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/produccion-fft"
+                  element={
+                    <RequireModuleAccess>
+                      <ProduccionFftPage />
                     </RequireModuleAccess>
                   }
                 />

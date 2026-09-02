@@ -53,6 +53,7 @@ i18n
       'kpis',
       'evaluaciones',
       'asistencia',
+      'produccionFft',
     ],
     defaultNS: 'common',
     detection: {

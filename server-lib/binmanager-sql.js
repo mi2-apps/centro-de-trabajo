@@ -95,6 +95,76 @@ export async function getProductionByUserToday({ workCenterId = 49, dateFrom, da
   return result.recordset.map((r) => ({ username: r.InspectionBy, qty: r.Qty }))
 }
 
+/* Desglose de piezas por clasificacion (grado: GRA/GRB/GRC/DMA/...) hoy en el work center -- para
+   el modulo "Produccion FFT" (2026-09-02, espejo de FFT Dashboard Production de BinManager).
+   Mismo JOIN exacto que getProductionByUserToday arriba (deduplicado por LicensePlateNumber +
+   INNER JOIN OE.WorkPlan) -- verificado en vivo que da un total consistente con el de por-usuario;
+   la version sin el JOIN a OE.WorkPlan (probada primero) dio un total distinto al que muestra
+   BinManager, asi que se descarta esa variante aunque sea mas simple. */
+export async function getProductionByClassificationToday({ workCenterId = 49, dateFrom, dateTo }) {
+  const pool = await getPool()
+  const request = pool
+    .request()
+    .input('workCenterId', sql.Int, workCenterId)
+    .input('dateFrom', sql.Date, dateFrom)
+    .input('dateTo', sql.Date, dateTo)
+  const result = await request.query(`
+    WITH RankedInspections AS (
+      SELECT I.LicensePlateNumber, I.ClassificationID,
+        ROW_NUMBER() OVER (PARTITION BY I.LicensePlateNumber ORDER BY I.InspectionDate DESC, I.InspectionID DESC) AS RN
+      FROM oe.WorkPlanInspection I WITH (NOLOCK)
+      INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
+      WHERE I.WorkCenterID = @workCenterId
+        AND CAST(I.InspectionDate AS DATE) >= @dateFrom
+        AND CAST(I.InspectionDate AS DATE) <= @dateTo
+    )
+    SELECT WPIC.ClassificationCode, WPIC.ClassificationName, COUNT(*) AS Qty
+    FROM RankedInspections R
+    INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = R.LicensePlateNumber
+    INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = R.ClassificationID
+    WHERE R.RN = 1
+    GROUP BY WPIC.ClassificationCode, WPIC.ClassificationName
+    ORDER BY Qty DESC
+  `)
+  return result.recordset.map((r) => ({
+    code: r.ClassificationCode,
+    name: r.ClassificationName,
+    qty: r.Qty,
+  }))
+}
+
+/* Piezas totales por dia, ultimos N dias -- para la grafica de tendencia del modulo "Produccion
+   FFT". Mismo JOIN/dedup que arriba, agrupado por fecha de inspeccion en vez de usuario/clasificacion. */
+export async function getDailyThroughput({ workCenterId = 49, dateFrom, dateTo }) {
+  const pool = await getPool()
+  const request = pool
+    .request()
+    .input('workCenterId', sql.Int, workCenterId)
+    .input('dateFrom', sql.Date, dateFrom)
+    .input('dateTo', sql.Date, dateTo)
+  const result = await request.query(`
+    WITH RankedInspections AS (
+      SELECT I.LicensePlateNumber, I.InspectionDate,
+        ROW_NUMBER() OVER (PARTITION BY I.LicensePlateNumber ORDER BY I.InspectionDate DESC, I.InspectionID DESC) AS RN
+      FROM oe.WorkPlanInspection I WITH (NOLOCK)
+      INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
+      WHERE I.WorkCenterID = @workCenterId
+        AND CAST(I.InspectionDate AS DATE) >= @dateFrom
+        AND CAST(I.InspectionDate AS DATE) <= @dateTo
+    )
+    SELECT CAST(R.InspectionDate AS DATE) AS Day, COUNT(*) AS Qty
+    FROM RankedInspections R
+    INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = R.LicensePlateNumber
+    WHERE R.RN = 1
+    GROUP BY CAST(R.InspectionDate AS DATE)
+    ORDER BY Day ASC
+  `)
+  return result.recordset.map((r) => ({
+    date: r.Day.toISOString().slice(0, 10),
+    qty: r.Qty,
+  }))
+}
+
 /* Resuelve usernames de BinManager (formato "nombre.apellidoNN", ej "yesica.luna") a los campos
    REALES de nombre por separado (Name/SecondName/LastName/SecondLastName) -- nunca se parsea el
    username como si fuera el nombre, siempre se lee de ADM.UsersLogin, la tabla real de la que sale

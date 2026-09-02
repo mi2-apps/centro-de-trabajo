@@ -1,0 +1,32 @@
+{
+  "pageTitle": "FFT 生产",
+  "pageSubtitle": "FFT 工作中心的实时真实产量(数据源:SmartControl/BinManager,与工作中心的真实节拍时间使用相同连接)",
+  "notConfiguredMessage": "此环境尚未配置 BinManager。",
+  "loadingMessage": "正在加载生产数据...",
+  "loadErrorGeneric": "无法加载生产数据,请重试。",
+  "totalTodayLabel": "今日总件数",
+  "piecesUnitLabel": "件",
+  "activePeopleLabel": "今日活跃人员",
+  "activePeopleUnitLabel": "BinManager 中报告的人数",
+  "classificationChartTitle": "按分类的件数",
+  "classificationChartSubtitle": "今日按等级/分类的明细",
+  "throughputChartTitle": "生产趋势",
+  "throughputChartSubtitle": "最近 7 天每日件数",
+  "emptyDataMessage": "此范围暂无数据。",
+  "todayLabel": "今日",
+  "peopleTableTitle": "今日活跃人员",
+  "peopleTableSubtitle": "今日每人检验的件数,已确认时显示真实姓名",
+  "emptyPeopleTitle": "今日暂无人员报告",
+  "emptyPeopleDescription": "BinManager 中该工作中心今日尚无检验记录。",
+  "colPerson": "人员",
+  "colEmployeeNumber": "员工编号",
+  "colQty": "件数",
+  "colStatus": "状态",
+  "matchStatus": {
+    "OK": "已确认",
+    "AMBIGUO": "存在歧义",
+    "REVISAR": "待复核",
+    "SIN_MATCH": "无匹配",
+    "USERNAME_DESCONOCIDO": "未知用户名"
+  }
+}

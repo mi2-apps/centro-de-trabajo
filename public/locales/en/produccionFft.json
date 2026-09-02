@@ -1,0 +1,32 @@
+{
+  "pageTitle": "FFT Production",
+  "pageSubtitle": "Live real production for the FFT work center (source: SmartControl/BinManager, same connection as Work Center's real Takt Time)",
+  "notConfiguredMessage": "BinManager is not configured yet in this environment.",
+  "loadingMessage": "Loading production data...",
+  "loadErrorGeneric": "Could not load production data. Try again.",
+  "totalTodayLabel": "Total pieces today",
+  "piecesUnitLabel": "pieces",
+  "activePeopleLabel": "Active people today",
+  "activePeopleUnitLabel": "people reported in BinManager",
+  "classificationChartTitle": "Pieces by classification",
+  "classificationChartSubtitle": "Today's breakdown by grade/classification",
+  "throughputChartTitle": "Production trend",
+  "throughputChartSubtitle": "Pieces per day, last 7 days",
+  "emptyDataMessage": "No data yet for this range.",
+  "todayLabel": "Today",
+  "peopleTableTitle": "Active people today",
+  "peopleTableSubtitle": "Pieces inspected today per person, with their real name when confirmed",
+  "emptyPeopleTitle": "No one reported today",
+  "emptyPeopleDescription": "No inspections have been recorded yet today in BinManager for this work center.",
+  "colPerson": "Person",
+  "colEmployeeNumber": "Employee number",
+  "colQty": "Pieces",
+  "colStatus": "Status",
+  "matchStatus": {
+    "OK": "Confirmed",
+    "AMBIGUO": "Ambiguous",
+    "REVISAR": "Needs review",
+    "SIN_MATCH": "No match",
+    "USERNAME_DESCONOCIDO": "Unknown username"
+  }
+}
