@@ -132,7 +132,7 @@ export default function ProduccionFftPage() {
               empty={classificationData.length === 0}
               emptyMessage={t('emptyDataMessage')}
             >
-              <div className="min-h-0 flex-1">
+              <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={classificationData}
@@ -170,7 +170,7 @@ export default function ProduccionFftPage() {
               empty={throughputData.length === 0}
               emptyMessage={t('emptyDataMessage')}
             >
-              <div className="min-h-0 flex-1">
+              <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={throughputData}
