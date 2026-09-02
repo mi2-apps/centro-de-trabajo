@@ -116,10 +116,15 @@ function BreakdownListCard({ title, subtitle, items, nullLabel, emptyMessage }) 
 
 // Fila de tag con barra de progreso relativa al maximo del set mostrado -- mismo lenguaje visual
 // que "PIEZAS POR TAG" y "PROGRESO DE PALLETS" de la pagina real (barra + numero a la derecha).
-function TagRow({ tag, qty, maxQty }) {
+// onTagClick (2026-09-02, a peticion explicita del usuario: "localizar las piezas skus de cada
+// pieza de tag" -- cada fila de tag es clickeable y abre el Rastreador de SKUs YA FILTRADO por ese
+// tag, en vez de ser solo un numero/barra decorativa). stopPropagation: TagRow vive dentro del
+// boton grande de TagBreakdownCard (que abre el dialogo "ver todos los tags") -- sin esto, clickear
+// una fila del preview activaria los dos clicks (abrir el dialogo de tags Y el rastreador).
+function TagRow({ tag, qty, maxQty, onTagClick }) {
   const pct = maxQty > 0 ? (qty / maxQty) * 100 : 0
-  return (
-    <div className="space-y-1">
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <span className="min-w-0 truncate text-[13px] font-semibold">{tag}</span>
         <span className="shrink-0 text-[13px] font-extrabold text-[#3B82F6]">{qty}</span>
@@ -130,7 +135,20 @@ function TagRow({ tag, qty, maxQty }) {
           style={{ width: `${Math.max(pct, 2)}%` }}
         />
       </div>
-    </div>
+    </>
+  )
+  if (!onTagClick) return <div className="space-y-1">{content}</div>
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onTagClick(tag)
+      }}
+      className="block w-full space-y-1 rounded-md p-1 text-left transition-colors hover:bg-[#3B82F6]/[.06]"
+    >
+      {content}
+    </button>
   )
 }
 
@@ -141,7 +159,15 @@ function TagRow({ tag, qty, maxQty }) {
 // total de piezas a proposito (mismo aviso que la pagina real).
 const TAG_PREVIEW_COUNT = 7
 
-function TagBreakdownCard({ title, subtitle, tags, viewAllLabel, sumNoticeLabel, emptyMessage }) {
+function TagBreakdownCard({
+  title,
+  subtitle,
+  tags,
+  viewAllLabel,
+  sumNoticeLabel,
+  emptyMessage,
+  onTagClick,
+}) {
   const [open, setOpen] = useState(false)
   const maxQty = tags.length > 0 ? tags[0].qty : 0
   const preview = tags.slice(0, TAG_PREVIEW_COUNT)
@@ -167,7 +193,7 @@ function TagBreakdownCard({ title, subtitle, tags, viewAllLabel, sumNoticeLabel,
           <>
             <div className="space-y-3 px-5 py-4">
               {preview.map((t) => (
-                <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} />
+                <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} onTagClick={onTagClick} />
               ))}
             </div>
             <p className="px-5 pb-4 text-[11px] font-semibold text-[#3B82F6]">
@@ -182,7 +208,16 @@ function TagBreakdownCard({ title, subtitle, tags, viewAllLabel, sumNoticeLabel,
           <DialogTitle className="font-extrabold">{title}</DialogTitle>
           <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
             {tags.map((t) => (
-              <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} />
+              <TagRow
+                key={t.tag}
+                tag={t.tag}
+                qty={t.qty}
+                maxQty={maxQty}
+                onTagClick={(tag) => {
+                  setOpen(false)
+                  onTagClick(tag)
+                }}
+              />
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground">{sumNoticeLabel}</p>
@@ -196,10 +231,9 @@ function TagBreakdownCard({ title, subtitle, tags, viewAllLabel, sumNoticeLabel,
 // en que pallet id se fue, si se fue en alguna orden... ver si hay duplicados"). Se carga BAJO
 // DEMANDA (solo al abrir el dialogo, nunca en el load inicial de la pagina) -- ver
 // api/production/sku-tracker.js, ~1,400 filas reales de hoy, mas pesado que el resto del modulo.
-function SkuTrackerDialog({ open, onOpenChange, t }) {
+function SkuTrackerDialog({ open, onOpenChange, search, onSearchChange, t }) {
   const [rows, setRows] = useState(null) // null = no cargado todavia
   const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!open || rows !== null) return
@@ -241,7 +275,7 @@ function SkuTrackerDialog({ open, onOpenChange, t }) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('skuTrackerSearchPlaceholder')}
             className="pl-9"
           />
@@ -319,6 +353,15 @@ export default function ProduccionFftPage() {
   const [data, setData] = useState(null) // null = cargando
   const [error, setError] = useState('')
   const [skuTrackerOpen, setSkuTrackerOpen] = useState(false)
+  const [skuTrackerSearch, setSkuTrackerSearch] = useState('')
+
+  // Puente real entre "Piezas por Tag" y el Rastreador de SKUs (2026-09-02, a peticion explicita
+  // del usuario: "localizar las piezas skus de cada pieza de tag"): clickear un tag abre el
+  // rastreador YA FILTRADO por ese tag -- nunca solo un numero decorativo.
+  function handleTagClick(tagName) {
+    setSkuTrackerSearch(tagName)
+    setSkuTrackerOpen(true)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -372,7 +415,10 @@ export default function ProduccionFftPage() {
           <Button
             variant="outline"
             className="shrink-0 font-bold normal-case"
-            onClick={() => setSkuTrackerOpen(true)}
+            onClick={() => {
+              setSkuTrackerSearch('')
+              setSkuTrackerOpen(true)
+            }}
           >
             <Search className="h-4 w-4" />
             {t('skuTrackerButtonLabel')}
@@ -380,7 +426,13 @@ export default function ProduccionFftPage() {
         </div>
       </div>
 
-      <SkuTrackerDialog open={skuTrackerOpen} onOpenChange={setSkuTrackerOpen} t={t} />
+      <SkuTrackerDialog
+        open={skuTrackerOpen}
+        onOpenChange={setSkuTrackerOpen}
+        search={skuTrackerSearch}
+        onSearchChange={setSkuTrackerSearch}
+        t={t}
+      />
 
       {error && <Alert className={cn(alertToneClass('error'), 'mb-4')}>{error}</Alert>}
 
@@ -433,6 +485,7 @@ export default function ProduccionFftPage() {
               viewAllLabel={t('tagsViewAllLabel')}
               sumNoticeLabel={t('tagsSumNotice')}
               emptyMessage={t('emptyDataMessage')}
+              onTagClick={handleTagClick}
             />
           </div>
 
