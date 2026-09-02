@@ -1,4 +1,5 @@
 import {
+  Activity,
   ArrowDownRight,
   ArrowLeftRight,
   ArrowRight,
@@ -410,6 +411,7 @@ export default function LineProcessFlow({
   headerAction,
   onViewHistory,
   taktTime,
+  realTakt,
   shiftLabel,
 }) {
   const { t } = useTranslation('centroTrabajo')
@@ -450,6 +452,26 @@ export default function LineProcessFlow({
               {t('lineDetailDrawer.taktTimeCompactMeta', {
                 targetPcs: taktTime.targetPcs.toLocaleString(),
                 shiftLabel,
+              })}
+            </p>
+          </div>
+        )}
+        {/* Takt Time REAL (2026-09-02, a peticion explicita del usuario: "puedes poner las
+            piezas que se estan produciendo por linea") -- complementa el teorico de arriba,
+            NUNCA lo reemplaza. Fuente real: api/production/takt-real.js (BinManager/SmartControl
+            cruzado por nombre con quien esta asignado hoy a esta linea). Si no hay dato real
+            todavia (SmartControl no configurado/sin responder, o nadie de esta linea aparece hoy
+            en BinManager) simplemente no se muestra nada, nunca un numero inventado. */}
+        {realTakt && (
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-1.5 dark:border-[rgba(34,197,94,.25)] dark:bg-[rgba(34,197,94,.08)]">
+            <Activity className="h-3.5 w-3.5 text-[#22C55E]" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.3px] text-muted-foreground">
+              {t('lineDetailDrawer.taktTimeRealTitle')}
+            </p>
+            <p className="text-[13px] font-extrabold">{realTakt.secondsPerUnit.toFixed(1)}s</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t('lineDetailDrawer.taktTimeRealCompactMeta', {
+                realPieces: realTakt.realPieces.toLocaleString(),
               })}
             </p>
           </div>

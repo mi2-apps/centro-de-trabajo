@@ -915,6 +915,8 @@
     "taktTimeCycleLabel": "理论周期（秒/台）",
     "taktTimeTargetLabel": "{{shiftLabel}}班次目标（件）",
     "taktTimeCompactMeta": "（目标{{targetPcs}}件，{{shiftLabel}}）",
+    "taktTimeRealTitle": "实际节拍时间",
+    "taktTimeRealCompactMeta": "（今日实际{{realPieces}}件）",
     "noTemplateDefinedLabel": "未定义编制",
     "peopleCountLabel": "{{real}} / {{ideal}} 人",
     "configureStationsButton": "配置工位",

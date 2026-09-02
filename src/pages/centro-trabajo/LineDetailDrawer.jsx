@@ -274,6 +274,38 @@ export default function LineDetailDrawer({
     setConfigVersion((v) => v + 1)
   }
 
+  /* Piezas REALES de hoy por linea (2026-09-02, a peticion explicita del usuario: "puedes poner
+     las piezas que se estan produciendo por linea") -- complementa el Takt Time TEORICO de arriba
+     (meta fija/duracion de turno) sin reemplazarlo. Fuente: api/production/takt-real.js, que cruza
+     BinManager/SmartControl (quien inspecciono cuantas piezas hoy) con quien esta asignado HOY a
+     cada linea en esta app, por NOMBRE (nunca hay un id compartido entre los 2 sistemas) -- ver el
+     comentario de ese endpoint. Un solo fetch trae TODAS las lineas (nunca uno por linea abierta);
+     best-effort: si SmartControl no responde o no esta configurado, `realTakt` queda null y esta
+     card simplemente no aparece, el Takt Time teorico sigue mostrandose igual que siempre. */
+  const [realTaktByLine, setRealTaktByLine] = useState({})
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza re-fetch aunque no se lea en el callback (mismo patron en todo este folder)
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    fetch('/api/production/takt-real', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.byLine) setRealTaktByLine(data.byLine)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [open, version])
+  const realTaktForLine = canonicalId ? realTaktByLine[canonicalId] : null
+  const realTakt =
+    realTaktForLine && taktTime
+      ? {
+          realPieces: realTaktForLine.realPieces,
+          secondsPerUnit: taktTime.durationSeconds / realTaktForLine.realPieces,
+        }
+      : null
+
   /* Agrupacion por categoria -- usada SOLO por "Resumen de la linea" (sidebar,
      ver lineSummary abajo). La cuadricula principal ("Distribución de
      estaciones") NO se separa en secciones (a peticion explicita del
@@ -634,6 +666,7 @@ export default function LineDetailDrawer({
               areaId={canonicalId}
               onViewHistory={setHistoryEmployee}
               taktTime={taktTime}
+              realTakt={realTakt}
               shiftLabel={currentOfficialShift.label}
               headerAction={
                 isAdmin &&
