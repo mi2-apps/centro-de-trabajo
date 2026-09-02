@@ -314,6 +314,97 @@ export async function getTagBreakdownToday({ workCenterId = 49, dateFrom, dateTo
   return result.recordset.map((r) => ({ tag: r.Tag, qty: r.Qty }))
 }
 
+/* Rastreador de SKUs (2026-09-02, a peticion explicita del usuario: "un rastreador de skus...
+   ver en que pallet id se fue, si se fue en alguna orden... ver si hay duplicados"). Una fila real
+   por LPN inspeccionado hoy en el work center, con:
+   - Brand/Model/Tamaño: BinManagerRO.PRO.SKUData (el catalogo maestro real -- se probo primero
+     con DA.SKUData/MM.SKUData como en getProductionByCategoryToday/getSizeByClassificationToday,
+     pero esa combinacion deja Brand/Model vacios para varios SKU reales; PRO.SKUData es la UNICA
+     fuente que tiene los 3 campos juntos y coincide exacto con la pagina real -- ej. SNTV002680 =
+     Hisense 65R6E4, igual que el payload real interceptado de GetTodaysProducedByWorkCenter).
+   - Pallet: mismo puente que getProductionBySupplierToday (LPN -> PurchasePalletDetails ->
+     PurchasePallets.PalletNumber).
+   - Tags: BinManagerRO.PRO.SKUTags/Tags -- STRING_AGG de todos los tags de ese SKU (un SKU puede
+     tener varios, se muestran todos, nunca solo el primero).
+   - ¿Ligado a orden?: BinManagerRO.BM.BinMovements.OrderNumber, buscado por LicensePlateNumber
+     (NO por SerialNumber -- se verifico en vivo que BM.BinMovements.SerialNumber en realidad
+     guarda el LicensePlateNumber en la mayoria de sus filas, no el numero de serie real del
+     fabricante; usar SerialNumber=SerialNumber daba falsos positivos por coincidencia de
+     strings vacios). Normal que salga null para piezas de HOY -- toma tiempo despues de
+     inspeccionado antes de ligarse a una orden real, no es un bug.
+   - Duplicado: mismo SerialNumber (numero de serie real, no LPN) apareciendo en mas de un LPN
+     distinto hoy -- señal real de reproceso/doble entrada, NULLIF vacio->NULL para no contar
+     seriales vacios como "duplicados" entre si. */
+export async function getSkuTrackerToday({ workCenterId = 49, dateFrom, dateTo }) {
+  const pool = await getPool()
+  const request = pool
+    .request()
+    .input('workCenterId', sql.Int, workCenterId)
+    .input('dateFrom', sql.Date, dateFrom)
+    .input('dateTo', sql.Date, dateTo)
+  const result = await request.query(`
+    WITH RankedInspections AS (
+      SELECT I.LicensePlateNumber, I.ClassificationID,
+        ROW_NUMBER() OVER (PARTITION BY I.LicensePlateNumber ORDER BY I.InspectionDate DESC, I.InspectionID DESC) AS RN
+      FROM oe.WorkPlanInspection I WITH (NOLOCK)
+      INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
+      WHERE I.WorkCenterID = @workCenterId
+        AND CAST(I.InspectionDate AS DATE) >= @dateFrom
+        AND CAST(I.InspectionDate AS DATE) <= @dateTo
+    ),
+    Base AS (
+      SELECT
+        R.LicensePlateNumber,
+        W.SKU,
+        W.SerialNumber,
+        WPIC.ClassificationCode,
+        WPIC.ClassificationName,
+        PP.PalletNumber,
+        COUNT(*) OVER (PARTITION BY NULLIF(W.SerialNumber, '')) AS SerialCount
+      FROM RankedInspections R
+      INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = R.LicensePlateNumber
+      INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = R.ClassificationID
+      LEFT JOIN PO.PurchasePalletDetails PPD WITH (NOLOCK) ON PPD.LicensePlateNumber = R.LicensePlateNumber
+      LEFT JOIN PO.PurchasePallets PP WITH (NOLOCK) ON PP.PurchasePalletID = PPD.PurchasePalletID
+      WHERE R.RN = 1
+    )
+    SELECT
+      b.LicensePlateNumber, b.SKU, b.SerialNumber, b.ClassificationCode, b.ClassificationName,
+      b.PalletNumber, b.SerialCount,
+      sd.Brand, sd.Model, sd.[Size],
+      tg.Tags,
+      om.OrderNumber
+    FROM Base b
+    LEFT JOIN BinManagerRO.PRO.SKUData sd WITH (NOLOCK) ON sd.SKU = b.SKU
+    OUTER APPLY (
+      SELECT STRING_AGG(t.Tag, ', ') AS Tags
+      FROM BinManagerRO.PRO.SKUTags st WITH (NOLOCK)
+      JOIN BinManagerRO.PRO.Tags t WITH (NOLOCK) ON t.ID = st.IDTag
+      WHERE st.SKU = b.SKU
+    ) tg
+    OUTER APPLY (
+      SELECT TOP 1 bm.OrderNumber FROM BinManagerRO.BM.BinMovements bm WITH (NOLOCK)
+      WHERE bm.SerialNumber = b.LicensePlateNumber AND bm.OrderNumber IS NOT NULL
+      ORDER BY bm.MovementDate DESC
+    ) om
+    ORDER BY b.LicensePlateNumber
+  `)
+  return result.recordset.map((r) => ({
+    lpn: r.LicensePlateNumber,
+    sku: r.SKU,
+    serialNumber: r.SerialNumber || null,
+    classificationCode: r.ClassificationCode,
+    classificationName: r.ClassificationName,
+    palletNumber: r.PalletNumber ?? null,
+    brand: r.Brand || null,
+    model: r.Model || null,
+    size: r.Size ?? null,
+    tags: r.Tags || null,
+    orderNumber: r.OrderNumber || null,
+    isDuplicateSerial: r.SerialCount > 1,
+  }))
+}
+
 /* Resuelve usernames de BinManager (formato "nombre.apellidoNN", ej "yesica.luna") a los campos
    REALES de nombre por separado (Name/SecondName/LastName/SecondLastName) -- nunca se parsea el
    username como si fuera el nombre, siempre se lee de ADM.UsersLogin, la tabla real de la que sale
