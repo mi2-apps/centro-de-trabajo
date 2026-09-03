@@ -1,5 +1,4 @@
 import {
-  Activity,
   ArrowDownRight,
   ArrowLeftRight,
   ArrowRight,
@@ -8,7 +7,6 @@ import {
   ChevronRight,
   FileText,
   Map as MapIcon,
-  Timer,
   Tv,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -405,15 +403,7 @@ function ProcessFlowNode({ node, areaId, onOpenSheet }) {
   )
 }
 
-export default function LineProcessFlow({
-  workstations,
-  areaId,
-  headerAction,
-  onViewHistory,
-  taktTime,
-  realTakt,
-  shiftLabel,
-}) {
+export default function LineProcessFlow({ workstations, areaId, headerAction, onViewHistory }) {
   const { t } = useTranslation('centroTrabajo')
   const [activeNode, setActiveNode] = useState(null)
   const nodes = useMemo(() => buildNodes(workstations), [workstations])
@@ -431,64 +421,11 @@ export default function LineProcessFlow({
             {t('lineDetailDrawer.stationDistributionSubtitle')}
           </p>
         </div>
-        {/* "Takt Time" (2026-09-02, a peticion explicita del usuario --
-            segunda correccion: "debe estar ahi a lado de configurar
-            puesto"): ya no es una card aparte arriba, vive compacto aqui
-            mismo, justo a la izquierda de "Configurar puestos". Meta REAL
-            de TODA LA PLANTA por turno (1500 Matutino/500 Noche, ver
-            TAKT_TARGET_PCS_BY_SHIFT en catalog.js) y el ciclo TEORICO
-            resultante -- solo el calculo teorico, sin captura de piezas
-            reales (confirmado explicitamente con el usuario). Tiempo
-            extra no tiene meta definida -- taktTime sale null y no se
-            muestra nada en vez de inventar un numero.
-
-            2026-09-03 (a peticion explicita del usuario, "una linea no
-            puede sacar las 1500, es imposible"): la meta de planta ahora
-            se REPARTE entre las lineas activas hoy (getTaktTime recibe
-            activeLineCount desde LineDetailDrawer.jsx) -- taktTime.targetPcs
-            ya es la porcion de ESTA linea, no el total de planta. */}
-        {taktTime && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E9D5FF] bg-[#FAF5FF] px-3 py-1.5 dark:border-[rgba(168,85,247,.25)] dark:bg-[rgba(168,85,247,.08)]">
-            <Timer className="h-3.5 w-3.5 text-[#A855F7]" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.3px] text-muted-foreground">
-              {t('lineDetailDrawer.taktTimeTitle')}
-            </p>
-            <p className="text-[13px] font-extrabold">{taktTime.secondsPerUnit.toFixed(1)}s</p>
-            <p className="text-[11px] text-muted-foreground">
-              {taktTime.activeLineCount
-                ? t('lineDetailDrawer.taktTimeCompactMetaSplit', {
-                    targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
-                    plantTargetPcs: taktTime.plantTargetPcs.toLocaleString(),
-                    activeLineCount: taktTime.activeLineCount,
-                    shiftLabel,
-                  })
-                : t('lineDetailDrawer.taktTimeCompactMeta', {
-                    targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
-                    shiftLabel,
-                  })}
-            </p>
-          </div>
-        )}
-        {/* Takt Time REAL (2026-09-02, a peticion explicita del usuario: "puedes poner las
-            piezas que se estan produciendo por linea") -- complementa el teorico de arriba,
-            NUNCA lo reemplaza. Fuente real: api/production/takt-real.js (BinManager/SmartControl
-            cruzado por nombre con quien esta asignado hoy a esta linea). Si no hay dato real
-            todavia (SmartControl no configurado/sin responder, o nadie de esta linea aparece hoy
-            en BinManager) simplemente no se muestra nada, nunca un numero inventado. */}
-        {realTakt && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-1.5 dark:border-[rgba(34,197,94,.25)] dark:bg-[rgba(34,197,94,.08)]">
-            <Activity className="h-3.5 w-3.5 text-[#22C55E]" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.3px] text-muted-foreground">
-              {t('lineDetailDrawer.taktTimeRealTitle')}
-            </p>
-            <p className="text-[13px] font-extrabold">{realTakt.secondsPerUnit.toFixed(1)}s</p>
-            <p className="text-[11px] text-muted-foreground">
-              {t('lineDetailDrawer.taktTimeRealCompactMeta', {
-                realPieces: realTakt.realPieces.toLocaleString(),
-              })}
-            </p>
-          </div>
-        )}
+        {/* Takt Time (teorico y real) se movio a su propia card -- TaktTimeCard.jsx, renderizada en
+            LineDetailDrawer.jsx justo debajo de la barra de busqueda, con mas espacio (2026-09-03,
+            a peticion explicita del usuario: "agrega una card para que tengas mas espacio... quiero
+            la card... en las 11 lineas haya o no haya pzs"). Ya no vive aqui, comprimida en el
+            header junto a "Configurar puestos". */}
         {/* 2026-09-01 (a peticion explicita del usuario): "Configurar
             puestos" se mueve aqui (arriba a la derecha) -- antes vivia en su
             propia card junto con la leyenda de JERARQUIA/TIPO DE PUESTO

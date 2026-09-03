@@ -92,6 +92,7 @@ import MoveConfirmDialog from './MoveConfirmDialog'
 import RegisterPersonnelDialog from './RegisterPersonnelDialog'
 import SelfAssignDialog from './SelfAssignDialog'
 import SuggestedEmployeeCard from './SuggestedEmployeeCard'
+import TaktTimeCard from './TaktTimeCard'
 import WorkCenterNavControls from './WorkCenterNavControls'
 
 /* ─────────────────────────────────────────────
@@ -308,14 +309,21 @@ export default function LineDetailDrawer({
       cancelled = true
     }
   }, [open, version])
+  // realTakt (2026-09-03, a peticion explicita del usuario: "quiero la card... en las 11 lineas
+  // haya o no haya pzs ya cuando haya que se ponga ahi los resultados") -- antes esto salia null
+  // por completo cuando la linea no tenia piezas reales todavia, y TaktTimeCard.jsx directamente no
+  // se mostraba. Ahora siempre es un objeto (mientras exista taktTime, que siempre existe -- ver
+  // getTaktTime en catalog.js): realPieces cae a 0, y secondsPerUnit queda null (division entre
+  // cero evitada a proposito) en vez de un numero inventado -- TaktTimeCard.jsx muestra "—" +
+  // aviso de "sin piezas reales hoy todavia" para ese caso, nunca oculta la card completa.
   const realTaktForLine = canonicalId ? realTaktByLine[canonicalId] : null
-  const realTakt =
-    realTaktForLine && taktTime
-      ? {
-          realPieces: realTaktForLine.realPieces,
-          secondsPerUnit: taktTime.durationSeconds / realTaktForLine.realPieces,
-        }
-      : null
+  const realPieces = realTaktForLine?.realPieces ?? 0
+  const realTakt = taktTime
+    ? {
+        realPieces,
+        secondsPerUnit: realPieces > 0 ? taktTime.durationSeconds / realPieces : null,
+      }
+    : null
 
   /* Agrupacion por categoria -- usada SOLO por "Resumen de la linea" (sidebar,
      ver lineSummary abajo). La cuadricula principal ("Distribución de
@@ -650,6 +658,13 @@ export default function LineDetailDrawer({
             </div>
           </div>
 
+          {/* Takt Time (teorico + real), 2026-09-03 -- ver TaktTimeCard.jsx para la nota completa.
+              Card propia con mas espacio, SIEMPRE visible en las 11 lineas (isStationBased cubre
+              exactamente LINEA1..10 + PROYECTO), haya o no haya personal/piezas reales todavia. */}
+          {isStationBased && (
+            <TaktTimeCard t={t} taktTime={taktTime} realTakt={realTakt} shiftLabel={currentOfficialShift.label} />
+          )}
+
           {actionError && (
             <Alert className={cn(alertToneClass('error'), 'mb-4')}>
               {actionError}
@@ -676,9 +691,6 @@ export default function LineDetailDrawer({
               workstations={workstations}
               areaId={canonicalId}
               onViewHistory={setHistoryEmployee}
-              taktTime={taktTime}
-              realTakt={realTakt}
-              shiftLabel={currentOfficialShift.label}
               headerAction={
                 isAdmin &&
                 configLoaded && (
