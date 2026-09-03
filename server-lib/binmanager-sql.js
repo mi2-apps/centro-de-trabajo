@@ -431,7 +431,25 @@ export async function getTagBreakdownToday({
 
    El parseo del sufijo de condicion se hace sobre ProductSKU (confirmado tal cual en vivo arriba)
    en vez de depender de una columna SKUCondition separada sin poder confirmar antes su formato
-   exacto contra la conexion real de produccion. */
+   exacto contra la conexion real de produccion.
+
+   NOTA HONESTA (2026-09-03, investigado a fondo con un endpoint de introspeccion temporal contra
+   produccion): b.WorkStationID en BM.Bins se fija al CREAR el bin y NUNCA cambia -- filtrar solo
+   por WorkStationID trae TODOS los pallets historicos jamas creados en este work center (13,101
+   bins con guion para WorkCenterID=49), no solo los que estan fisicamente ahi ahora mismo (~84
+   segun la pagina real). Se probaron isActive y BinStatus (unicas columnas reales candidatas en
+   BM.Bins -- confirmado su esquema completo en vivo, no hay ParentBinID ni columna de fecha de
+   "ultimo movimiento" en esta tabla) sin encontrar una combinacion que aterrice cerca de ~84: incluso
+   `isActive=1` solo (el filtro mas defendible de los dos, columna real con nombre inequivoco) deja
+   ~1476 bins, y los EnteredDate de los mas "recientes" con isActive=1 resultaron ser de mas de un
+   dia atras -- esta columna tampoco refleja actividad reciente real. La fuente que si distingue
+   "aqui ahora mismo" (ParentBin/ContainerMovements, visto en sc_pallet_details del MCP) vive en
+   tablas que no se pudieron identificar con certeza dentro del tiempo disponible. Se deja
+   `isActive = 1` como filtro (reduce el ruido de bins ya inactivos, aunque no cierra el numero
+   exacto) en vez de mostrar los 13,101 historicos completos -- la identidad de cada pallet
+   (BinCode) y su % de avance (por ProductSKU/-PNP) SI estan verificados exactos contra los
+   ejemplos reales que dio el usuario; lo que sigue pendiente es acotar el TOTAL de pallets
+   mostrados al conjunto realmente vigente ahora mismo. */
 export async function getPalletsProgress({ workCenterId = 49 }) {
   const pool = await getPool()
   const request = pool.request().input('workCenterId', sql.Int, workCenterId)
@@ -439,7 +457,7 @@ export async function getPalletsProgress({ workCenterId = 49 }) {
     SELECT b.BinID, b.BinCode, bc.ProductSKU
     FROM BinManagerRO.BM.Bins b WITH (NOLOCK)
     INNER JOIN BinManagerRO.BM.BinContent bc WITH (NOLOCK) ON bc.BinID = b.BinID
-    WHERE b.WorkStationID = @workCenterId AND b.BinCode LIKE '%-%'
+    WHERE b.WorkStationID = @workCenterId AND b.BinCode LIKE '%-%' AND b.isActive = 1
   `)
   const byBin = new Map()
   for (const r of result.recordset) {
