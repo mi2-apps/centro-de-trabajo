@@ -363,58 +363,46 @@ async function pollOnce() {
       knownLocalIdByServerId.get(row.employeeId) ||
       (placeholder ? byName.get(row.fullName) : byNumber.get(row.employeeNumber))
 
-    if (!localId) {
-      // Empleado que no existe localmente todavia (dado de alta desde otro dispositivo).
-      localId = row.employeeId
-      newDynamicEmployees.push({
-        id: localId,
-        employeeNumber: row.employeeNumber || 'PROYECTO',
-        name: row.fullName,
-        status: 'Activo',
-        createdAt: null,
-      })
-      if (placeholder) byName.set(row.fullName, localId)
-      else byNumber.set(row.employeeNumber, localId)
+    const freshNumber = row.employeeNumber || 'PROYECTO'
+    if (!localId) localId = row.employeeId
+
+    // Self-heal (2026-09-03): el nombre/numero real pudo haber cambiado en el servidor desde el
+    // ultimo poll (ej. se completo un nombre corto), O el link persistido (knownLocalIdByServerId)
+    // puede apuntar a un localId "huerfano" -- ya no existe ni en dynamicEmployees ni en
+    // EMPLOYEE_DIRECTORY (bug real 2026-09-03: un localStorage limpiado a mano deja el vinculo
+    // en memoria de ESA pestaña vivo -- linkServerId lo re-persiste tal cual en el siguiente poll,
+    // "revive" un id que ya no existe en ningun lado, y la persona queda invisible para siempre).
+    // En CUALQUIERA de los 3 casos (nuevo / cambio de nombre / vinculo huerfano) el resultado es
+    // el mismo: (re)escribir una fila dinamica fresca con el id resuelto y los datos actuales del
+    // servidor -- nunca se distingue "no existe todavia" de "existia pero ya no se encuentra",
+    // el efecto correcto es identico.
+    const existingDynamic = dynamicEmployees.find((e) => e.id === localId)
+    if (existingDynamic) {
+      if (existingDynamic.name !== row.fullName || existingDynamic.employeeNumber !== freshNumber) {
+        existingDynamic.name = row.fullName
+        existingDynamic.employeeNumber = freshNumber
+        dynamicEmployeesHealed = true
+        changed = true
+      }
     } else {
-      // Self-heal: el nombre/numero real pudo haber cambiado en el servidor desde el ultimo
-      // poll (ej. se completo un nombre corto). Si esta persona ya es una fila dinamica local,
-      // se actualiza en el lugar. Si solo vivia en el snapshot estatico (EMPLOYEE_DIRECTORY,
-      // congelado hasta el proximo build), se "promueve" a fila dinamica CON EL MISMO id --
-      // getAllEmployees() (repository.js) ya dedupea tambien por id, no solo por employeeNumber,
-      // asi que la fila estatica obsoleta queda automaticamente excluida (corrige bug real
-      // 2026-09-03: "Jonathan"/"Gabriela"/"Patricia" en Calidad se completaron en la base pero
-      // seguian mostrando el nombre corto porque antes esta rama no tocaba a nadie que solo
-      // viviera en el snapshot estatico).
-      const existingDynamic = dynamicEmployees.find((e) => e.id === localId)
-      const freshNumber = row.employeeNumber || 'PROYECTO'
-      if (existingDynamic) {
-        if (
-          existingDynamic.name !== row.fullName ||
-          existingDynamic.employeeNumber !== freshNumber
-        ) {
-          existingDynamic.name = row.fullName
-          existingDynamic.employeeNumber = freshNumber
-          dynamicEmployeesHealed = true
-          changed = true
-        }
-      } else {
-        const staticEntry = EMPLOYEE_DIRECTORY.find((e) => e.id === localId)
-        if (
-          staticEntry &&
-          (staticEntry.name !== row.fullName ||
-            freshNumber !== (staticEntry.employeeNumber || 'PROYECTO'))
-        ) {
-          newDynamicEmployees.push({
-            id: localId,
-            employeeNumber: freshNumber,
-            name: row.fullName,
-            status: staticEntry.status || 'Activo',
-            createdAt: null,
-          })
-          changed = true
-        }
+      const staticEntry = EMPLOYEE_DIRECTORY.find((e) => e.id === localId)
+      const staticMatchesServer =
+        staticEntry &&
+        staticEntry.name === row.fullName &&
+        freshNumber === (staticEntry.employeeNumber || 'PROYECTO')
+      if (!staticMatchesServer) {
+        newDynamicEmployees.push({
+          id: localId,
+          employeeNumber: freshNumber,
+          name: row.fullName,
+          status: staticEntry?.status || 'Activo',
+          createdAt: null,
+        })
+        changed = true
       }
     }
+    if (placeholder) byName.set(row.fullName, localId)
+    else byNumber.set(row.employeeNumber, localId)
     linkServerId(localId, row.employeeId)
     serverToLocalId.set(row.employeeId, localId)
 
