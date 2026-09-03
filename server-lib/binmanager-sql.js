@@ -82,28 +82,30 @@ async function getPool() {
    que ya estaba en produccion antes de este filtro (sin filtro extra).
 
    shift (2026-09-02, agregado a peticion explicita del usuario -- "separa lo del turno 1 matutino
-   junto con tiempo extra y turno 2... nocturno... vespertino"): verificado en vivo llamando el SP
-   real de este work center (SmartControl.OE.sp_GetTodaysProducedByWorkCenter, via MCP de
-   BinManager) con shift=1 y shift=2 en 2 dias distintos -- el corte real de horario para ESTE work
-   center (FFT/WorkCenterID 49) es 06:00-20:59:59 para Turno 1 (manana + tiempo extra) y
-   21:00-05:59:59 (cruza medianoche) para Turno 2 (noche/vespertino). Con shift=1 el SP dio EXACTO
-   1328 piezas el 2026-09-02, igual al numero que el usuario mostro de la pagina real. Este horario
-   es DISTINTO del de OFFICIAL_SHIFTS en src/data/production/catalog.js (07:00-17:10/17:11-22:00/
-   22:01-07:00) -- ese es el horario de CT LINEA (ensamble), no el de FFT; no se reutiliza aqui a
-   proposito.
+   junto con tiempo extra y turno 2... nocturno... vespertino").
 
-   2026-09-03 (CORREGIDO, a peticion explicita del usuario -- reporto usuarios totalmente distintos
-   entre la pagina real y esta para Turno 2, y valores de "hoy" en la noche sin haber empezado el
-   turno de dia): la primera version de Turno 2 combinaba "fecha entre @dateFrom y @dateFrom+1" con
-   "hora >= 21:00 O < 06:00" como 2 condiciones independientes (AND de un rango de fecha + un OR de
-   hora) -- eso arma un OR de 4 franjas, 2 de ellas SIN SENTIDO: la madrugada del propio @dateFrom
-   (que en realidad es la cola del turno de la noche ANTERIOR, no la de este turno) y la noche de
-   @dateFrom+1 completa (un turno que ni siquiera fue el que se pidio). Turno 2 de un dia D es
-   EXACTAMENTE la franja continua [D 21:00:00, D+1 06:00:00) -- nunca la union independiente de
-   fecha+hora. Para un rango [@dateFrom,@dateTo] es la union de esa franja por cada dia D del rango,
-   recortada en las 2 puntas (no toca la madrugada de @dateFrom ni la noche de @dateTo+1). Verificado
-   contra la pagina real: con esta franja exacta, Turno 1 de un dia sigue dando 1328 (sin cambios,
-   Turno 1 no cruza medianoche y no tenia este bug). */
+   2026-09-03 (CORREGIDO DOS VECES, a peticion explicita del usuario):
+   1ra correccion -- la version original combinaba fecha+hora mal armado, dejaba pasar la madrugada
+   de @dateFrom (cola del turno anterior) y la noche completa de @dateFrom+1 (un turno no pedido).
+   2da correccion -- el usuario reporto usuarios TOTALMENTE distintos entre la pagina real y esta
+   para Turno 2 (misma cantidad total, 450=450, pero personas distintas: la real mostraba
+   elizabeth.mendoza62/adalberto.ramon, la nuestra mostraba otras 3 personas). Investigando se
+   encontro la causa real: oe.WorkPlanInspection tiene una columna `Turno` (int, 1 o 2) YA
+   CALCULADA Y GUARDADA por SmartControl -- confirmado en vivo con el MCP de BinManager
+   (inspections_by_workcenter, turno=2, 2026-09-02: 100% de las filas devueltas traen
+   "Turno":2, con InspectionBy=elizabeth.mendoza62/adalberto.ramon exacto). Inferir el turno a
+   partir de la hora (como hacian ambas versiones anteriores) es una aproximacion que puede
+   seleccionar una fila distinta a la que el sistema real considera "la" inspeccion de ese
+   LPN/turno; usar la columna real Turno la elimina. Solo se conserva un corte de hora (mediodia,
+   12:00) para decidir a que FECHA de turno-noche pertenece una fila con Turno=2 (su turno pudo
+   empezar la noche anterior) -- ya no se usa para decidir CUAL es el turno, solo para agrupar por
+   fecha, asi que no depende de acertar el horario exacto de inicio/fin del turno.
+
+   "Todas" (sin shift) ahora es la UNION exacta de Turno 1(fecha) + Turno 2(fecha) -- a peticion
+   explicita del usuario, que esperaba que "Todas" cerrara con la suma de los 2 turnos y no
+   con el total crudo del dia calendario (que incluia la cola del turno de la noche anterior,
+   piezas reales pero de un turno que no es "el de hoy"). Con esto, ese sobrante ahora aparece en
+   el "Todas"/Turno 2 del DIA ANTERIOR (a donde realmente pertenece), nunca se pierde. */
 function buildFilteredBaseCte(
   request,
   { workCenterId, dateFrom, dateTo, classificationCode, size, shift },
@@ -112,19 +114,18 @@ function buildFilteredBaseCte(
   request.input('dateFrom', sql.Date, dateFrom)
   request.input('dateTo', sql.Date, dateTo)
   let extraWhere = ''
-  let dateWhere = 'CAST(I.InspectionDate AS DATE) >= @dateFrom AND CAST(I.InspectionDate AS DATE) <= @dateTo'
-  let shiftWhere = ''
+  const turno1Where = `(I.Turno = 1 AND CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo)`
+  const turno2Where = `(I.Turno = 2 AND (
+        (CAST(I.InspectionDate AS TIME) >= '12:00:00' AND CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo)
+        OR (CAST(I.InspectionDate AS TIME) < '12:00:00' AND CAST(I.InspectionDate AS DATE) BETWEEN DATEADD(DAY, 1, @dateFrom) AND DATEADD(DAY, 1, @dateTo))
+      ))`
+  let shiftWhere
   if (String(shift) === '1') {
-    shiftWhere = " AND CAST(I.InspectionDate AS TIME) >= '06:00:00' AND CAST(I.InspectionDate AS TIME) < '21:00:00'"
+    shiftWhere = turno1Where
   } else if (String(shift) === '2') {
-    dateWhere = '1 = 1'
-    shiftWhere = `
-        AND (
-          (CAST(I.InspectionDate AS DATE) = @dateFrom AND CAST(I.InspectionDate AS TIME) >= '21:00:00')
-          OR (CAST(I.InspectionDate AS DATE) > @dateFrom AND CAST(I.InspectionDate AS DATE) < DATEADD(DAY, 1, @dateTo)
-              AND (CAST(I.InspectionDate AS TIME) >= '21:00:00' OR CAST(I.InspectionDate AS TIME) < '06:00:00'))
-          OR (CAST(I.InspectionDate AS DATE) = DATEADD(DAY, 1, @dateTo) AND CAST(I.InspectionDate AS TIME) < '06:00:00')
-        )`
+    shiftWhere = turno2Where
+  } else {
+    shiftWhere = `(${turno1Where} OR ${turno2Where})`
   }
   if (classificationCode) {
     request.input('classificationCode', sql.NVarChar, classificationCode)
@@ -141,7 +142,7 @@ function buildFilteredBaseCte(
       FROM oe.WorkPlanInspection I WITH (NOLOCK)
       INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
       WHERE I.WorkCenterID = @workCenterId
-        AND ${dateWhere}${shiftWhere}
+        AND ${shiftWhere}
     ),
     FilteredBase AS (
       SELECT
@@ -467,6 +468,19 @@ export async function getTagBreakdownToday({
    (BinCode) y su % de avance (por ProductSKU/-PNP) SI estan verificados exactos contra los
    ejemplos reales que dio el usuario; lo que sigue pendiente es acotar el TOTAL de pallets
    mostrados al conjunto realmente vigente ahora mismo. */
+// Sufijos de condicion realmente vendibles (2026-09-03) -- lista EXACTA de
+// "reglas_de_venta.vendibles_la_mayoria_del_tiempo" + "vendibles_pero_NO_en_linea" del catalogo
+// operativo real de BinManager (NEW/GRA/GRB/GRC/ICB/ICC/ICD/ICX). Usado solo para el desglose
+// visual ✓ (bueno) / ✗ (malo) de "Progreso de pallets" -- nunca para decidir "terminado" (eso
+// sigue siendo -PNP vs cualquier condicion real, sin importar si es buena o mala).
+const SELLABLE_CONDITION_SUFFIXES = new Set(['NEW', 'GRA', 'GRB', 'GRC', 'ICB', 'ICC', 'ICD', 'ICX'])
+
+function classifyProductSku(productSku) {
+  const suffix = String(productSku || '').toUpperCase().split('-').pop()
+  if (suffix === 'PNP') return 'pending'
+  return SELLABLE_CONDITION_SUFFIXES.has(suffix) ? 'good' : 'bad'
+}
+
 export async function getPalletsProgress({ workCenterId = 49 }) {
   const pool = await getPool()
   const request = pool.request().input('workCenterId', sql.Int, workCenterId)
@@ -478,10 +492,15 @@ export async function getPalletsProgress({ workCenterId = 49 }) {
   `)
   const byBin = new Map()
   for (const r of result.recordset) {
-    if (!byBin.has(r.BinID)) byBin.set(r.BinID, { id: r.BinID, binCode: r.BinCode, total: 0, done: 0 })
+    if (!byBin.has(r.BinID)) {
+      byBin.set(r.BinID, { id: r.BinID, binCode: r.BinCode, total: 0, done: 0, good: 0, bad: 0 })
+    }
     const bin = byBin.get(r.BinID)
     bin.total += 1
-    if (!String(r.ProductSKU || '').toUpperCase().endsWith('-PNP')) bin.done += 1
+    const klass = classifyProductSku(r.ProductSKU)
+    if (klass !== 'pending') bin.done += 1
+    if (klass === 'good') bin.good += 1
+    else if (klass === 'bad') bin.bad += 1
   }
   const items = [...byBin.values()]
     .map((bin) => ({ ...bin, pct: bin.total > 0 ? (bin.done / bin.total) * 100 : 0 }))

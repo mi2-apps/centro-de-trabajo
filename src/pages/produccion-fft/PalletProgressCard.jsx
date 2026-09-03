@@ -1,3 +1,4 @@
+import { Check, Package, X } from 'lucide-react'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cardClass, cardHeaderClass, cardHeaderTitleClass, progressBarClass } from '@/lib/pageStyles'
@@ -5,24 +6,49 @@ import { EmptyState } from '../../ui'
 
 const PALLET_PREVIEW_COUNT = 5
 
-/* Fila de un pallet -- 2026-09-02, CORREGIDO tras confirmar que el widget real identifica cada
-   pallet por su BinCode (ver server-lib/binmanager-sql.js getPalletsProgress para la investigacion
-   completa: son bins fisicos de BM.Bins, no PO.PurchasePallets). pct = items ya clasificados en FFT
-   (ProductSKU sin sufijo -PNP) / total de items en el bin. */
+function pctColor(pct) {
+  if (pct >= 100) return '#22C55E'
+  if (pct >= 50) return '#F59E0B'
+  return '#EF4444'
+}
+
+/* Fila de un pallet -- rediseño 2026-09-03 a peticion explicita del usuario ("quiero la card...
+   asi tal cual"), calcado del widget real de BinManager: borde izquierdo de color segun avance,
+   % en grande, y debajo ✓ piezas buenas / ✗ piezas malas / 📦 total del pallet -- en vez del
+   "done/total" generico de antes. good/bad vienen de server-lib/binmanager-sql.js
+   getPalletsProgress (sufijo de condicion real del ProductSKU: NEW/GRA/GRB/GRC/ICB/ICC/ICD/ICX =
+   bueno/vendible, cualquier otro sufijo real (no -PNP) = malo; -PNP = aun sin inspeccionar, ni
+   bueno ni malo, solo cuenta en el total). pct sigue siendo done/total (done = good+bad), sin
+   cambios respecto a la version anterior -- solo cambia como se DESGLOSA visualmente "done". */
 function PalletRow({ pallet, t }) {
+  const color = pctColor(pallet.pct)
   return (
-    <div className="space-y-1">
+    <div className="rounded-md border-l-4 bg-muted/30 px-3 py-2" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[12.5px] font-bold">{pallet.binCode}</span>
-        <span className="text-[11px] text-muted-foreground">
-          {pallet.pct.toFixed(0)}% · {pallet.done}/{pallet.total} {t('palletUnitsLabel')}
+        <span className="text-[13px] font-extrabold" style={{ color }}>
+          {pallet.pct.toFixed(0)}%
         </span>
       </div>
-      <div className={progressBarClass}>
+      <div className={`${progressBarClass} mt-1.5`}>
         <div
-          className="h-full rounded-full bg-[#F59E0B] transition-[width] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
-          style={{ width: `${Math.max(pallet.pct, pallet.pct > 0 ? 2 : 0)}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
+          style={{ width: `${Math.max(pallet.pct, pallet.pct > 0 ? 2 : 0)}%`, backgroundColor: color }}
         />
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 text-[11px] font-semibold text-muted-foreground">
+        <span className="flex items-center gap-1 text-emerald-600">
+          <Check className="h-3 w-3" />
+          {pallet.good}
+        </span>
+        <span className="flex items-center gap-1 text-red-600">
+          <X className="h-3 w-3" />
+          {pallet.bad}
+        </span>
+        <span className="ml-auto flex items-center gap-1">
+          <Package className="h-3 w-3" />
+          {pallet.total}
+        </span>
       </div>
     </div>
   )
@@ -69,7 +95,7 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
             <SummaryStat label={t('palletsInProgressLabel')} bucket={pallets.summary.enProceso} t={t} />
             <SummaryStat label={t('palletsDoneLabel')} bucket={pallets.summary.terminados} t={t} />
           </div>
-          <div className="space-y-3 px-5 py-4">
+          <div className="space-y-2 px-5 py-4">
             {preview.map((p) => (
               <PalletRow key={p.id} pallet={p} t={t} />
             ))}
@@ -87,7 +113,7 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="flex max-h-[85vh] max-w-[520px] flex-col p-6">
           <DialogTitle className="font-extrabold">{t('palletsCardTitle')}</DialogTitle>
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
+          <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
             {pallets.items.map((p) => (
               <PalletRow key={p.id} pallet={p} t={t} />
             ))}
