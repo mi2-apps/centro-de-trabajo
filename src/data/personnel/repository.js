@@ -92,8 +92,17 @@ startPersonnelSync()
    `areaZona`, que puede seguir siendo null honestamente). */
 export function getAllEmployees() {
   const dynamic = readEmployees()
-  const known = new Set(dynamic.map((e) => e.employeeNumber))
-  const base = [...dynamic, ...EMPLOYEE_DIRECTORY.filter((e) => !known.has(e.employeeNumber))]
+  const knownNumbers = new Set(dynamic.map((e) => e.employeeNumber))
+  // knownIds (2026-09-03, corrige bug real: alguien sin folio de EMPLOYEE_DIRECTORY -- "Jonathan"
+  // en Calidad -- cuyo nombre real se completo despues via apiSync.js "promoviendolo" a fila
+  // dinamica CON EL MISMO id que ya tenia en el snapshot estatico. Sin este chequeo por id, el
+  // filtro de abajo (solo por employeeNumber) no reconocia que la fila estatica quedo obsoleta y
+  // la dejaba pasar tambien -- 2 elementos distintos con el mismo id en la lista final.
+  const knownIds = new Set(dynamic.map((e) => e.id))
+  const base = [
+    ...dynamic,
+    ...EMPLOYEE_DIRECTORY.filter((e) => !knownIds.has(e.id) && !knownNumbers.has(e.employeeNumber)),
+  ]
   const overrides = readEmployeeStatusOverrides()
   return base.map((e) => {
     const o = overrides[e.id]

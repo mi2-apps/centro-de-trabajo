@@ -343,7 +343,9 @@ async function pollOnce() {
   // ya no encuentra a la persona local existente y antes se creaba una identidad nueva
   // (fantasma) en vez de reconocer que ya se conocia via su employeeId real.
   const knownLocalIdByServerId = new Map()
-  serverIdByLocalId.forEach((sId, lId) => knownLocalIdByServerId.set(sId, lId))
+  serverIdByLocalId.forEach((sId, lId) => {
+    knownLocalIdByServerId.set(sId, lId)
+  })
 
   const dynamicEmployees = readEmployees()
   const newDynamicEmployees = []
@@ -375,21 +377,42 @@ async function pollOnce() {
       else byNumber.set(row.employeeNumber, localId)
     } else {
       // Self-heal: el nombre/numero real pudo haber cambiado en el servidor desde el ultimo
-      // poll (ej. se completo un nombre corto) -- si esta persona ya es una fila dinamica local,
+      // poll (ej. se completo un nombre corto). Si esta persona ya es una fila dinamica local,
       // se actualiza en el lugar. Si solo vivia en el snapshot estatico (EMPLOYEE_DIRECTORY,
-      // congelado hasta el proximo build), se deja como esta -- promoverla a fila dinamica aqui
-      // arriesgaria un id duplicado en getAllEmployees() (repository.js dedupea por
-      // employeeNumber, no por id).
+      // congelado hasta el proximo build), se "promueve" a fila dinamica CON EL MISMO id --
+      // getAllEmployees() (repository.js) ya dedupea tambien por id, no solo por employeeNumber,
+      // asi que la fila estatica obsoleta queda automaticamente excluida (corrige bug real
+      // 2026-09-03: "Jonathan"/"Gabriela"/"Patricia" en Calidad se completaron en la base pero
+      // seguian mostrando el nombre corto porque antes esta rama no tocaba a nadie que solo
+      // viviera en el snapshot estatico).
       const existingDynamic = dynamicEmployees.find((e) => e.id === localId)
       const freshNumber = row.employeeNumber || 'PROYECTO'
-      if (
-        existingDynamic &&
-        (existingDynamic.name !== row.fullName || existingDynamic.employeeNumber !== freshNumber)
-      ) {
-        existingDynamic.name = row.fullName
-        existingDynamic.employeeNumber = freshNumber
-        dynamicEmployeesHealed = true
-        changed = true
+      if (existingDynamic) {
+        if (
+          existingDynamic.name !== row.fullName ||
+          existingDynamic.employeeNumber !== freshNumber
+        ) {
+          existingDynamic.name = row.fullName
+          existingDynamic.employeeNumber = freshNumber
+          dynamicEmployeesHealed = true
+          changed = true
+        }
+      } else {
+        const staticEntry = EMPLOYEE_DIRECTORY.find((e) => e.id === localId)
+        if (
+          staticEntry &&
+          (staticEntry.name !== row.fullName ||
+            freshNumber !== (staticEntry.employeeNumber || 'PROYECTO'))
+        ) {
+          newDynamicEmployees.push({
+            id: localId,
+            employeeNumber: freshNumber,
+            name: row.fullName,
+            status: staticEntry.status || 'Activo',
+            createdAt: null,
+          })
+          changed = true
+        }
       }
     }
     linkServerId(localId, row.employeeId)
