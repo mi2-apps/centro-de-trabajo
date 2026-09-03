@@ -31,29 +31,38 @@ export default requireModuleAccess(
     if (!isBinManagerSqlConfigured()) return res.status(200).json({ configured: false })
     try {
       const pool = await getPool()
-      const [binsCols, contentCols, sampleBins, countByWorkStation] = await Promise.all([
-        pool.request().query(`
-          SELECT COLUMN_NAME, DATA_TYPE FROM BinManagerRO.INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = 'BM' AND TABLE_NAME = 'Bins' ORDER BY ORDINAL_POSITION
-        `),
-        pool.request().query(`
-          SELECT COLUMN_NAME, DATA_TYPE FROM BinManagerRO.INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = 'BM' AND TABLE_NAME = 'BinContent' ORDER BY ORDINAL_POSITION
-        `),
+      const [sampleBins, countByStatus, sampleActive, contentForActive] = await Promise.all([
         pool.request().query(`
           SELECT * FROM BinManagerRO.BM.Bins WITH (NOLOCK) WHERE BinID IN (405576, 405670)
         `),
         pool.request().query(`
-          SELECT WorkStationID, COUNT(*) AS Qty FROM BinManagerRO.BM.Bins WITH (NOLOCK)
-          WHERE BinCode LIKE '%-%' GROUP BY WorkStationID ORDER BY Qty DESC
+          SELECT WorkStationID, isActive, BinStatus, COUNT(*) AS Qty
+          FROM BinManagerRO.BM.Bins WITH (NOLOCK)
+          WHERE WorkStationID = 49 AND BinCode LIKE '%-%'
+          GROUP BY WorkStationID, isActive, BinStatus
+          ORDER BY Qty DESC
+        `),
+        pool.request().query(`
+          SELECT TOP 10 BinID, BinCode, BinStatus, isActive, EnteredDate
+          FROM BinManagerRO.BM.Bins WITH (NOLOCK)
+          WHERE WorkStationID = 49 AND BinCode LIKE '%-%' AND isActive = 1
+          ORDER BY EnteredDate DESC
+        `),
+        pool.request().query(`
+          SELECT b.BinID, b.BinCode, COUNT(*) AS items
+          FROM BinManagerRO.BM.Bins b WITH (NOLOCK)
+          INNER JOIN BinManagerRO.BM.BinContent bc WITH (NOLOCK) ON bc.BinID = b.BinID
+          WHERE b.WorkStationID = 49 AND b.BinCode LIKE '%-%' AND b.isActive = 1
+          GROUP BY b.BinID, b.BinCode
         `),
       ])
       await pool.close()
       return res.status(200).json({
-        binsColumns: binsCols.recordset,
-        contentColumns: contentCols.recordset,
         sampleBins: sampleBins.recordset,
-        countByWorkStation: countByWorkStation.recordset,
+        countByStatus: countByStatus.recordset,
+        sampleActive: sampleActive.recordset,
+        activeBinCount: contentForActive.recordset.length,
+        activeBinTotalItems: contentForActive.recordset.reduce((s, r) => s + r.items, 0),
       })
     } catch (err) {
       return res.status(200).json({ error: err.message })
