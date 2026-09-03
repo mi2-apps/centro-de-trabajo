@@ -1,438 +1,132 @@
 import dayjs from 'dayjs'
-import { Search } from 'lucide-react'
+import { Boxes, Package, Tag as TagIcon, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { Alert } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import {
-  alertToneClass,
-  cardClass,
-  cardHeaderClass,
-  cardHeaderSubtitleClass,
-  cardHeaderTitleClass,
-  cellTextClass,
-  cellTextSecondaryClass,
-  kpiCardClass,
-  metricChipClass,
-  pageClass,
-  pageSubtitleClass,
-  pageTitleClass,
-  progressBarClass,
-  tableHeaderRowClass,
-  tableRowClass,
-} from '@/lib/pageStyles'
+import { alertToneClass, pageClass } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '../../ui'
-import ChartCard from '../dashboard/ChartCard'
+import ClassificationMatrix from './ClassificationMatrix'
+import DonutBreakdownCard from './DonutBreakdownCard'
+import PalletProgressCard from './PalletProgressCard'
+import ProductionFilters from './ProductionFilters'
+import ProductionHeader from './ProductionHeader'
+import ProductionKpiCard from './ProductionKpiCard'
+import SkuTrackerDialog from './SkuTrackerDialog'
+import TagBreakdownCard from './TagBreakdownCard'
+import TopInspectorsCard from './TopInspectorsCard'
+import WeeklyComparisonCard from './WeeklyComparisonCard'
 
-/* Modulo "Producción FFT" (2026-09-02, segunda parte del pedido de Takt Time real -- ver
-   api/production/fft-summary.js para la nota completa sobre por que los totales de aqui no son
-   identicos a los del dashboard externo de BinManager). SOLO LECTURA. */
+/* Modulo "Producción FFT" (rediseño 2026-09-02, a peticion explicita del usuario, sobre un mockup
+   visual de referencia: "DATOS Y FUNCIONALIDAD = implementacion real, DISEÑO Y COMPOSICION =
+   mockup adjunto"). SOLO LECTURA. Espejo dentro de esta app de la pagina externa FFT Dashboard
+   Production de BinManager -- ver api/production/fft-summary.js para la historia completa de cada
+   tarjeta y el pendiente sin resolver documentado (el total de "Piezas procesadas" no cierra
+   exacto contra la pagina real, investigado 3 veces, requiere permiso EXECUTE que esta cuenta de
+   solo lectura no tiene).
+   Arquitectura: esta pagina orquesta el estado de filtros + un solo fetch a /api/production/
+   fft-summary; cada tarjeta vive en su propio componente (ProductionHeader/ProductionFilters/
+   ProductionKpiCard/DonutBreakdownCard/TopInspectorsCard/PalletProgressCard/TagBreakdownCard/
+   ClassificationMatrix/WeeklyComparisonCard/SkuTrackerDialog) para que sean mantenibles por
+   separado, sin refactorizar nada fuera de este modulo. */
 
-const MATCH_TONE = {
-  OK: 'ok',
-  AMBIGUO: 'warn',
-  REVISAR: 'warn',
-  SIN_MATCH: 'bad',
-  USERNAME_DESCONOCIDO: 'bad',
+function todayIso() {
+  return dayjs().format('YYYY-MM-DD')
 }
 
-const GRID_COLOR = 'hsl(var(--foreground) / 0.06)'
-const AXIS_COLOR = 'hsl(var(--muted-foreground))'
-const CURSOR_FILL = 'hsl(var(--foreground) / 0.04)'
-
-function ClassificationTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-[15px] border border-border bg-popover px-3 py-2 shadow-md text-popover-foreground">
-      <div className="mb-0.5 text-[12.5px] font-bold">{label}</div>
-      <div className="text-xs text-muted-foreground">{payload[0].value} pzs</div>
-    </div>
-  )
-}
-
-function WeeklyTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-[15px] border border-border bg-popover px-3 py-2 shadow-md text-popover-foreground">
-      <div className="mb-0.5 text-[12.5px] font-bold">{label}</div>
-      {payload.map((p) => (
-        <div key={p.dataKey} className="text-xs text-muted-foreground">
-          {p.name}: {p.value} pzs
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Card simple de desglose (Proveedores/Categorias) -- lista con nombre/piezas/porcentaje, sin
-// donut: para 1-3 items reales (que es lo que muestra hoy la pagina real) un donut no añade
-// legibilidad, y evita construir/mantener un segundo componente de grafica solo para esto.
-function BreakdownListCard({ title, subtitle, items, nullLabel, emptyMessage }) {
-  const total = items.reduce((sum, i) => sum + i.qty, 0)
-  return (
-    <div className={cardClass}>
-      <div className={cardHeaderClass}>
-        <div className="min-w-0 flex-1">
-          <p className={cardHeaderTitleClass}>{title}</p>
-          <p className={cardHeaderSubtitleClass}>{subtitle}</p>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        <div className="px-5 py-8">
-          <EmptyState compact title={emptyMessage} />
-        </div>
-      ) : (
-        <div className="space-y-2.5 px-5 py-4">
-          {items.map((item) => (
-            <div key={item.name || nullLabel} className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-[13px] font-semibold">{item.name || nullLabel}</span>
-              <span className="flex shrink-0 items-center gap-2">
-                <span className="text-[13px] font-extrabold">{item.qty}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  ({total > 0 ? ((item.qty / total) * 100).toFixed(0) : 0}%)
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Fila de tag con barra de progreso relativa al maximo del set mostrado -- mismo lenguaje visual
-// que "PIEZAS POR TAG" y "PROGRESO DE PALLETS" de la pagina real (barra + numero a la derecha).
-// onTagClick (2026-09-02, a peticion explicita del usuario: "localizar las piezas skus de cada
-// pieza de tag" -- cada fila de tag es clickeable y abre el Rastreador de SKUs YA FILTRADO por ese
-// tag, en vez de ser solo un numero/barra decorativa). stopPropagation: TagRow vive dentro del
-// boton grande de TagBreakdownCard (que abre el dialogo "ver todos los tags") -- sin esto, clickear
-// una fila del preview activaria los dos clicks (abrir el dialogo de tags Y el rastreador).
-function TagRow({ tag, qty, maxQty, onTagClick }) {
-  const pct = maxQty > 0 ? (qty / maxQty) * 100 : 0
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 truncate text-[13px] font-semibold">{tag}</span>
-        <span className="shrink-0 text-[13px] font-extrabold text-[#3B82F6]">{qty}</span>
-      </div>
-      <div className={progressBarClass}>
-        <div
-          className="h-full rounded-full bg-[#3B82F6] transition-[width] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
-          style={{ width: `${Math.max(pct, 2)}%` }}
-        />
-      </div>
-    </>
-  )
-  if (!onTagClick) return <div className="space-y-1">{content}</div>
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation()
-        onTagClick(tag)
-      }}
-      className="block w-full space-y-1 rounded-md p-1 text-left transition-colors hover:bg-[#3B82F6]/[.06]"
-    >
-      {content}
-    </button>
-  )
-}
-
-// "Piezas por Tag" (2026-09-02, a peticion explicita del usuario viendo la tarjeta real -- "dale
-// click y me salga [la lista completa]"): tarjeta compacta con los primeros TOP_COUNT tags (mismo
-// comportamiento que la pagina real, que muestra una lista corta con scroll), clickeable para abrir
-// un dialogo con TODOS los tags reales de hoy -- un SKU puede tener varios tags, la suma excede el
-// total de piezas a proposito (mismo aviso que la pagina real).
-const TAG_PREVIEW_COUNT = 7
-
-function TagBreakdownCard({
-  title,
-  subtitle,
-  tags,
-  viewAllLabel,
-  sumNoticeLabel,
-  emptyMessage,
-  onTagClick,
-}) {
-  const [open, setOpen] = useState(false)
-  const maxQty = tags.length > 0 ? tags[0].qty : 0
-  const preview = tags.slice(0, TAG_PREVIEW_COUNT)
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => tags.length > 0 && setOpen(true)}
-        className={cn(cardClass, 'block w-full text-left', tags.length > 0 && 'cursor-pointer hover:border-[#3B82F6]')}
-      >
-        <div className={cardHeaderClass}>
-          <div className="min-w-0 flex-1">
-            <p className={cardHeaderTitleClass}>{title}</p>
-            <p className={cardHeaderSubtitleClass}>{subtitle}</p>
-          </div>
-        </div>
-        {tags.length === 0 ? (
-          <div className="px-5 py-8">
-            <EmptyState compact title={emptyMessage} />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3 px-5 py-4">
-              {preview.map((t) => (
-                <TagRow key={t.tag} tag={t.tag} qty={t.qty} maxQty={maxQty} onTagClick={onTagClick} />
-              ))}
-            </div>
-            <p className="px-5 pb-4 text-[11px] font-semibold text-[#3B82F6]">
-              {viewAllLabel} ({tags.length})
-            </p>
-          </>
-        )}
-      </button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[520px]">
-          <DialogTitle className="font-extrabold">{title}</DialogTitle>
-          <div className="max-h-[60vh] space-y-3 overflow-auto pr-1">
-            {tags.map((t) => (
-              <TagRow
-                key={t.tag}
-                tag={t.tag}
-                qty={t.qty}
-                maxQty={maxQty}
-                onTagClick={(tag) => {
-                  setOpen(false)
-                  onTagClick(tag)
-                }}
-              />
-            ))}
-          </div>
-          <p className="text-[11px] text-muted-foreground">{sumNoticeLabel}</p>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
-// Rastreador de SKUs (2026-09-02, a peticion explicita del usuario: "un rastreador de skus... ver
-// en que pallet id se fue, si se fue en alguna orden... ver si hay duplicados"). Se carga BAJO
-// DEMANDA (solo al abrir el dialogo, nunca en el load inicial de la pagina) -- ver
-// api/production/sku-tracker.js, ~1,400 filas reales de hoy, mas pesado que el resto del modulo.
-function SkuTrackerDialog({ open, onOpenChange, search, onSearchChange, t }) {
-  const [rows, setRows] = useState(null) // null = no cargado todavia
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (!open || rows !== null) return
-    let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch('/api/production/sku-tracker', { credentials: 'include' })
-        const json = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
-        if (!cancelled) setRows(json.rows || [])
-      } catch (e) {
-        if (!cancelled) setError(e.message || t('loadErrorGeneric'))
-      }
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [open, rows, t])
-
-  const filtered = useMemo(() => {
-    if (!rows) return []
-    const q = search.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) =>
-      [r.lpn, r.sku, r.serialNumber, r.brand, r.model, r.tags, r.orderNumber]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(q)),
-    )
-  }, [rows, search])
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-[95vw] flex-col lg:max-w-[1200px]">
-        <DialogTitle className="font-extrabold">{t('skuTrackerTitle')}</DialogTitle>
-        <p className="text-[12.5px] text-muted-foreground">{t('skuTrackerSubtitle')}</p>
-
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={t('skuTrackerSearchPlaceholder')}
-            className="pl-9"
-          />
-        </div>
-
-        {error && <Alert className={alertToneClass('error')}>{error}</Alert>}
-
-        {rows === null && !error && (
-          <p className="py-10 text-center text-sm text-muted-foreground">{t('loadingMessage')}</p>
-        )}
-
-        {rows !== null && (
-          <>
-            <p className="text-[11px] text-muted-foreground">
-              {t('skuTrackerCountLabel', { shown: filtered.length, total: rows.length })}
-            </p>
-            {filtered.length === 0 ? (
-              <EmptyState compact title={t('emptyDataMessage')} />
-            ) : (
-              <div className="min-h-0 flex-1 overflow-auto">
-                <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-card">
-                    <TableRow className={tableHeaderRowClass}>
-                      <TableHead>{t('colLpn')}</TableHead>
-                      <TableHead>{t('colSku')}</TableHead>
-                      <TableHead>{t('colBrandModel')}</TableHead>
-                      <TableHead>{t('colClassification')}</TableHead>
-                      <TableHead>{t('colPallet')}</TableHead>
-                      <TableHead>{t('colTags')}</TableHead>
-                      <TableHead>{t('colOrder')}</TableHead>
-                      <TableHead>{t('colDuplicate')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((r, idx) => (
-                      <TableRow key={r.lpn} className={tableRowClass(idx)}>
-                        <TableCell className={cn(cellTextClass, 'font-bold')}>{r.lpn}</TableCell>
-                        <TableCell className={cellTextSecondaryClass}>{r.sku}</TableCell>
-                        <TableCell className={cellTextSecondaryClass}>
-                          {[r.brand, r.model].filter(Boolean).join(' ') || '—'}
-                          {r.size ? ` (${r.size}")` : ''}
-                        </TableCell>
-                        <TableCell className={cellTextSecondaryClass}>
-                          {r.classificationName || r.classificationCode}
-                        </TableCell>
-                        <TableCell className={cellTextSecondaryClass}>{r.palletNumber ?? '—'}</TableCell>
-                        <TableCell className="max-w-[220px] truncate text-[12px] text-muted-foreground">
-                          {r.tags || '—'}
-                        </TableCell>
-                        <TableCell className={cellTextSecondaryClass}>
-                          {r.orderNumber || t('noOrderLabel')}
-                        </TableCell>
-                        <TableCell>
-                          {r.isDuplicateSerial ? (
-                            <span className={metricChipClass('warn')}>{t('duplicateLabel')}</span>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
+const DEFAULT_FILTERS = { workCenterId: 49, dateFrom: todayIso(), dateTo: todayIso(), classificationCode: '', size: '' }
 
 export default function ProduccionFftPage() {
   const { t } = useTranslation('produccionFft')
   const [data, setData] = useState(null) // null = cargando
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS)
+  const [draftFilters, setDraftFilters] = useState(DEFAULT_FILTERS)
   const [skuTrackerOpen, setSkuTrackerOpen] = useState(false)
   const [skuTrackerSearch, setSkuTrackerSearch] = useState('')
 
-  // Puente real entre "Piezas por Tag" y el Rastreador de SKUs (2026-09-02, a peticion explicita
-  // del usuario: "localizar las piezas skus de cada pieza de tag"): clickear un tag abre el
-  // rastreador YA FILTRADO por ese tag -- nunca solo un numero decorativo.
+  async function fetchData(filters) {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('workCenterId', filters.workCenterId)
+      params.set('dateFrom', filters.dateFrom)
+      params.set('dateTo', filters.dateTo)
+      if (filters.classificationCode) params.set('classificationCode', filters.classificationCode)
+      if (filters.size) params.set('size', filters.size)
+      const res = await fetch(`/api/production/fft-summary?${params.toString()}`, { credentials: 'include' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
+      setData(json)
+      setError('')
+    } catch (e) {
+      setError(e.message || t('loadErrorGeneric'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: solo debe correr una vez al montar, fetchData ya recibe los filtros por parametro
+  useEffect(() => {
+    fetchData(DEFAULT_FILTERS)
+  }, [])
+
+  function handleApply() {
+    setAppliedFilters(draftFilters)
+    fetchData(draftFilters)
+  }
+
+  function handleClear() {
+    setDraftFilters(DEFAULT_FILTERS)
+    setAppliedFilters(DEFAULT_FILTERS)
+    fetchData(DEFAULT_FILTERS)
+  }
+
   function handleTagClick(tagName) {
     setSkuTrackerSearch(tagName)
     setSkuTrackerOpen(true)
   }
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch('/api/production/fft-summary', { credentials: 'include' })
-        const json = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
-        if (!cancelled) setData(json)
-      } catch (e) {
-        if (!cancelled) setError(e.message || t('loadErrorGeneric'))
-      }
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [t])
+  function handleBreakdownClick(name) {
+    setSkuTrackerSearch(name)
+    setSkuTrackerOpen(true)
+  }
 
   const throughputData = useMemo(() => {
     if (!data?.dailyThroughput) return []
-    const today = dayjs().format('YYYY-MM-DD')
+    const today = todayIso()
     return data.dailyThroughput.map((row) => ({
-      ...row,
+      value: row.qty,
+      date: row.date,
       label: row.date === today ? t('todayLabel') : dayjs(row.date).format('DD/MM'),
     }))
   }, [data, t])
 
-  const classificationData = useMemo(() => {
-    if (!data?.classifications) return []
-    return data.classifications.map((c) => ({ ...c, label: c.name || c.code }))
-  }, [data])
-
-  const weeklyChartData = useMemo(() => {
-    if (!data?.weeklyComparison?.days) return []
-    return data.weeklyComparison.days.map((d) => ({
-      label: d.label,
-      [t('weeklyCurrentSeries')]: d.currentQty,
-      [t('weeklyPreviousSeries')]: d.previousQty,
-    }))
-  }, [data, t])
+  if (data === null && !error) {
+    return (
+      <div className={pageClass}>
+        <p className="px-1 py-16 text-center text-sm text-muted-foreground">{t('loadingMessage')}</p>
+      </div>
+    )
+  }
 
   return (
     <div className={pageClass}>
-      <div className={cn(cardClass, 'mb-4')}>
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-black/[.015] px-5 py-3.5 dark:bg-white/[.02]">
-          <div className="min-w-0">
-            <p className={pageTitleClass}>{t('pageTitle')}</p>
-            <p className={pageSubtitleClass}>{t('pageSubtitle')}</p>
-          </div>
-          <Button
-            variant="outline"
-            className="shrink-0 font-bold normal-case"
-            onClick={() => {
-              setSkuTrackerSearch('')
-              setSkuTrackerOpen(true)
-            }}
-          >
-            <Search className="h-4 w-4" />
-            {t('skuTrackerButtonLabel')}
-          </Button>
-        </div>
-      </div>
+      <ProductionHeader t={t} updatedAt={data?.updatedAt} />
 
-      <SkuTrackerDialog
-        open={skuTrackerOpen}
-        onOpenChange={setSkuTrackerOpen}
-        search={skuTrackerSearch}
-        onSearchChange={setSkuTrackerSearch}
-        t={t}
-      />
+      {data?.filters && (
+        <ProductionFilters
+          t={t}
+          workCenters={data.filters.workCenters}
+          classificationOptions={data.filters.classifications}
+          sizeOptions={data.filters.sizes}
+          draft={draftFilters}
+          onDraftChange={setDraftFilters}
+          onApply={handleApply}
+          onClear={handleClear}
+          loading={loading}
+        />
+      )}
 
       {error && <Alert className={cn(alertToneClass('error'), 'mb-4')}>{error}</Alert>}
 
@@ -440,265 +134,91 @@ export default function ProduccionFftPage() {
         <Alert className={cn(alertToneClass('warning'), 'mb-4')}>{t('notConfiguredMessage')}</Alert>
       )}
 
-      {data === null && !error && (
-        <p className="px-1 py-10 text-center text-sm text-muted-foreground">{t('loadingMessage')}</p>
-      )}
-
       {data && data.configured !== false && (
         <>
-          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className={kpiCardClass('blue')}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
-                {t('totalTodayLabel')}
-              </p>
-              <p className="mt-0.5 text-2xl font-extrabold">{data.totalToday}</p>
-              <p className="text-[11px] text-muted-foreground">{t('piecesUnitLabel')}</p>
-            </div>
-            <div className={kpiCardClass('green')}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
-                {t('activePeopleLabel')}
-              </p>
-              <p className="mt-0.5 text-2xl font-extrabold">{data.people.length}</p>
-              <p className="text-[11px] text-muted-foreground">{t('activePeopleUnitLabel')}</p>
-            </div>
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <ProductionKpiCard
+              title={t('totalTodayLabel')}
+              value={data.totalToday}
+              subtitle={t('piecesUnitLabel')}
+              icon={Package}
+              accent="blue"
+              comparison={data.totalComparison}
+              comparisonLabel={t('noComparisonLabel')}
+              sparklineData={throughputData}
+            />
+            <ProductionKpiCard
+              title={t('activePeopleLabel')}
+              value={data.people.length}
+              subtitle={t('activePeopleUnitLabel')}
+              icon={Users}
+              accent="green"
+              comparison={data.peopleComparison}
+              comparisonLabel={t('noComparisonLabel')}
+            />
+            <ProductionKpiCard
+              title={t('palletsCardTitle')}
+              value={`${data.pallets.closedCount} / ${data.pallets.totalCount}`}
+              subtitle={t('palletsCompletedLabel')}
+              icon={Boxes}
+              accent="amber"
+              rightSlot={
+                <span className="shrink-0 text-[15px] font-extrabold text-[#F59E0B]">
+                  {data.pallets.totalCount > 0
+                    ? `${((data.pallets.closedCount / data.pallets.totalCount) * 100).toFixed(1)}%`
+                    : '—'}
+                </span>
+              }
+              progress={{
+                pct: data.pallets.totalCount > 0 ? (data.pallets.closedCount / data.pallets.totalCount) * 100 : 0,
+              }}
+            />
+            <ProductionKpiCard
+              title={t('tagsCardTitle')}
+              value={data.tags.length}
+              subtitle={t('tagsUsedUnitLabel')}
+              icon={TagIcon}
+              accent="purple"
+              comparison={data.tagsComparison}
+              comparisonLabel={t('noComparisonLabel')}
+            />
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <BreakdownListCard
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <DonutBreakdownCard
               title={t('suppliersCardTitle')}
-              subtitle={t('suppliersCardSubtitle')}
               items={data.suppliers.map((s) => ({ name: s.supplierName, qty: s.qty }))}
               nullLabel={t('unknownLabel')}
               emptyMessage={t('emptyDataMessage')}
+              onItemClick={handleBreakdownClick}
             />
-            <BreakdownListCard
+            <DonutBreakdownCard
               title={t('categoriesCardTitle')}
-              subtitle={t('categoriesCardSubtitle')}
               items={data.categories.map((c) => ({ name: c.categoryName, qty: c.qty }))}
               nullLabel={t('unknownLabel')}
               emptyMessage={t('emptyDataMessage')}
+              onItemClick={handleBreakdownClick}
             />
-            <TagBreakdownCard
-              title={t('tagsCardTitle')}
-              subtitle={t('tagsCardSubtitle')}
-              tags={data.tags}
-              viewAllLabel={t('tagsViewAllLabel')}
-              sumNoticeLabel={t('tagsSumNotice')}
-              emptyMessage={t('emptyDataMessage')}
-              onTagClick={handleTagClick}
-            />
+            <TopInspectorsCard t={t} people={data.people} emptyMessage={t('emptyDataMessage')} />
+            <PalletProgressCard t={t} pallets={data.pallets} emptyMessage={t('emptyDataMessage')} />
+            <TagBreakdownCard t={t} tags={data.tags} onTagClick={handleTagClick} emptyMessage={t('emptyDataMessage')} />
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ChartCard
-              title={t('classificationChartTitle')}
-              subtitle={t('classificationChartSubtitle')}
-              empty={classificationData.length === 0}
-              emptyMessage={t('emptyDataMessage')}
-            >
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={classificationData}
-                    margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
-                    barCategoryGap="25%"
-                  >
-                    <CartesianGrid vertical={false} stroke={GRID_COLOR} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 10, fill: AXIS_COLOR }}
-                      axisLine={{ stroke: GRID_COLOR }}
-                      tickLine={false}
-                      interval={0}
-                      angle={-30}
-                      textAnchor="end"
-                      height={50}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={32}
-                      allowDecimals={false}
-                    />
-                    <Tooltip content={<ClassificationTooltip />} cursor={{ fill: CURSOR_FILL }} />
-                    <Bar dataKey="qty" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-
-            <ChartCard
-              title={t('throughputChartTitle')}
-              subtitle={t('throughputChartSubtitle')}
-              empty={throughputData.length === 0}
-              emptyMessage={t('emptyDataMessage')}
-            >
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={throughputData}
-                    margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
-                    barCategoryGap="30%"
-                  >
-                    <CartesianGrid vertical={false} stroke={GRID_COLOR} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
-                      axisLine={{ stroke: GRID_COLOR }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={32}
-                      allowDecimals={false}
-                    />
-                    <Tooltip content={<ClassificationTooltip />} cursor={{ fill: CURSOR_FILL }} />
-                    <Bar dataKey="qty" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          </div>
-
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ChartCard
-              title={t('weeklyChartTitle')}
-              subtitle={t('weeklyChartSubtitle')}
-              empty={weeklyChartData.length === 0}
-              emptyMessage={t('emptyDataMessage')}
-            >
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={weeklyChartData}
-                    margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
-                    barCategoryGap="25%"
-                  >
-                    <CartesianGrid vertical={false} stroke={GRID_COLOR} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
-                      axisLine={{ stroke: GRID_COLOR }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: AXIS_COLOR }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={32}
-                      allowDecimals={false}
-                    />
-                    <Tooltip content={<WeeklyTooltip />} cursor={{ fill: CURSOR_FILL }} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar
-                      dataKey={t('weeklyCurrentSeries')}
-                      fill="#3B82F6"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={28}
-                    />
-                    <Bar
-                      dataKey={t('weeklyPreviousSeries')}
-                      fill="#94A3B8"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={28}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-
-            <div className={cardClass}>
-              <div className={cardHeaderClass}>
-                <div className="min-w-0 flex-1">
-                  <p className={cardHeaderTitleClass}>{t('sizeTableTitle')}</p>
-                  <p className={cardHeaderSubtitleClass}>{t('sizeTableSubtitle')}</p>
-                </div>
-              </div>
-              {data.sizeByClassification.rows.length === 0 ? (
-                <div className="px-5 py-8">
-                  <EmptyState compact title={t('emptyDataMessage')} />
-                </div>
-              ) : (
-                <div className="max-h-[280px] overflow-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-card">
-                      <TableRow className={tableHeaderRowClass}>
-                        <TableHead>{t('colClassification')}</TableHead>
-                        {data.sizeByClassification.sizes.map((size) => (
-                          <TableHead key={size} className="text-right">
-                            {size}
-                          </TableHead>
-                        ))}
-                        <TableHead className="text-right font-extrabold">{t('colTotal')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.sizeByClassification.rows.map((row, idx) => (
-                        <TableRow key={row.code} className={tableRowClass(idx)}>
-                          <TableCell className={cn(cellTextClass, 'font-bold')}>{row.name}</TableCell>
-                          {data.sizeByClassification.sizes.map((size) => (
-                            <TableCell key={size} className="text-right">
-                              {row.bySize[size] || '-'}
-                            </TableCell>
-                          ))}
-                          <TableCell className="text-right font-extrabold">{row.total}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={cardClass}>
-            <div className={cardHeaderClass}>
-              <div className="min-w-0 flex-1">
-                <p className={cardHeaderTitleClass}>{t('peopleTableTitle')}</p>
-                <p className={cardHeaderSubtitleClass}>{t('peopleTableSubtitle')}</p>
-              </div>
-            </div>
-
-            {data.people.length === 0 ? (
-              <EmptyState title={t('emptyPeopleTitle')} description={t('emptyPeopleDescription')} />
-            ) : (
-              <div className="max-h-[60vh] overflow-auto">
-                <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-card">
-                    <TableRow className={tableHeaderRowClass}>
-                      <TableHead>{t('colPerson')}</TableHead>
-                      <TableHead>{t('colEmployeeNumber')}</TableHead>
-                      <TableHead className="text-right">{t('colQty')}</TableHead>
-                      <TableHead>{t('colStatus')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.people.map((p, idx) => (
-                      <TableRow key={p.username} className={tableRowClass(idx)}>
-                        <TableCell className={cn(cellTextClass, 'font-bold')}>
-                          {p.fullName || p.resolvedName || p.username}
-                        </TableCell>
-                        <TableCell className={cellTextSecondaryClass}>
-                          {p.employeeNumber || '—'}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">{p.qty}</TableCell>
-                        <TableCell>
-                          <span className={metricChipClass(MATCH_TONE[p.matchStatus] || 'default')}>
-                            {t(`matchStatus.${p.matchStatus}`, p.matchStatus)}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+          <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[65fr_35fr]">
+            <ClassificationMatrix t={t} sizeByClassification={data.sizeByClassification} emptyMessage={t('emptyDataMessage')} />
+            <WeeklyComparisonCard t={t} weeklyComparison={data.weeklyComparison} emptyMessage={t('emptyDataMessage')} />
           </div>
         </>
       )}
+
+      <SkuTrackerDialog
+        open={skuTrackerOpen}
+        onOpenChange={setSkuTrackerOpen}
+        search={skuTrackerSearch}
+        onSearchChange={setSkuTrackerSearch}
+        queryFilters={appliedFilters}
+        t={t}
+      />
     </div>
   )
 }

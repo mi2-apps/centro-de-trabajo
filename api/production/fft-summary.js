@@ -2,50 +2,34 @@
 // Dashboard Production de BinManager, https://binmanager.mitechnologiesinc.com/ReportsBinManager/
 // PreSort/FFTDashboardProduction). SOLO LECTURA.
 //
-// Historia real de esta version (a peticion explicita del usuario, viendo el modulo original en
-// vivo vs la pagina real: "nada que ver con el modulo que te pedi"): la version anterior solo tenia
-// clasificacion/tendencia/usuarios -- se investigo la pagina real interceptando sus llamadas de red
-// reales (GetTodaysProducedByWorkCenter, GetContainerMovementSummary, GetProductionByWeek,
-// GetTagProductionDynamic) y se confirmo que TODAS las tarjetas de la izquierda (clasificacion,
-// proveedor, categoria, usuarios, tamaño x clasificacion) salen de UN SOLO stored procedure
-// (OE.sp_GetTodaysProducedByWorkCenter) al que esta cuenta de solo lectura (ro_smartcontrol) NO
-// tiene permiso EXECUTE -- se comparo en vivo el total real (1,107 en el momento de la prueba)
-// contra una replica manual del SELECT (1,323 en el mismo momento, sin poder explicar la
-// diferencia ni descartando fan-out de JOIN) -- Roman respondio "haz con lo que puedas": esta
-// version reconstruye por SELECT directo, tabla por tabla, cada tarjeta que SI se pudo verificar
-// con una proporcion/valor razonable contra la pagina real:
-//   - Clasificacion/tendencia/usuarios: igual que la version anterior (server-lib/binmanager-sql.js).
-//   - Proveedor: LPN -> PO.PurchasePalletDetails -> PO.PurchasePallets -> PO.Purchases ->
-//     PO.Suppliers -- verificado (mismas 2 proveedores reales, "Mit"=10 exacto).
-//   - Categoria: LPN -> OE.WorkPlan.WorkOrderDetailID -> OE.WorkOrderDetails.CategoryID ->
-//     DA.Categories -- verificado (100% "Televisions", igual que la pagina real).
-//   - Tamaño x Clasificacion: LPN -> OE.WorkPlan.SKU -> MM.SKUData.ScreenSize -- verificado
-//     (mismas pulgadas para las mismas SKU de muestra).
-//   - Comparativa semanal: agregado en este archivo a partir de getDailyThroughput (14 dias),
-//     agrupado por dia de la semana, semana actual vs semana anterior -- mismo concepto que la
-//     pagina real, sin stored procedure propio.
-//   - Piezas por Tag: LPN -> OE.WorkPlan.SKU -> BinManagerRO.PRO.SKUTags -> BinManagerRO.PRO.Tags
-//     -- este era el ultimo pendiente de una investigacion mucho mas vieja (2026-08-20/24, ver
-//     memoria de la sesion) que ya habia identificado la tabla real pero no tenia acceso SQL a
-//     BinManagerRO para consultarla. 2026-09-02: se confirmo que la cuenta ro_smartcontrol SI
-//     puede leer BinManagerRO via query cross-database -- verificado en vivo contra la pagina
-//     real (BULKY salio EXACTO: 143=143, el resto de tags en el mismo orden de magnitud).
-// NO incluido (no se encontro un puente confiable via SELECT, se prefirio omitir a adivinar):
-//   - "Progreso de pallets" (PO.PurchasePallets existe pero el estado Recibido/En proceso/
-//     Terminado de la pagina real no calzo con ninguna combinacion obvia de sus columnas bit).
+// 2026-09-02 (rediseño completo, a peticion explicita del usuario, sobre la implementacion real ya
+// en produccion -- "PIEZAS Y FUNCIONALIDAD = implementacion real, DISEÑO = mockup adjunto"): este
+// endpoint gana filtros reales (rango de fechas / clasificacion / pulgadas / work center) que antes
+// no existian (todo estaba fijo a "hoy" y WorkCenterID=49), mas la comparacion contra el periodo
+// anterior equivalente para los 3 KPI que la tienen (piezas/usuarios/tags), mas el catalogo real
+// para los dropdowns de filtro y la lista de work centers reales. Nunca se inventa un periodo
+// anterior si el rango no permite calcularlo (dateFrom invalido) -- en ese caso los campos de
+// comparacion salen null y el frontend debe mostrar un estado neutral, nunca un numero inventado.
 //
-// Pendiente sin resolver (documentado, no bloqueante): el total de "Piezas procesadas" de esta
-// pagina sigue sin cerrar exacto contra la pagina real (revisado 2 veces, la primera dio ~1323
-// vs 1107 real, la segunda con MAS acceso -- incluida la tabla real OE.ProductionRecords que
-// resuelve el problema de Tags de arriba -- dio 1362 vs 1173 real, descartando que el problema
-// sea la tabla usada). El total real probablemente aplica un filtro adicional del stored
-// procedure original (OE.sp_GetTodaysProducedByWorkCenter) que no es visible sin permiso EXECUTE
-// sobre el -- unica via que queda para cerrar esto al 100%.
+// Historia real de las tarjetas (ver server-lib/binmanager-sql.js para el detalle de cada JOIN
+// verificado): Clasificacion/Usuarios/Tendencia desde el primer Takt Time real; Proveedor/
+// Categoria/Tamaño/Comparativa semanal agregados cuando el modulo resulto "muy reducido" frente a
+// la pagina real; Piezas por Tag cerrando un pendiente de una investigacion mucho mas vieja sobre
+// tags BULKY/SORP/PRIOR.J; Progreso de pallets agregado en este rediseño.
+//
+// Pendiente sin resolver (documentado, no bloqueante, investigado 3 veces): el total de "Piezas
+// procesadas" de este modulo no cierra exacto contra el total que muestra la pagina real de
+// BinManager (se probo: join a WorkPlan con fan-out descartado, ProductionRecords real de
+// BinManagerRO en vez de WorkPlanInspection, y dedup por SerialNumber en vez de LPN -- ninguno
+// cierra la diferencia de ~15-20%). El stored procedure real (OE.sp_GetTodaysProducedByWorkCenter)
+// sigue sin permiso EXECUTE para esta cuenta -- unica via que queda para cerrar esto al 100%.
 import { eq } from 'drizzle-orm'
 import { requireModuleAccess } from '../../server-lib/auth.js'
 import { matchAllBinManagerUsers } from '../../server-lib/binmanager-matching.js'
 import {
   getDailyThroughput,
+  getFilterOptions,
+  getPalletsProgress,
   getProductionByCategoryToday,
   getProductionByClassificationToday,
   getProductionBySupplierToday,
@@ -53,6 +37,7 @@ import {
   getSizeByClassificationToday,
   getTagBreakdownToday,
   getUsersLoginByUsername,
+  getWorkCenters,
   isBinManagerSqlConfigured,
 } from '../../server-lib/binmanager-sql.js'
 import { db, employee as employeeTable } from '../../server-lib/db/client.js'
@@ -64,15 +49,49 @@ const WEEKDAY_ORDER = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom']
 
 const EMPTY_RESPONSE = {
   configured: false,
+  updatedAt: null,
+  filters: { workCenters: [], classifications: [], sizes: [] },
   totalToday: 0,
+  totalComparison: null,
   classifications: [],
   dailyThroughput: [],
   people: [],
+  peopleComparison: null,
   suppliers: [],
   categories: [],
   sizeByClassification: { sizes: [], rows: [] },
   weeklyComparison: { currentWeekTotal: 0, previousWeekTotal: 0, days: [] },
   tags: [],
+  tagsComparison: null,
+  pallets: { items: [], closedCount: 0, totalCount: 0 },
+}
+
+function parseDateParam(value, fallback) {
+  if (!value) return fallback
+  const d = new Date(`${value}T00:00:00Z`)
+  return Number.isNaN(d.getTime()) ? fallback : d
+}
+
+function toDateOnly(d) {
+  return d.toISOString().slice(0, 10)
+}
+
+// Rango anterior EQUIVALENTE (mismo numero de dias, inmediatamente antes de dateFrom) -- para
+// "vs periodo anterior" de los KPI. Nunca se inventa si el rango no es calculable.
+function previousRange(dateFrom, dateTo) {
+  const days = Math.round((dateTo - dateFrom) / 86400000) + 1
+  if (!Number.isFinite(days) || days <= 0) return null
+  const prevTo = new Date(dateFrom)
+  prevTo.setUTCDate(prevTo.getUTCDate() - 1)
+  const prevFrom = new Date(prevTo)
+  prevFrom.setUTCDate(prevFrom.getUTCDate() - (days - 1))
+  return { dateFrom: prevFrom, dateTo: prevTo }
+}
+
+function pctChange(current, previous) {
+  if (previous === null || previous === undefined) return null
+  if (previous === 0) return current === 0 ? 0 : null
+  return ((current - previous) / previous) * 100
 }
 
 function buildSizeByClassification(sizeRows, classifications) {
@@ -133,6 +152,36 @@ function buildWeeklyComparison(dailyRows) {
   return { currentWeekTotal, previousWeekTotal, days }
 }
 
+async function resolvePeople(bmProduction, activeEmployees) {
+  if (bmProduction.length === 0) return []
+  const usersLogin = await getUsersLoginByUsername(bmProduction.map((p) => p.username))
+  const usersLoginByUsername = new Map(usersLogin.map((u) => [u.username, u]))
+  return bmProduction
+    .map((production) => {
+      const info = usersLoginByUsername.get(production.username)
+      if (!info) {
+        return {
+          username: production.username,
+          resolvedName: null,
+          qty: production.qty,
+          matchStatus: 'USERNAME_DESCONOCIDO',
+          employeeNumber: null,
+          fullName: null,
+        }
+      }
+      const [match] = matchAllBinManagerUsers([info], activeEmployees)
+      return {
+        username: production.username,
+        resolvedName: match.resolvedName,
+        qty: production.qty,
+        matchStatus: match.status,
+        employeeNumber: match.status === 'OK' ? match.candidates[0].employeeNumber : null,
+        fullName: match.status === 'OK' ? match.candidates[0].fullName : null,
+      }
+    })
+    .sort((a, b) => b.qty - a.qty)
+}
+
 export default requireModuleAccess(
   '/produccion-fft',
   async (req, res) => {
@@ -143,11 +192,18 @@ export default requireModuleAccess(
     }
 
     const workCenterId = Number(req.query.workCenterId) || 49
+    const classificationCode = req.query.classificationCode || undefined
+    const size = req.query.size || undefined
     const today = todayDateOnly()
-    const throughputFrom = new Date(today)
+    const dateFrom = parseDateParam(req.query.dateFrom, today)
+    const dateTo = parseDateParam(req.query.dateTo, today)
+    const filters = { workCenterId, classificationCode, size }
+
+    const throughputFrom = new Date(dateTo)
     throughputFrom.setDate(throughputFrom.getDate() - (THROUGHPUT_DAYS - 1))
-    const weeklyFrom = new Date(today)
+    const weeklyFrom = new Date(dateTo)
     weeklyFrom.setDate(weeklyFrom.getDate() - (WEEKLY_COMPARISON_DAYS - 1))
+    const prevRange = previousRange(dateFrom, dateTo)
 
     let classifications
     let dailyThroughput
@@ -158,6 +214,12 @@ export default requireModuleAccess(
     let categories
     let sizeRows
     let tags
+    let pallets
+    let workCenters
+    let filterOptions
+    let prevClassifications
+    let prevPeople
+    let prevTags
     try {
       ;[
         classifications,
@@ -169,69 +231,71 @@ export default requireModuleAccess(
         categories,
         sizeRows,
         tags,
+        pallets,
+        workCenters,
+        filterOptions,
+        prevClassifications,
+        prevPeople,
+        prevTags,
       ] = await Promise.all([
-        getProductionByClassificationToday({ workCenterId, dateFrom: today, dateTo: today }),
-        getDailyThroughput({ workCenterId, dateFrom: throughputFrom, dateTo: today }),
-        getDailyThroughput({ workCenterId, dateFrom: weeklyFrom, dateTo: today }),
-        getProductionByUserToday({ workCenterId, dateFrom: today, dateTo: today }),
+        getProductionByClassificationToday({ ...filters, dateFrom, dateTo }),
+        getDailyThroughput({ ...filters, dateFrom: throughputFrom, dateTo }),
+        getDailyThroughput({ ...filters, dateFrom: weeklyFrom, dateTo }),
+        getProductionByUserToday({ ...filters, dateFrom, dateTo }),
         db
           .select({ employeeNumber: employeeTable.employeeNumber, fullName: employeeTable.fullName })
           .from(employeeTable)
           .where(eq(employeeTable.active, true)),
-        getProductionBySupplierToday({ workCenterId, dateFrom: today, dateTo: today }),
-        getProductionByCategoryToday({ workCenterId, dateFrom: today, dateTo: today }),
-        getSizeByClassificationToday({ workCenterId, dateFrom: today, dateTo: today }),
-        getTagBreakdownToday({ workCenterId, dateFrom: today, dateTo: today }),
+        getProductionBySupplierToday({ ...filters, dateFrom, dateTo }),
+        getProductionByCategoryToday({ ...filters, dateFrom, dateTo }),
+        getSizeByClassificationToday({ ...filters, dateFrom, dateTo }),
+        getTagBreakdownToday({ ...filters, dateFrom, dateTo }),
+        getPalletsProgress({ workCenterId }),
+        getWorkCenters(),
+        getFilterOptions(),
+        prevRange ? getProductionByClassificationToday({ ...filters, ...prevRange }) : Promise.resolve(null),
+        prevRange ? getProductionByUserToday({ ...filters, ...prevRange }) : Promise.resolve(null),
+        prevRange ? getTagBreakdownToday({ ...filters, ...prevRange }) : Promise.resolve(null),
       ])
     } catch (err) {
       // Best-effort: si SmartControl no responde, el modulo debe seguir cargando (vacio) en vez de
-      // un 500 crudo -- mismo criterio ya usado en takt-real.js.
+      // un 500 crudo -- mismo criterio ya usado desde el primer Takt Time real.
       return res.status(200).json({ ...EMPTY_RESPONSE, configured: true, error: err.message })
     }
 
     const totalToday = classifications.reduce((sum, c) => sum + c.qty, 0)
+    const people = await resolvePeople(bmProduction, activeEmployees)
 
-    let people = []
-    if (bmProduction.length > 0) {
-      const usersLogin = await getUsersLoginByUsername(bmProduction.map((p) => p.username))
-      const usersLoginByUsername = new Map(usersLogin.map((u) => [u.username, u]))
-      people = bmProduction
-        .map((production) => {
-          const info = usersLoginByUsername.get(production.username)
-          if (!info) {
-            return {
-              username: production.username,
-              resolvedName: null,
-              qty: production.qty,
-              matchStatus: 'USERNAME_DESCONOCIDO',
-              employeeNumber: null,
-              fullName: null,
-            }
-          }
-          const [match] = matchAllBinManagerUsers([info], activeEmployees)
-          return {
-            username: production.username,
-            resolvedName: match.resolvedName,
-            qty: production.qty,
-            matchStatus: match.status,
-            employeeNumber: match.status === 'OK' ? match.candidates[0].employeeNumber : null,
-            fullName: match.status === 'OK' ? match.candidates[0].fullName : null,
-          }
-        })
-        .sort((a, b) => b.qty - a.qty)
-    }
+    const prevTotal = prevClassifications
+      ? prevClassifications.reduce((sum, c) => sum + c.qty, 0)
+      : null
+    const prevPeopleCount = prevPeople ? new Set(prevPeople.map((p) => p.username)).size : null
+    const prevTagsCount = prevTags ? prevTags.length : null
+
+    const closedCount = pallets.filter((p) => p.isClosed).length
 
     return res.status(200).json({
       configured: true,
+      updatedAt: new Date().toISOString(),
+      filters: {
+        workCenters,
+        classifications: filterOptions.classifications,
+        sizes: filterOptions.sizes,
+        selected: { workCenterId, dateFrom: toDateOnly(dateFrom), dateTo: toDateOnly(dateTo), classificationCode: classificationCode || null, size: size || null },
+      },
       totalToday,
+      totalComparison: { previous: prevTotal, pctChange: pctChange(totalToday, prevTotal) },
       classifications,
       dailyThroughput,
       people,
+      peopleComparison: { previous: prevPeopleCount, pctChange: pctChange(people.length, prevPeopleCount) },
       suppliers,
       categories,
       sizeByClassification: buildSizeByClassification(sizeRows, classifications),
       weeklyComparison: buildWeeklyComparison(weeklyDaily),
       tags,
+      tagsComparison: { previous: prevTagsCount, pctChange: pctChange(tags.length, prevTagsCount) },
+      pallets: { items: pallets, closedCount, totalCount: pallets.length },
     })
   },
 )
