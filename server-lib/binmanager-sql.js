@@ -389,15 +389,18 @@ export async function getPalletsProgress({ workCenterId = 49 }) {
       PurchasePalletID, PalletNumber, PalletQuantityExpected, PalletQuantityReceived,
       PalletQuantityInspection, PalletQuantityProcess, IsClosedPallet
     FROM PO.PurchasePallets WITH (NOLOCK)
-    WHERE WorkCenterID = @workCenterId
-    ORDER BY PurchasePalletID DESC
+    WHERE WorkCenterID = @workCenterId AND PalletNumber <> 1
+    ORDER BY PalletNumber DESC
   `)
-  // NOTA HONESTA (2026-09-02, encontrado verificando en produccion con datos reales): PalletNumber
-  // NO es unico -- varios pallets reales distintos de este work center comparten literalmente el
-  // valor 1 (probable default/legado, no un bug de esta consulta). Se usa PurchasePalletID (la
-  // llave real de la tabla) como `id` para que el frontend tenga una key de React estable y
-  // distinga pallets aunque PalletNumber se repita -- PalletNumber se sigue mostrando tal cual
-  // (nunca se inventa un numero "bonito" para disimular el dato real).
+  // NOTA HONESTA (2026-09-02, investigado a fondo tras confusion real del usuario viendo produccion):
+  // PalletNumber = 1 NO es un pallet de linea real -- es un valor default/legado que comparten
+  // decenas de registros distintos de intake masivo (PalletQuantityExpected en cientos/miles,
+  // PalletQuantityProcess siempre 0 -- material recibido en bulto que todavia no se reparte a
+  // pallets de trabajo individuales). Mezclarlos con los pallets reales de linea (numerados
+  // 151-158, con avance real pieza por pieza) es lo que hacia esta tarjeta ilegible ("veo 158 a 152
+  // y despues puros 1 con unidades muy altas"). Se excluyen aqui a proposito -- "Progreso de
+  // pallets" ahora muestra solo pallets de trabajo reales, nunca intake sin procesar disfrazado de
+  // pallet individual.
   return result.recordset.map((r) => ({
     id: r.PurchasePalletID,
     palletNumber: r.PalletNumber,

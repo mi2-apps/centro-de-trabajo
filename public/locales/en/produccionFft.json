@@ -80,6 +80,8 @@
   "colCategory": "Category",
   "palletsCompletedKpiTitle": "Completed pallets",
   "tagTypesKpiTitle": "Tag types",
+  "tagsPiecesKpiTitle": "Pieces by Tag",
+  "tagsPiecesUnitLabel": "pieces with a tag (a SKU can have several)",
   "peopleTableTitle": "Active people today",
   "peopleTableSubtitle": "Pieces inspected today per person, with their real name when confirmed",
   "emptyPeopleTitle": "No one reported today",

@@ -80,6 +80,8 @@
   "colCategory": "类别",
   "palletsCompletedKpiTitle": "已完成托盘",
   "tagTypesKpiTitle": "标签类型",
+  "tagsPiecesKpiTitle": "按标签的件数",
+  "tagsPiecesUnitLabel": "带标签的件数(一个 SKU 可以有多个)",
   "peopleTableTitle": "今日活跃人员",
   "peopleTableSubtitle": "今日每人检验的件数,已确认时显示真实姓名",
   "emptyPeopleTitle": "今日暂无人员报告",

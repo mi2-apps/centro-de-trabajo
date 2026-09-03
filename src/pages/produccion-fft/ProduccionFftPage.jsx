@@ -176,25 +176,28 @@ export default function ProduccionFftPage() {
             />
             <ProductionKpiCard
               title={t('palletsCompletedKpiTitle')}
-              value={`${data.pallets.closedCount} / ${data.pallets.totalCount}`}
+              value={`${data.pallets.completedCount} / ${data.pallets.totalCount}`}
               subtitle={t('palletsCompletedLabel')}
               icon={Boxes}
               accent="amber"
               rightSlot={
                 <span className="shrink-0 text-[15px] font-extrabold text-[#F59E0B]">
                   {data.pallets.totalCount > 0
-                    ? `${((data.pallets.closedCount / data.pallets.totalCount) * 100).toFixed(1)}%`
+                    ? `${((data.pallets.completedCount / data.pallets.totalCount) * 100).toFixed(1)}%`
                     : '—'}
                 </span>
               }
               progress={{
-                pct: data.pallets.totalCount > 0 ? (data.pallets.closedCount / data.pallets.totalCount) * 100 : 0,
+                pct:
+                  data.pallets.totalCount > 0
+                    ? (data.pallets.completedCount / data.pallets.totalCount) * 100
+                    : 0,
               }}
             />
             <ProductionKpiCard
-              title={t('tagTypesKpiTitle')}
-              value={data.tags.length}
-              subtitle={t('tagsUsedUnitLabel')}
+              title={t('tagsPiecesKpiTitle')}
+              value={data.tagsSumToday}
+              subtitle={t('tagsPiecesUnitLabel')}
               icon={TagIcon}
               accent="purple"
               comparison={data.tagsComparison}

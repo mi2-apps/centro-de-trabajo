@@ -62,8 +62,9 @@ const EMPTY_RESPONSE = {
   sizeByClassification: { sizes: [], rows: [] },
   weeklyComparison: { currentWeekTotal: 0, previousWeekTotal: 0, days: [] },
   tags: [],
+  tagsSumToday: 0,
   tagsComparison: null,
-  pallets: { items: [], closedCount: 0, totalCount: 0 },
+  pallets: { items: [], completedCount: 0, totalCount: 0 },
 }
 
 function parseDateParam(value, fallback) {
@@ -270,9 +271,21 @@ export default requireModuleAccess(
       ? prevClassifications.reduce((sum, c) => sum + c.qty, 0)
       : null
     const prevPeopleCount = prevPeople ? new Set(prevPeople.map((p) => p.username)).size : null
-    const prevTagsCount = prevTags ? prevTags.length : null
 
-    const closedCount = pallets.filter((p) => p.isClosed).length
+    // Piezas por tag (2026-09-02, a peticion explicita del usuario -- "cambiale nombre y la
+    // cantidad en tiempo real": el KPI de arriba debe mostrar la SUMA real de piezas con tag, no
+    // la cantidad de tipos de tag). Un SKU puede tener varios tags, asi que esta suma excede el
+    // total fisico de piezas a proposito -- mismo numero que ya se mostraba como "Total de
+    // piezas/tag" en la card de abajo, ahora tambien reflejado en el KPI.
+    const tagsSumToday = tags.reduce((sum, t) => sum + t.qty, 0)
+    const prevTagsSum = prevTags ? prevTags.reduce((sum, t) => sum + t.qty, 0) : null
+
+    // "Completado" de pallets (2026-09-02, redefinido tras confusion real del usuario -- el KPI
+    // usaba IsClosedPallet, que en este work center nunca esta en 1 (0/25 siempre, sin importar el
+    // avance real) -- se redefine como pallets con TODAS sus piezas ya procesadas
+    // (PalletQuantityProcess >= PalletQuantityExpected), que si se mueve con el avance real que
+    // muestra la lista de abajo.
+    const completedCount = pallets.filter((p) => p.expected > 0 && p.processed >= p.expected).length
 
     return res.status(200).json({
       configured: true,
@@ -294,8 +307,9 @@ export default requireModuleAccess(
       sizeByClassification: buildSizeByClassification(sizeRows, classifications),
       weeklyComparison: buildWeeklyComparison(weeklyDaily),
       tags,
-      tagsComparison: { previous: prevTagsCount, pctChange: pctChange(tags.length, prevTagsCount) },
-      pallets: { items: pallets, closedCount, totalCount: pallets.length },
+      tagsSumToday,
+      tagsComparison: { previous: prevTagsSum, pctChange: pctChange(tagsSumToday, prevTagsSum) },
+      pallets: { items: pallets, completedCount, totalCount: pallets.length },
     })
   },
 )
