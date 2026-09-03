@@ -90,9 +90,20 @@ async function getPool() {
    1328 piezas el 2026-09-02, igual al numero que el usuario mostro de la pagina real. Este horario
    es DISTINTO del de OFFICIAL_SHIFTS en src/data/production/catalog.js (07:00-17:10/17:11-22:00/
    22:01-07:00) -- ese es el horario de CT LINEA (ensamble), no el de FFT; no se reutiliza aqui a
-   proposito. Turno 2 cruza medianoche, asi que se extiende @dateTo un dia para no perder la cola de
-   madrugada del ultimo dia seleccionado -- igual que hace el SP real (verificado: con
-   startDate=endDate=un dia y shift=2, el SP regresa piezas hasta las ~05am del dia SIGUIENTE). */
+   proposito.
+
+   2026-09-03 (CORREGIDO, a peticion explicita del usuario -- reporto usuarios totalmente distintos
+   entre la pagina real y esta para Turno 2, y valores de "hoy" en la noche sin haber empezado el
+   turno de dia): la primera version de Turno 2 combinaba "fecha entre @dateFrom y @dateFrom+1" con
+   "hora >= 21:00 O < 06:00" como 2 condiciones independientes (AND de un rango de fecha + un OR de
+   hora) -- eso arma un OR de 4 franjas, 2 de ellas SIN SENTIDO: la madrugada del propio @dateFrom
+   (que en realidad es la cola del turno de la noche ANTERIOR, no la de este turno) y la noche de
+   @dateFrom+1 completa (un turno que ni siquiera fue el que se pidio). Turno 2 de un dia D es
+   EXACTAMENTE la franja continua [D 21:00:00, D+1 06:00:00) -- nunca la union independiente de
+   fecha+hora. Para un rango [@dateFrom,@dateTo] es la union de esa franja por cada dia D del rango,
+   recortada en las 2 puntas (no toca la madrugada de @dateFrom ni la noche de @dateTo+1). Verificado
+   contra la pagina real: con esta franja exacta, Turno 1 de un dia sigue dando 1328 (sin cambios,
+   Turno 1 no cruza medianoche y no tenia este bug). */
 function buildFilteredBaseCte(
   request,
   { workCenterId, dateFrom, dateTo, classificationCode, size, shift },
@@ -106,8 +117,14 @@ function buildFilteredBaseCte(
   if (String(shift) === '1') {
     shiftWhere = " AND CAST(I.InspectionDate AS TIME) >= '06:00:00' AND CAST(I.InspectionDate AS TIME) < '21:00:00'"
   } else if (String(shift) === '2') {
-    dateWhere = 'CAST(I.InspectionDate AS DATE) >= @dateFrom AND CAST(I.InspectionDate AS DATE) <= DATEADD(DAY, 1, @dateTo)'
-    shiftWhere = " AND (CAST(I.InspectionDate AS TIME) >= '21:00:00' OR CAST(I.InspectionDate AS TIME) < '06:00:00')"
+    dateWhere = '1 = 1'
+    shiftWhere = `
+        AND (
+          (CAST(I.InspectionDate AS DATE) = @dateFrom AND CAST(I.InspectionDate AS TIME) >= '21:00:00')
+          OR (CAST(I.InspectionDate AS DATE) > @dateFrom AND CAST(I.InspectionDate AS DATE) < DATEADD(DAY, 1, @dateTo)
+              AND (CAST(I.InspectionDate AS TIME) >= '21:00:00' OR CAST(I.InspectionDate AS TIME) < '06:00:00'))
+          OR (CAST(I.InspectionDate AS DATE) = DATEADD(DAY, 1, @dateTo) AND CAST(I.InspectionDate AS TIME) < '06:00:00')
+        )`
   }
   if (classificationCode) {
     request.input('classificationCode', sql.NVarChar, classificationCode)
