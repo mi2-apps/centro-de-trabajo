@@ -76,6 +76,8 @@
   "sizeTableSubtitle": "今日按屏幕尺寸和分类交叉的件数",
   "colClassification": "分类",
   "colTotal": "总计",
+  "colSupplier": "供应商",
+  "colCategory": "类别",
   "peopleTableTitle": "今日活跃人员",
   "peopleTableSubtitle": "今日每人检验的件数,已确认时显示真实姓名",
   "emptyPeopleTitle": "今日暂无人员报告",

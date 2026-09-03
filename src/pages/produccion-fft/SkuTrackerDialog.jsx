@@ -57,7 +57,7 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
     const q = search.trim().toLowerCase()
     if (!q) return rows
     return rows.filter((r) =>
-      [r.lpn, r.sku, r.serialNumber, r.brand, r.model, r.tags, r.orderNumber]
+      [r.lpn, r.sku, r.serialNumber, r.brand, r.model, r.tags, r.orderNumber, r.supplierName, r.categoryName]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(q)),
     )
@@ -101,6 +101,8 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
                       <TableHead>{t('colSku')}</TableHead>
                       <TableHead>{t('colBrandModel')}</TableHead>
                       <TableHead>{t('colClassification')}</TableHead>
+                      <TableHead>{t('colSupplier')}</TableHead>
+                      <TableHead>{t('colCategory')}</TableHead>
                       <TableHead>{t('colPallet')}</TableHead>
                       <TableHead>{t('colTags')}</TableHead>
                       <TableHead>{t('colOrder')}</TableHead>
@@ -119,6 +121,8 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
                         <TableCell className={cellTextSecondaryClass}>
                           {r.classificationName || r.classificationCode}
                         </TableCell>
+                        <TableCell className={cellTextSecondaryClass}>{r.supplierName || '—'}</TableCell>
+                        <TableCell className={cellTextSecondaryClass}>{r.categoryName || '—'}</TableCell>
                         <TableCell className={cellTextSecondaryClass}>{r.palletNumber ?? '—'}</TableCell>
                         <TableCell className="max-w-[220px] truncate text-[12px] text-muted-foreground">
                           {r.tags || '—'}

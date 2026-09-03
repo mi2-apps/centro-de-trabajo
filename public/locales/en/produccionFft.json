@@ -76,6 +76,8 @@
   "sizeTableSubtitle": "Today's pieces crossed by screen size and classification",
   "colClassification": "Classification",
   "colTotal": "Total",
+  "colSupplier": "Supplier",
+  "colCategory": "Category",
   "peopleTableTitle": "Active people today",
   "peopleTableSubtitle": "Pieces inspected today per person, with their real name when confirmed",
   "emptyPeopleTitle": "No one reported today",

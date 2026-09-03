@@ -106,7 +106,7 @@ function buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classif
     FilteredBase AS (
       SELECT
         R.LicensePlateNumber, R.ClassificationID, R.InspectionBy, R.InspectionDate,
-        W.SKU, WPIC.ClassificationCode, WPIC.ClassificationName, M.ScreenSize
+        W.SKU, W.WorkOrderDetailID, WPIC.ClassificationCode, WPIC.ClassificationName, M.ScreenSize
       FROM RankedInspections R
       INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = R.LicensePlateNumber
       INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = R.ClassificationID
@@ -444,8 +444,9 @@ export async function getSkuTrackerToday({
     Base AS (
       SELECT
         b.LicensePlateNumber, b.SKU, b.ClassificationCode, b.ClassificationName, b.ScreenSize,
+        b.WorkOrderDetailID,
         W.SerialNumber,
-        PP.PalletNumber,
+        PP.PalletNumber, PP.PurchaseID,
         COUNT(*) OVER (PARTITION BY NULLIF(W.SerialNumber, '')) AS SerialCount
       FROM FilteredBase b
       INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = b.LicensePlateNumber
@@ -457,7 +458,9 @@ export async function getSkuTrackerToday({
       b.PalletNumber, b.SerialCount, b.ScreenSize,
       sd.Brand, sd.Model,
       tg.Tags,
-      om.OrderNumber
+      om.OrderNumber,
+      sup.SupplierName,
+      cat.CategoryName
     FROM Base b
     LEFT JOIN BinManagerRO.PRO.SKUData sd WITH (NOLOCK) ON sd.SKU = b.SKU
     OUTER APPLY (
@@ -471,8 +474,17 @@ export async function getSkuTrackerToday({
       WHERE bm.SerialNumber = b.LicensePlateNumber AND bm.OrderNumber IS NOT NULL
       ORDER BY bm.MovementDate DESC
     ) om
+    LEFT JOIN PO.Purchases pur WITH (NOLOCK) ON pur.PurchaseID = b.PurchaseID
+    LEFT JOIN PO.Suppliers sup WITH (NOLOCK) ON sup.SupplierID = pur.SupplierID
+    LEFT JOIN OE.WorkOrderDetails wod WITH (NOLOCK) ON wod.WorkOrderDetailID = b.WorkOrderDetailID
+    LEFT JOIN DA.Categories cat WITH (NOLOCK) ON cat.CategoryID = wod.CategoryID
     ORDER BY b.LicensePlateNumber
   `)
+  // Proveedor/Categoria (2026-09-02, agregado tras verificar en produccion que "click proveedor/
+  // categoria" abria el Rastreador de SKUs pero nunca encontraba nada -- estos 2 campos nunca se
+  // habian incluido aqui, asi que la busqueda por texto no tenia contra que comparar). Mismo puente
+  // ya verificado en getProductionBySupplierToday/getProductionByCategoryToday, repetido aqui
+  // porque esta consulta arma su propia proyeccion de columnas fila-por-LPN.
   return result.recordset.map((r) => ({
     lpn: r.LicensePlateNumber,
     sku: r.SKU,
@@ -485,6 +497,8 @@ export async function getSkuTrackerToday({
     size: r.ScreenSize ?? null,
     tags: r.Tags || null,
     orderNumber: r.OrderNumber || null,
+    supplierName: r.SupplierName || null,
+    categoryName: r.CategoryName || null,
     isDuplicateSerial: r.SerialCount > 1,
   }))
 }

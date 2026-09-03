@@ -76,6 +76,8 @@
   "sizeTableSubtitle": "Piezas de hoy cruzadas por pulgadas de pantalla y clasificación",
   "colClassification": "Clasificación",
   "colTotal": "Total",
+  "colSupplier": "Proveedor",
+  "colCategory": "Categoría",
   "peopleTableTitle": "Personal activo hoy",
   "peopleTableSubtitle": "Piezas inspeccionadas hoy por persona, con su nombre real cuando se pudo confirmar",
   "emptyPeopleTitle": "Sin personal reportado hoy",
