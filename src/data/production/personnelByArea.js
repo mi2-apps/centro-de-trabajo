@@ -2,13 +2,16 @@ import i18n from '../../i18n'
 import {
   getAllEmployees,
   getAssignableEmployees,
+  getAssignmentsForArea,
   getAssignmentsForDate,
   getBaselineSuppressed,
   getEmployeeById,
   getMovementsForDate,
   todayISO,
 } from '../personnel/repository'
+import { getWorkstationsForLine } from '../personnel/workstations'
 import {
+  AREA_STATION_SOURCE_OVERRIDE,
   canonicalOperationalAreaId,
   hasLineStations,
   LINE_LIKE_AREA_IDS,
@@ -567,6 +570,29 @@ export function getActividadForEmployee(employeeId) {
    area que en el futuro se agregue a FFT_LINE_IDS queda excluida igual,
    sin tocar esta funcion de nuevo) para que no aparezca como fila propia
    Y absorbida dentro de "FFT" al mismo tiempo. */
+// Areas excluidas de "Resumen por area" (2026-09-03, a peticion explicita y repetida del
+// usuario: "te dije desde hace mucho que elimines WC CALIDAD y ENTRENADOR"). Ninguna de las 2
+// tiene headcount real propio en el modelo canonico por area: el personal de Calidad vive
+// fisicamente en lineas/Paletizado (su areaId real nunca es 'CALIDAD', solo el snapshot/
+// Employee.areaZona lo etiqueta asi) y ENTRENADOR nunca ha tenido a nadie asignado -- ambas
+// solo aparecian aqui como una tarjeta fantasma en 0 con "Sin plantilla".
+const SUMMARY_EXCLUDED_AREA_IDS = new Set(['CALIDAD', 'ENTRENADOR'])
+
+/* Cuenta real para areas cuyo personal NO vive bajo su propio areaId sino dentro de otra area,
+   filtrado por rol (2026-09-03, corrige bug real: "WC CONVEYOR GENERAL hay dos personas no se
+   por que dice 0"). Mismo mecanismo/fuente que ya usa ConveyorGeneralBar
+   (OperatingFloorPlan.jsx) para PINTAR esos 2 puestos -- AREA_STATION_SOURCE_OVERRIDE
+   (catalog.js): los 2 "Ayudante General de Conveyor" viven de verdad en WC Paletizado, esto solo
+   los cuenta desde ahi en vez de buscarlos (en vano) bajo areaId=CONVEYOR_PRINCIPAL. */
+function countByStationSourceOverride({ sourceAreaId, roles }) {
+  const roleStationNames = new Set(
+    getWorkstationsForLine(sourceAreaId)
+      .filter((w) => roles.includes(w.role))
+      .map((w) => w.name),
+  )
+  return getAssignmentsForArea(sourceAreaId).filter((a) => roleStationNames.has(a.stationId)).length
+}
+
 export function getAllAreaSummaries() {
   const byArea = getPeopleByArea()
   const fftCount = FFT_LINE_IDS.reduce((sum, id) => sum + (byArea[id]?.length || 0), 0)
@@ -587,12 +613,13 @@ export function getAllAreaSummaries() {
         w.kind === 'area' &&
         w.active !== false &&
         !FFT_LINE_IDS.includes(w.id) &&
-        canonicalOperationalAreaId(w.id) === w.id,
+        canonicalOperationalAreaId(w.id) === w.id &&
+        !SUMMARY_EXCLUDED_AREA_IDS.has(w.id),
     ).map((w) => {
-      const count = operationalGroupMembers(w.id).reduce(
-        (sum, id) => sum + (byArea[id]?.length || 0),
-        0,
-      )
+      const override = AREA_STATION_SOURCE_OVERRIDE[w.id]
+      const count = override
+        ? countByStationSourceOverride(override)
+        : operationalGroupMembers(w.id).reduce((sum, id) => sum + (byArea[id]?.length || 0), 0)
       return {
         id: w.id,
         name: w.name,
