@@ -520,8 +520,15 @@ export async function getPalletsProgress({ workCenterId = 49 }) {
      esa combinacion deja Brand/Model vacios para varios SKU reales; PRO.SKUData es la UNICA fuente
      que tiene los 3 campos juntos y coincide exacto con la pagina real -- ej. SNTV002680 = Hisense
      65R6E4, igual que el payload real interceptado de GetTodaysProducedByWorkCenter).
-   - Pallet: mismo puente que getProductionBySupplierToday (LPN -> PurchasePalletDetails ->
-     PurchasePallets.PalletNumber).
+   - Pallet: CORREGIDO 2026-09-03 (a peticion explicita del usuario, comparando contra "Progreso de
+     pallets" que ya usa la identidad real: "quiero ver exactamente si esta en un pallet id o si no
+     esta que venga un msj de espera"). Antes usaba PurchasePalletDetails -> PurchasePallets.PalletNumber
+     (numeros chicos tipo "5"/"16", la fuente YA DESCARTADA por incorrecta en getPalletsProgress -- ver
+     esa funcion para la investigacion completa). Ahora usa la MISMA fuente real que esa tarjeta:
+     BinManagerRO.BM.BinContent.SerialNumber (que guarda el LPN) -> BinManagerRO.BM.Bins.BinCode,
+     filtrado a BinCode con guion (convencion real de pallet). Si el LPN no esta AHORA MISMO en
+     ningun bin-pallet (ya se movio/embarco, o nunca se palletizo), sale null -- el frontend muestra
+     un mensaje de espera explicito, nunca un numero viejo/equivocado.
    - Tags: BinManagerRO.PRO.SKUTags/Tags -- STRING_AGG de todos los tags de ese SKU (un SKU puede
      tener varios, se muestran todos, nunca solo el primero).
    - ¿Ligado a orden?: BinManagerRO.BM.BinMovements.OrderNumber, buscado por LicensePlateNumber (NO
@@ -550,7 +557,7 @@ export async function getSkuTrackerToday({
         b.LicensePlateNumber, b.SKU, b.ClassificationCode, b.ClassificationName, b.ScreenSize,
         b.WorkOrderDetailID,
         W.SerialNumber,
-        PP.PalletNumber, PP.PurchaseID,
+        PP.PurchaseID,
         COUNT(*) OVER (PARTITION BY NULLIF(W.SerialNumber, '')) AS SerialCount
       FROM FilteredBase b
       INNER JOIN OE.WorkPlan W WITH (NOLOCK) ON W.LicensePlateNumber = b.LicensePlateNumber
@@ -559,7 +566,7 @@ export async function getSkuTrackerToday({
     )
     SELECT
       b.LicensePlateNumber, b.SKU, b.SerialNumber, b.ClassificationCode, b.ClassificationName,
-      b.PalletNumber, b.SerialCount, b.ScreenSize,
+      pal.BinCode AS PalletBinCode, b.SerialCount, b.ScreenSize,
       sd.Brand, sd.Model,
       tg.Tags,
       om.OrderNumber,
@@ -578,6 +585,13 @@ export async function getSkuTrackerToday({
       WHERE bm.SerialNumber = b.LicensePlateNumber AND bm.OrderNumber IS NOT NULL
       ORDER BY bm.MovementDate DESC
     ) om
+    OUTER APPLY (
+      SELECT TOP 1 bin.BinCode
+      FROM BinManagerRO.BM.BinContent bc2 WITH (NOLOCK)
+      INNER JOIN BinManagerRO.BM.Bins bin WITH (NOLOCK) ON bin.BinID = bc2.BinID
+      WHERE bc2.SerialNumber = b.LicensePlateNumber AND bin.BinCode LIKE '%-%'
+      ORDER BY bc2.BinContentID DESC
+    ) pal
     LEFT JOIN PO.Purchases pur WITH (NOLOCK) ON pur.PurchaseID = b.PurchaseID
     LEFT JOIN PO.Suppliers sup WITH (NOLOCK) ON sup.SupplierID = pur.SupplierID
     LEFT JOIN OE.WorkOrderDetails wod WITH (NOLOCK) ON wod.WorkOrderDetailID = b.WorkOrderDetailID
@@ -595,7 +609,7 @@ export async function getSkuTrackerToday({
     serialNumber: r.SerialNumber || null,
     classificationCode: r.ClassificationCode,
     classificationName: r.ClassificationName,
-    palletNumber: r.PalletNumber ?? null,
+    palletId: r.PalletBinCode || null,
     brand: r.Brand || null,
     model: r.Model || null,
     size: r.ScreenSize ?? null,

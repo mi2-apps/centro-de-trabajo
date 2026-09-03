@@ -58,7 +58,20 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
     const q = search.trim().toLowerCase()
     if (!q) return rows
     return rows.filter((r) =>
-      [r.lpn, r.sku, r.serialNumber, r.brand, r.model, r.tags, r.orderNumber, r.supplierName, r.categoryName]
+      [
+        r.lpn,
+        r.sku,
+        r.serialNumber,
+        r.brand,
+        r.model,
+        r.tags,
+        r.orderNumber,
+        r.supplierName,
+        r.categoryName,
+        r.classificationCode,
+        r.classificationName,
+        r.palletId,
+      ]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(q)),
     )
@@ -120,11 +133,24 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
                           {r.size ? ` (${r.size}")` : ''}
                         </TableCell>
                         <TableCell className={cellTextSecondaryClass}>
-                          {r.classificationName || r.classificationCode}
+                          <span className="font-mono text-[11.5px] font-bold text-foreground">
+                            {r.classificationCode}
+                          </span>
+                          {r.classificationName && (
+                            <span className="text-muted-foreground"> · {r.classificationName}</span>
+                          )}
                         </TableCell>
                         <TableCell className={cellTextSecondaryClass}>{r.supplierName || '—'}</TableCell>
                         <TableCell className={cellTextSecondaryClass}>{r.categoryName || '—'}</TableCell>
-                        <TableCell className={cellTextSecondaryClass}>{r.palletNumber ?? '—'}</TableCell>
+                        <TableCell className={cellTextSecondaryClass}>
+                          {r.palletId ? (
+                            <span className="font-mono text-[11.5px] font-bold text-foreground">
+                              {r.palletId}
+                            </span>
+                          ) : (
+                            <span className="italic text-muted-foreground">{t('palletWaitingLabel')}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="max-w-[220px] truncate text-[12px] text-muted-foreground">
                           {r.tags || '—'}
                         </TableCell>

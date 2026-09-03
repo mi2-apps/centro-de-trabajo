@@ -32,6 +32,7 @@
   "colSku": "SKU",
   "colBrandModel": "Brand / Model",
   "colPallet": "Pallet",
+  "palletWaitingLabel": "Waiting for pallet",
   "colTags": "Tags",
   "colOrder": "Order",
   "colDuplicate": "Duplicate",

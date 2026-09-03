@@ -32,6 +32,7 @@
   "colSku": "SKU",
   "colBrandModel": "品牌 / 型号",
   "colPallet": "托盘",
+  "palletWaitingLabel": "等待装托盘",
   "colTags": "标签",
   "colOrder": "订单",
   "colDuplicate": "重复",
