@@ -84,28 +84,23 @@ async function getPool() {
    shift (2026-09-02, agregado a peticion explicita del usuario -- "separa lo del turno 1 matutino
    junto con tiempo extra y turno 2... nocturno... vespertino").
 
-   2026-09-03 (CORREGIDO DOS VECES, a peticion explicita del usuario):
+   2026-09-03 (CORREGIDO 3 VECES, a peticion explicita del usuario):
    1ra correccion -- la version original combinaba fecha+hora mal armado, dejaba pasar la madrugada
    de @dateFrom (cola del turno anterior) y la noche completa de @dateFrom+1 (un turno no pedido).
-   2da correccion -- el usuario reporto usuarios TOTALMENTE distintos entre la pagina real y esta
-   para Turno 2 (misma cantidad total, 450=450, pero personas distintas: la real mostraba
-   elizabeth.mendoza62/adalberto.ramon, la nuestra mostraba otras 3 personas). Investigando se
-   encontro la causa real: oe.WorkPlanInspection tiene una columna `Turno` (int, 1 o 2) YA
-   CALCULADA Y GUARDADA por SmartControl -- confirmado en vivo con el MCP de BinManager
-   (inspections_by_workcenter, turno=2, 2026-09-02: 100% de las filas devueltas traen
-   "Turno":2, con InspectionBy=elizabeth.mendoza62/adalberto.ramon exacto). Inferir el turno a
-   partir de la hora (como hacian ambas versiones anteriores) es una aproximacion que puede
-   seleccionar una fila distinta a la que el sistema real considera "la" inspeccion de ese
-   LPN/turno; usar la columna real Turno la elimina. Solo se conserva un corte de hora (mediodia,
-   12:00) para decidir a que FECHA de turno-noche pertenece una fila con Turno=2 (su turno pudo
-   empezar la noche anterior) -- ya no se usa para decidir CUAL es el turno, solo para agrupar por
-   fecha, asi que no depende de acertar el horario exacto de inicio/fin del turno.
-
-   "Todas" (sin shift) ahora es la UNION exacta de Turno 1(fecha) + Turno 2(fecha) -- a peticion
-   explicita del usuario, que esperaba que "Todas" cerrara con la suma de los 2 turnos y no
-   con el total crudo del dia calendario (que incluia la cola del turno de la noche anterior,
-   piezas reales pero de un turno que no es "el de hoy"). Con esto, ese sobrante ahora aparece en
-   el "Todas"/Turno 2 del DIA ANTERIOR (a donde realmente pertenece), nunca se pierde. */
+   2da correccion (REVERTIDA) -- se intento usar una columna `Turno` que el MCP de BinManager
+   mostraba en su JSON de salida (inspections_by_workcenter), pensando que era una columna real de
+   oe.WorkPlanInspection -- resulto ser un campo CALCULADO por el stored procedure real
+   (OE.sp_GetInspectionsByWorkCenter), no una columna de la tabla: `SELECT I.Turno` tira
+   "Invalid column name 'Turno'" con la cuenta de solo lectura real (verificado en vivo, tumbo
+   el endpoint completo unos minutos). Revertido a inferir el turno por hora (unica opcion
+   disponible sin acceso al codigo fuente del SP real). El horario 06:00-21:00 (Turno 1) /
+   21:00-06:00 (Turno 2) sigue siendo el verificado en vivo que da 1328/450 exactos contra la
+   pagina real -- la diferencia de nombres de usuario entre la pagina real y esta (mismo total,
+   personas distintas) sigue siendo un pendiente sin resolver, documentado, no bloqueante.
+   3ra correccion -- el usuario reporto que "Todas" (para HOY) no cerraba con Turno 1 + Turno 2:
+   incluia tambien la cola de la madrugada (turno de la noche ANTERIOR, real pero de otro turno).
+   "Todas" ahora es exactamente Turno 1(fecha) UNION Turno 2(fecha) -- ese sobrante aparece en el
+   "Todas"/Turno 2 del DIA ANTERIOR, a donde realmente pertenece, nunca se pierde. */
 function buildFilteredBaseCte(
   request,
   { workCenterId, dateFrom, dateTo, classificationCode, size, shift },
@@ -114,11 +109,12 @@ function buildFilteredBaseCte(
   request.input('dateFrom', sql.Date, dateFrom)
   request.input('dateTo', sql.Date, dateTo)
   let extraWhere = ''
-  const turno1Where = `(I.Turno = 1 AND CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo)`
-  const turno2Where = `(I.Turno = 2 AND (
-        (CAST(I.InspectionDate AS TIME) >= '12:00:00' AND CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo)
-        OR (CAST(I.InspectionDate AS TIME) < '12:00:00' AND CAST(I.InspectionDate AS DATE) BETWEEN DATEADD(DAY, 1, @dateFrom) AND DATEADD(DAY, 1, @dateTo))
-      ))`
+  const turno1Where = `(CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo
+        AND CAST(I.InspectionDate AS TIME) >= '06:00:00' AND CAST(I.InspectionDate AS TIME) < '21:00:00')`
+  const turno2Where = `(
+        (CAST(I.InspectionDate AS DATE) BETWEEN @dateFrom AND @dateTo AND CAST(I.InspectionDate AS TIME) >= '21:00:00')
+        OR (CAST(I.InspectionDate AS DATE) BETWEEN DATEADD(DAY, 1, @dateFrom) AND DATEADD(DAY, 1, @dateTo) AND CAST(I.InspectionDate AS TIME) < '06:00:00')
+      )`
   let shiftWhere
   if (String(shift) === '1') {
     shiftWhere = turno1Where
