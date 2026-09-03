@@ -8,15 +8,15 @@
 // nombre falso.
 import { desc, eq } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
+import { requireAuth } from '../../server-lib/auth.js'
 import {
   db,
-  employeeMovement,
   employee,
+  employeeMovement,
   user,
-  workstation,
   workArea,
+  workstation,
 } from '../../server-lib/db/client.js'
-import { requireAuth } from '../../server-lib/auth.js'
 import { todayDateOnly } from '../../server-lib/personnel.js'
 
 // fromWorkstation/toWorkstation son ambas FKs a la MISMA tabla Workstation (y cada una necesita
@@ -42,8 +42,10 @@ export default requireAuth(async (req, res) => {
       movedByRole: user.role,
       fromAreaCode: fromWorkArea.code,
       fromAreaName: fromWorkArea.name,
+      fromStationName: fromWorkstation.name,
       toAreaCode: toWorkArea.code,
       toAreaName: toWorkArea.name,
+      toStationName: toWorkstation.name,
     })
     .from(employeeMovement)
     .innerJoin(employee, eq(employeeMovement.employeeId, employee.id))
@@ -67,8 +69,10 @@ export default requireAuth(async (req, res) => {
       action: m.fromWorkstationId ? 'MOVED' : 'ASSIGNED',
       fromAreaCode: m.fromAreaCode || null,
       fromAreaName: m.fromAreaName || null,
+      fromStationName: m.fromStationName || null,
       toAreaCode: m.toAreaCode,
       toAreaName: m.toAreaName,
+      toStationName: m.toStationName,
     })),
   })
 })

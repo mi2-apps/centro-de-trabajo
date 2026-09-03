@@ -6,21 +6,25 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  Clock,
   Contact,
   Download,
+  Flag,
   History,
   LayoutGrid,
   Search,
   TriangleAlert,
+  UserCheck,
   UserPlus,
   Users,
   UserX,
   X,
-  Zap,
 } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Cell, Pie, PieChart, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -58,8 +62,10 @@ import {
   rejectPendingMoveWithToast,
 } from '../../data/personnel/moveApprovalActions'
 import {
+  getAbsentEmployeeIds,
   getAllEmployees,
   getCurrentAssignment,
+  getLateEmployeeIds,
   getMovementsForEmployee,
   getMovesCountForDate,
   getPendingMoves,
@@ -68,7 +74,12 @@ import {
   todayISO,
 } from '../../data/personnel/repository'
 import { usePersonnelVersion } from '../../data/personnel/usePersonnelVersion'
-import { SHIFT_OPTIONS, WORK_CENTERS, workCenterById } from '../../data/production/catalog'
+import {
+  DEFAULT_LINE_ENTRY_TIME,
+  SHIFT_OPTIONS,
+  WORK_CENTERS,
+  workCenterById,
+} from '../../data/production/catalog'
 import { exportPersonalExcel } from '../../data/production/excelExport'
 import {
   AUTO_ACTIVE_AREAS,
@@ -136,6 +147,45 @@ function areaLabel(id) {
   return workCenterById(id)?.name || id || '—'
 }
 
+// Iniciales para los avatares neutrales del Directorio rápido (2026-09-03) -- nunca fotos reales,
+// solo las primeras 1-2 letras de nombre/apellido, igual que cualquier avatar placeholder.
+function initials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
+// Clasificacion real del movimiento para el badge del Directorio rápido/Movimientos del día
+// (2026-09-03): EmployeeMovement solo distingue ASSIGNED/MOVED de verdad (ver
+// api/personnel/movements-today.js) -- "Cambio de rol" no es un tercer tipo inventado, es un
+// MOVED real donde el area de origen y destino coinciden (mismo campo fromAreaCode/toAreaCode ya
+// real) y por lo tanto el cambio fue de estacion/rol dentro de la misma area, no de area.
+function movementBadgeInfo(m, t) {
+  if (m.action === 'ASSIGNED') {
+    return {
+      label: t('personalDeHoyTab.badgeAsignacion'),
+      tone: 'ok',
+      detail: t('personalDeHoyTab.movementAssignedTo', { to: m.toAreaName }),
+    }
+  }
+  if (m.fromAreaCode === m.toAreaCode) {
+    return {
+      label: t('personalDeHoyTab.badgeCambioDeRol'),
+      tone: 'info',
+      detail: t('personalDeHoyTab.movementMovedTo', {
+        from: m.fromStationName || m.fromAreaName,
+        to: m.toStationName || m.toAreaName,
+      }),
+    }
+  }
+  return {
+    label: t('personalDeHoyTab.badgeTraslado'),
+    tone: 'warn',
+    detail: t('personalDeHoyTab.movementMovedTo', { from: m.fromAreaName, to: m.toAreaName }),
+  }
+}
+
 // Construido dentro de PersonalDeHoyTab (no a nivel de módulo) porque
 // sus textos visibles requieren t(), que solo funciona dentro de un
 // componente (mismo patrón que buildAreaSlots en EstacionesTab.jsx).
@@ -179,7 +229,7 @@ function groupDirectoryByArea(list, t) {
     })
 }
 
-export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAsignar }) {
+export default function PersonalDeHoyTab({ onGoToAreas, onGoToSinAsignar }) {
   const { t } = useTranslation('centroTrabajo')
   const version = usePersonnelVersion()
   const { isSupervisor } = useRoleMode()
@@ -200,6 +250,15 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
   const [directoryTab, setDirectoryTab] = useState('CON_NUMERO')
   const [directoryQuery, setDirectoryQuery] = useState('')
   const [showAllRoster, setShowAllRoster] = useState(false)
+  // Rediseño 2026-09-03 (a peticion explicita del usuario, mockup exacto proporcionado): las 3
+  // tablas grandes (Registro de hoy completo / Directorio completo / Movimientos completos) ya
+  // no viven abiertas por defecto en el dashboard -- se accede a traves de "Ver..." que abre
+  // esta misma informacion (MISMOS componentes/datos de siempre, ver RegistroDeHoyCard/
+  // DirectorioCard/MovimientosDelDiaCard mas abajo) dentro de un Dialog, nunca se pierde nada.
+  const [fullRosterOpen, setFullRosterOpen] = useState(false)
+  const [fullDirectoryOpen, setFullDirectoryOpen] = useState(false)
+  const [fullMovementsOpen, setFullMovementsOpen] = useState(false)
+  const [quickDirectoryTab, setQuickDirectoryTab] = useState('AREA')
 
   const estadoOptions = useMemo(() => buildEstadoOptions(t), [t])
 
@@ -337,24 +396,67 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
   // completo, sin filtros de la barra, para que sea una foto general
   // estable igual que las alertas). Participacion = presentesArea /
   // totalPresente * 100, nunca hardcodeada.
-  const areaSummary = useMemo(() => {
-    const counts = {}
-    roster.forEach((r) => {
-      counts[r.areaId] = (counts[r.areaId] || 0) + 1
+  // "Estado general del día" (2026-09-03, a peticion explicita del usuario, mockup exacto) --
+  // Presentes/Pendientes vienen del MISMO roster efectivo de siempre (r.source real,
+  // 'REGISTRO'/'SNAPSHOT'), nunca una poblacion nueva. Faltas/Tardías usan Attendance.status=
+  // 'AUSENTE'/'RETARDO' -- consultas REALES (getAbsentEmployeeIds/getLateEmployeeIds, mismo
+  // patron ya establecido en el modulo Asistencia) que hoy siempre dan 0 porque ningun flujo del
+  // sistema escribe esos estados todavia -- NUNCA se inventa un umbral de "llegada tardía" que no
+  // existe en la configuración real.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza recalcular aunque no se lea en el callback (mismo patron en todo este folder)
+  const absentCount = useMemo(() => getAbsentEmployeeIds().length, [version])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza recalcular aunque no se lea en el callback (mismo patron en todo este folder)
+  const lateCount = useMemo(() => getLateEmployeeIds().length, [version])
+  const presentesCount = useMemo(
+    () => roster.filter((r) => r.source === 'REGISTRO').length,
+    [roster],
+  )
+  const estadoGeneral = useMemo(() => {
+    const total = presentesCount + lateCount + absentCount + rosterSnapshot.length
+    return {
+      total,
+      presentes: presentesCount,
+      tardias: lateCount,
+      faltas: absentCount,
+      pendientes: rosterSnapshot.length,
+    }
+  }, [presentesCount, lateCount, absentCount, rosterSnapshot])
+
+  // "Directorio rápido de personal" (2026-09-03, mockup exacto) -- reemplaza visualmente la
+  // tabla gigante de siempre; sigue viniendo del MISMO roster efectivo (getEffectiveTodayRoster),
+  // nunca una poblacion nueva. Por área/Por proyecto agrupan por r.areaId (misma logica que
+  // areaSummary ya usaba); Sin asignar reusa getUnassignedPresentToday() sin cambios.
+  const quickDirectoryGroups = useMemo(() => {
+    const base =
+      quickDirectoryTab === 'PROYECTO'
+        ? roster.filter((r) => !hasRealNumber(r.employeeNumber))
+        : roster
+    const counts = new Map()
+    base.forEach((r) => {
+      const key = r.areaId || '__SIN_AREA__'
+      if (!counts.has(key)) counts.set(key, { areaId: r.areaId, members: [] })
+      counts.get(key).members.push(r)
     })
-    return Object.entries(counts)
-      .map(([areaId, count]) => ({
-        areaId,
-        count,
-        pct: presentToday > 0 ? (count / presentToday) * 100 : 0,
+    return Array.from(counts.values())
+      .map((g) => ({
+        ...g,
+        label: g.areaId ? areaLabel(g.areaId) : t('personalDeHoyTab.directoryNoAreaLabel'),
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, AREA_SUMMARY_TOP_N)
-  }, [roster, presentToday])
+      .sort((a, b) => b.members.length - a.members.length)
+  }, [roster, quickDirectoryTab, t])
+  const quickDirectoryUnassignedGroup = useMemo(
+    () => ({
+      areaId: null,
+      label: t('personalDeHoyTab.sinAsignarGroupLabel'),
+      members: unassigned,
+    }),
+    [unassigned, t],
+  )
 
   function handleAlertClick(estado) {
     setEstadoFilter(estado)
     setShowAllRoster(true)
+    setFullRosterOpen(true)
   }
 
   return (
@@ -391,145 +493,6 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
           value={movesToday}
         />
       </div>
-
-      {/* Barra de busqueda + filtros + acciones */}
-      <div className={cn(cardClass, 'mb-4 p-3')}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[260px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground opacity-50" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('personalDeHoyTab.searchPlaceholder')}
-              className="h-9 pl-9"
-            />
-          </div>
-          <div className="min-w-[150px]">
-            <Select value={areaFilter} onValueChange={setAreaFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('personalDeHoyTab.areaPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODAS">{t('personalDeHoyTab.todasLabel')}</SelectItem>
-                {WORK_CENTERS.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-[130px]">
-            <Select value={shiftFilter} onValueChange={setShiftFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('personalDeHoyTab.turnoLabel')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">{t('personalDeHoyTab.todosLabel')}</SelectItem>
-                {SHIFT_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-[150px]">
-            <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('personalDeHoyTab.estadoLabel')} />
-              </SelectTrigger>
-              <SelectContent>
-                {estadoOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1" />
-          <Button
-            onClick={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
-            className="shrink-0 rounded-[20px] font-bold"
-          >
-            <UserPlus className="h-4 w-4" />
-            {isSupervisor
-              ? t('personalDeHoyTab.registerButtonSupervisor')
-              : t('personalDeHoyTab.registerButtonSelf')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportPersonalExcel(todayISO())}
-            className="shrink-0 rounded-[20px] font-bold"
-          >
-            <Download className="h-4 w-4" />
-            {t('personalDeHoyTab.exportButton')}
-          </Button>
-        </div>
-      </div>
-
-      {query.trim() && (
-        <div className={cn(cardClass, 'mb-4 p-5')}>
-          {bestMatchDetail ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-                <p className="text-lg font-extrabold">
-                  {t('personalDeHoyTab.employeeHeader', {
-                    employeeNumber: bestMatchDetail.employee.employeeNumber,
-                    name: bestMatchDetail.employee.name,
-                  })}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setHistoryEmployee(bestMatchDetail.employee)}
-                  className="font-bold"
-                >
-                  <History className="h-4 w-4" />
-                  {t('personalDeHoyTab.viewHistoryButton')}
-                </Button>
-              </div>
-              {bestMatchDetail.assignment ? (
-                <div className="flex flex-wrap gap-6 gap-y-3">
-                  <InfoField
-                    label={t('personalDeHoyTab.estadoLabel')}
-                    value={t('personalDeHoyTab.presenteValue')}
-                  />
-                  <InfoField
-                    label={t('personalDeHoyTab.ubicacionActualLabel')}
-                    value={areaLabel(bestMatchDetail.assignment.areaId)}
-                  />
-                  <InfoField
-                    label={t('personalDeHoyTab.rolActualLabel')}
-                    value={bestMatchDetail.assignment.stationId}
-                  />
-                  <InfoField
-                    label={t('personalDeHoyTab.entradaLabel')}
-                    value={bestMatchDetail.assignment.checkInAt}
-                  />
-                  {bestMatchDetail.lastMove && (
-                    <InfoField
-                      label={t('personalDeHoyTab.ultimoMovimientoLabel')}
-                      value={t('personalDeHoyTab.lastMoveValue', {
-                        from: areaLabel(bestMatchDetail.lastMove.fromAreaId),
-                        to: areaLabel(bestMatchDetail.lastMove.toAreaId),
-                        movedAt: bestMatchDetail.lastMove.movedAt,
-                      })}
-                    />
-                  )}
-                </div>
-              ) : (
-                <p className={emptyTextClass}>{t('personalDeHoyTab.noRegistradoHoy')}</p>
-              )}
-            </div>
-          ) : (
-            <p className={emptyTextClass}>
-              {t('personalDeHoyTab.noEmployeeFoundForQuery', { query })}
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Movimientos pendientes de aprobacion — solo SUPERVISOR/ADMINISTRADOR
           (nunca LIDER: es justo lo que un lider pide y espera a que se
@@ -590,56 +553,216 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
         </div>
       )}
 
-      {/* Contenido principal (2026-09-02, a peticion explicita del usuario: la card de
-          Movimientos del dia debe verse "de extremo a extremo" -- se quita el layout de 2
-          columnas 70/30 de antes; Registro de hoy/Movimientos del dia/Directorio ahora ocupan
-          el ancho completo, y las 3 cards que antes vivian en la columna lateral (Resumen por
-          area/Alertas/Acciones rapidas) bajan a su propia fila debajo, para que no le quiten
-          espacio horizontal a la tabla ancha de Movimientos). */}
-      <RegistroDeHoyCard
-        rows={visibleRoster}
-        total={filteredRoster.length}
-        allCount={roster.length}
-        showAll={showAllRoster}
-        onToggleShowAll={() => setShowAllRoster((v) => !v)}
-        onRowClick={setHistoryEmployee}
-      />
-      <MovimientosDelDiaCard />
-      <DirectorioCard
-        tab={directoryTab}
-        onTabChange={setDirectoryTab}
-        withNumberCount={directoryWithNumber.length}
-        proyectosCount={directoryProyectos.length}
-        query={directoryQuery}
-        onQueryChange={setDirectoryQuery}
-        groups={directoryGroups}
-        total={directoryList.length}
-        onRowClick={setHistoryEmployee}
-      />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <ResumenPorAreaCard
-          areas={areaSummary}
-          totalPresente={presentToday}
-          onAreaClick={(id) => setAreaFilter(id)}
+      {/* Rediseño 2026-09-03 (a peticion explicita del usuario, mockup exacto proporcionado):
+          fila 1 de 3 columnas -- Estado general del día / Directorio rápido de personal /
+          Alertas y pendientes. Fila 2 -- Movimientos del día (compacto) 70% + Acciones rápidas
+          30%. Las 3 tablas grandes de siempre (Registro de hoy completo, Directorio completo,
+          Movimientos completos) NO desaparecen -- viven exactamente igual (mismos componentes,
+          mismos datos) dentro de un Dialog accesible desde "Ver..." en cada card nueva. */}
+      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+        <EstadoGeneralCard estado={estadoGeneral} />
+        <QuickDirectoryCard
+          tab={quickDirectoryTab}
+          onTabChange={setQuickDirectoryTab}
+          groups={
+            quickDirectoryTab === 'SIN_ASIGNAR'
+              ? [quickDirectoryUnassignedGroup]
+              : quickDirectoryGroups
+          }
+          onVerTodas={() => setFullDirectoryOpen(true)}
+          onRowClick={setHistoryEmployee}
         />
-        <AlertasCard
-          sinEstacion={rosterSinEstacion.length}
-          snapshot={rosterSnapshot.length}
-          movimientos={movesToday}
+        <AlertsCard
           sinAsignar={unassignedCount}
-          onClickSinEstacion={() => handleAlertClick('SIN_ESTACION')}
-          onClickSnapshot={() => handleAlertClick('SNAPSHOT')}
-          onClickMovimientos={() => handleAlertClick('REGISTRADO')}
+          snapshot={rosterSnapshot.length}
+          sinEstacion={rosterSinEstacion.length}
+          movimientos={movesToday}
           onClickSinAsignar={onGoToSinAsignar}
+          onClickSnapshot={() => handleAlertClick('SNAPSHOT')}
+          onClickSinEstacion={() => handleAlertClick('SIN_ESTACION')}
+          onClickMovimientos={() => handleAlertClick('REGISTRADO')}
+          onVerTodas={() => setFullRosterOpen(true)}
         />
-        <AccionesRapidasCard
+      </div>
+
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[7fr_3fr]">
+        <MovementsCompactCard onVerTodos={() => setFullMovementsOpen(true)} />
+        <QuickActionsGrid
           onAsignar={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
           onMover={() => (isSupervisor ? setRegisterOpen(true) : setSelfAssignOpen(true))}
-          onVerBajas={onGoToBajas}
+          onVerSinAsignar={onGoToSinAsignar}
           onVerLayout={onGoToAreas}
         />
       </div>
+
+      {/* Dialog "Registro completo de hoy" -- MISMO contenido de siempre (busqueda + filtros +
+          detalle de empleado + tabla completa), solo que ya no vive abierto por defecto. */}
+      <Dialog open={fullRosterOpen} onOpenChange={setFullRosterOpen}>
+        <DialogContent className="flex max-h-[85vh] max-w-[1100px] flex-col overflow-y-auto p-6">
+          <DialogTitle className="sr-only">{t('personalDeHoyTab.registroDeHoyTitle')}</DialogTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground opacity-50" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('personalDeHoyTab.searchPlaceholder')}
+                className="h-9 pl-9"
+              />
+            </div>
+            <div className="min-w-[150px]">
+              <Select value={areaFilter} onValueChange={setAreaFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('personalDeHoyTab.areaPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODAS">{t('personalDeHoyTab.todasLabel')}</SelectItem>
+                  {WORK_CENTERS.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[130px]">
+              <Select value={shiftFilter} onValueChange={setShiftFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('personalDeHoyTab.turnoLabel')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">{t('personalDeHoyTab.todosLabel')}</SelectItem>
+                  {SHIFT_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[150px]">
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('personalDeHoyTab.estadoLabel')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {estadoOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              onClick={() => exportPersonalExcel(todayISO())}
+              className="shrink-0 rounded-[20px] font-bold"
+            >
+              <Download className="h-4 w-4" />
+              {t('personalDeHoyTab.exportButton')}
+            </Button>
+          </div>
+
+          {query.trim() && (
+            <div className={cn(cardClass, 'mt-4 p-5')}>
+              {bestMatchDetail ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                    <p className="text-lg font-extrabold">
+                      {t('personalDeHoyTab.employeeHeader', {
+                        employeeNumber: bestMatchDetail.employee.employeeNumber,
+                        name: bestMatchDetail.employee.name,
+                      })}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setHistoryEmployee(bestMatchDetail.employee)}
+                      className="font-bold"
+                    >
+                      <History className="h-4 w-4" />
+                      {t('personalDeHoyTab.viewHistoryButton')}
+                    </Button>
+                  </div>
+                  {bestMatchDetail.assignment ? (
+                    <div className="flex flex-wrap gap-6 gap-y-3">
+                      <InfoField
+                        label={t('personalDeHoyTab.estadoLabel')}
+                        value={t('personalDeHoyTab.presenteValue')}
+                      />
+                      <InfoField
+                        label={t('personalDeHoyTab.ubicacionActualLabel')}
+                        value={areaLabel(bestMatchDetail.assignment.areaId)}
+                      />
+                      <InfoField
+                        label={t('personalDeHoyTab.rolActualLabel')}
+                        value={bestMatchDetail.assignment.stationId}
+                      />
+                      <InfoField
+                        label={t('personalDeHoyTab.entradaLabel')}
+                        value={bestMatchDetail.assignment.checkInAt}
+                      />
+                      {bestMatchDetail.lastMove && (
+                        <InfoField
+                          label={t('personalDeHoyTab.ultimoMovimientoLabel')}
+                          value={t('personalDeHoyTab.lastMoveValue', {
+                            from: areaLabel(bestMatchDetail.lastMove.fromAreaId),
+                            to: areaLabel(bestMatchDetail.lastMove.toAreaId),
+                            movedAt: bestMatchDetail.lastMove.movedAt,
+                          })}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <p className={emptyTextClass}>{t('personalDeHoyTab.noRegistradoHoy')}</p>
+                  )}
+                </div>
+              ) : (
+                <p className={emptyTextClass}>
+                  {t('personalDeHoyTab.noEmployeeFoundForQuery', { query })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <RegistroDeHoyCard
+            rows={visibleRoster}
+            total={filteredRoster.length}
+            allCount={roster.length}
+            showAll={showAllRoster}
+            onToggleShowAll={() => setShowAllRoster((v) => !v)}
+            onRowClick={setHistoryEmployee}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={fullDirectoryOpen} onOpenChange={setFullDirectoryOpen}>
+        <DialogContent className="flex max-h-[85vh] max-w-[1100px] flex-col overflow-y-auto p-6">
+          <DialogTitle className="sr-only">{t('personalDeHoyTab.directorioTitle')}</DialogTitle>
+          <DirectorioCard
+            tab={directoryTab}
+            onTabChange={setDirectoryTab}
+            withNumberCount={directoryWithNumber.length}
+            proyectosCount={directoryProyectos.length}
+            query={directoryQuery}
+            onQueryChange={setDirectoryQuery}
+            groups={directoryGroups}
+            total={directoryList.length}
+            onRowClick={setHistoryEmployee}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={fullMovementsOpen} onOpenChange={setFullMovementsOpen}>
+        <DialogContent className="flex max-h-[85vh] max-w-[1100px] flex-col overflow-y-auto p-6">
+          <DialogTitle className="sr-only">
+            {t('personalDeHoyTab.movimientosDelDiaTitle')}
+          </DialogTitle>
+          <MovimientosDelDiaCard />
+        </DialogContent>
+      </Dialog>
 
       <RegisterPersonnelDialog
         open={registerOpen}
@@ -1029,65 +1152,221 @@ function DirectorioCard({
   )
 }
 
-/* Panel derecho 1/3 -- "Resumen por area": Top N por personal
-   presente hoy, con barra de participacion. SOLO referencia visual
-   del roster completo (sin filtros de la barra) para que sea estable
-   -- clic en una fila aplica ese filtro de Area a la tabla principal. */
-function ResumenPorAreaCard({ areas, totalPresente, onAreaClick }) {
+const ESTADO_GENERAL_COLORS = {
+  presentes: '#10B981',
+  tardias: '#F59E0B',
+  faltas: '#EF4444',
+  pendientes: '#CBD5E1',
+}
+
+/* Columna 1/3 -- "Estado general del día" (2026-09-03, mockup exacto proporcionado por el
+   usuario). Dona de recharts (mismo patron ya usado en CoverageDonutCard/AreaStatusDonutCard,
+   dashboard/charts/) con 4 segmentos de color FIJO (nunca colorForIndex, aqui el color tiene
+   significado semantico real: verde=presente, naranja=tardanza, rojo=falta, gris=pendiente).
+   Tardías/Faltas usan Attendance.status='RETARDO'/'AUSENTE' -- consultas reales que hoy siempre
+   dan 0 porque ningun flujo del sistema las escribe todavia (ver comentario grande en el
+   componente padre) -- se muestran tal cual, nunca se inventa un numero distinto de 0. */
+function EstadoGeneralCard({ estado }) {
   const { t } = useTranslation('centroTrabajo')
+  const rows = [
+    { key: 'presentes', label: t('personalDeHoyTab.presentesLabel'), value: estado.presentes },
+    { key: 'tardias', label: t('personalDeHoyTab.tardiasLabel'), value: estado.tardias },
+    { key: 'faltas', label: t('personalDeHoyTab.faltasLabel'), value: estado.faltas },
+    { key: 'pendientes', label: t('personalDeHoyTab.pendientesLabel'), value: estado.pendientes },
+  ]
+  const chartData = rows
+    .filter((r) => r.value > 0)
+    .map((r) => ({ ...r, color: ESTADO_GENERAL_COLORS[r.key] }))
+  const inicioJornada = dayjs(`2000-01-01T${DEFAULT_LINE_ENTRY_TIME}`).format('hh:mm A')
+
   return (
-    <div className={cardClass}>
+    <div className={cn(cardClass, 'flex flex-col')}>
       <div className={cardHeaderClass}>
         <div>
-          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.resumenAreaTitle')}</p>
-          <p className={cardHeaderSubtitleClass}>{t('personalDeHoyTab.resumenAreaSubtitle')}</p>
+          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.estadoGeneralTitle')}</p>
+          <p className={cardHeaderSubtitleClass}>{t('personalDeHoyTab.estadoGeneralSubtitle')}</p>
         </div>
       </div>
-      <div className="p-4">
-        {areas.length === 0 ? (
-          <p className={emptyTextClass}>{t('personalDeHoyTab.noStaffTodayMessage')}</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {areas.map((a) => (
-              <button
-                type="button"
-                key={a.areaId}
-                onClick={() => onAreaClick(a.areaId)}
-                className="group w-full text-left"
-              >
-                <div className="flex items-baseline justify-between">
-                  <p className="truncate text-[12.5px] font-bold">{areaLabel(a.areaId)}</p>
-                  <p className="ml-2 shrink-0 text-[11.5px] font-bold text-muted-foreground">
-                    {a.count} · {a.pct.toFixed(1)}%
-                  </p>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-black/[.04] dark:bg-white/[.08]">
-                  <div
-                    className="h-full rounded-full bg-[#3B82F6] transition-opacity duration-150 group-hover:opacity-85"
-                    style={{ width: `${Math.min(a.pct, 100)}%` }}
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-row items-center gap-3">
+          <div className="relative h-[150px] w-[150px] shrink-0">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius="66%"
+                    outerRadius="94%"
+                    paddingAngle={1.5}
+                    stroke="none"
+                  >
+                    {chartData.map((row) => (
+                      <Cell key={row.key} fill={row.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value, name) => [value, name]}
+                    contentStyle={{ borderRadius: 12, fontSize: 12 }}
                   />
-                </div>
-              </button>
-            ))}
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="grid h-full w-full place-items-center rounded-full border-[10px] border-black/[.04] dark:border-white/[.06]" />
+            )}
+            <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+              <p className="text-2xl font-extrabold leading-none">{estado.total}</p>
+              <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                {t('personalDeHoyTab.totalRegistradoLabel')}
+              </p>
+            </div>
           </div>
-        )}
-        <div className="mt-4 flex justify-between border-t border-dashed border-border pt-3">
-          <p className="text-xs font-bold text-muted-foreground">
-            {t('personalDeHoyTab.totalPresenteLabel')}
-          </p>
-          <p className="text-sm font-extrabold">{totalPresente}</p>
+          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+            {rows.map((r) => {
+              const pct = estado.total > 0 ? (r.value / estado.total) * 100 : 0
+              return (
+                <div key={r.key} className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: ESTADO_GENERAL_COLORS[r.key] }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-muted-foreground">
+                    {r.label}
+                  </span>
+                  <span className="shrink-0 text-sm font-extrabold">{r.value}</span>
+                  <span className="w-11 shrink-0 text-right text-[10.5px] font-semibold text-muted-foreground">
+                    {pct.toFixed(1)}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div className="flex divide-x divide-border rounded-xl bg-black/[.02] dark:bg-white/[.03]">
+          <div className="flex flex-1 items-center gap-2 px-3 py-2.5">
+            <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-muted-foreground">
+                {t('personalDeHoyTab.inicioJornadaLabel')}
+              </p>
+              <p className="text-[12.5px] font-bold">{inicioJornada}</p>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center gap-2 px-3 py-2.5">
+            <Flag className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-muted-foreground">
+                {t('personalDeHoyTab.corteFaltasLabel')}
+              </p>
+              <p className="text-[12.5px] font-bold text-muted-foreground">
+                {t('personalDeHoyTab.corteFaltasNoConfigurado')}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-/* Panel derecho 2/3 -- "Alertas / pendientes": 3 renglones reales,
-   clickeables, cada uno aplica el filtro de Estado correspondiente en
-   la tabla principal (Registro de hoy) -- nunca inventa un numero, si
-   algo no aplica se veria en 0, no "Sin datos" ficticio (aqui las 3
-   metricas siempre son calculables desde el roster real). */
-function AlertasCard({
+/* Columna 2/3 -- "Directorio rápido de personal" (2026-09-03, mockup exacto). Reemplaza
+   visualmente la tabla gigante -- MISMOS datos del roster efectivo de siempre (nunca una
+   poblacion nueva), agrupados por área con avatares neutrales (iniciales, nunca fotos). "Ver
+   todas las áreas" abre el Directorio completo real (DirectorioCard, sin cambios) en un Dialog --
+   ninguna funcionalidad se pierde, solo deja de ocupar toda la pantalla por defecto. */
+function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }) {
+  const { t } = useTranslation('centroTrabajo')
+  const visibleGroups = groups.slice(0, AREA_SUMMARY_TOP_N)
+  const emptyKey =
+    tab === 'PROYECTO'
+      ? 'quickDirectoryEmptyProyecto'
+      : tab === 'SIN_ASIGNAR'
+        ? 'quickDirectoryEmptySinAsignar'
+        : 'quickDirectoryEmptyArea'
+  return (
+    <div className={cn(cardClass, 'flex flex-col')}>
+      <div className={cardHeaderClass}>
+        <div>
+          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.directorioRapidoTitle')}</p>
+          <p className={cardHeaderSubtitleClass}>
+            {t('personalDeHoyTab.directorioRapidoSubtitle')}
+          </p>
+        </div>
+      </div>
+      <div className="px-4 pt-3">
+        <Tabs value={tab} onValueChange={onTabChange}>
+          <TabsList>
+            <TabsTrigger value="AREA">{t('personalDeHoyTab.tabPorArea')}</TabsTrigger>
+            <TabsTrigger value="PROYECTO">{t('personalDeHoyTab.tabPorProyecto')}</TabsTrigger>
+            <TabsTrigger value="SIN_ASIGNAR">{t('personalDeHoyTab.tabSinAsignar')}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        {visibleGroups.length === 0 || visibleGroups.every((g) => g.members.length === 0) ? (
+          <p className={emptyTextClass}>{t(`personalDeHoyTab.${emptyKey}`)}</p>
+        ) : (
+          visibleGroups
+            .filter((g) => g.members.length > 0)
+            .map((g) => {
+              const shown = g.members.slice(0, 5)
+              const extra = g.members.length - shown.length
+              return (
+                <button
+                  type="button"
+                  key={g.areaId || '__SIN_AREA__'}
+                  onClick={() => onRowClick(g.members[0]?.employee || null)}
+                  className="flex items-center justify-between gap-3 rounded-xl p-2.5 text-left hover:bg-accent"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-bold">{g.label}</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      {t('personalDeHoyTab.personasCountLabel', { count: g.members.length })}
+                    </p>
+                    <div className="mt-1.5 flex items-center">
+                      {shown.map((m, idx) => (
+                        <span
+                          key={m.id}
+                          className="-ml-1.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-card bg-muted text-[9px] font-bold text-muted-foreground first:ml-0"
+                          style={{ zIndex: shown.length - idx }}
+                        >
+                          {initials(m.employee?.name)}
+                        </span>
+                      ))}
+                      {extra > 0 && (
+                        <span className="-ml-1.5 text-[10.5px] font-bold text-muted-foreground">
+                          +{extra}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xl font-extrabold leading-none">{g.members.length}</p>
+                    <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {t('personalDeHoyTab.presentesColLabel')}
+                    </p>
+                  </div>
+                </button>
+              )
+            })
+        )}
+      </div>
+      <div className="border-t border-border p-3 text-right">
+        <Button variant="ghost" size="sm" onClick={onVerTodas} className="font-bold">
+          {t('personalDeHoyTab.verTodasAreasButton')}
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* Columna 3/3 -- "Alertas y pendientes" (2026-09-03, mockup exacto, restylo visual de la
+   AlertasCard anterior -- MISMOS 4 conteos reales/handlers de siempre, nunca inventa un numero).
+   "Ver todas las alertas" abre el Registro de hoy completo (mismo Dialog que cada fila ya abre
+   individualmente, solo que sin preseleccionar un Estado). */
+function AlertsCard({
   sinEstacion,
   snapshot,
   movimientos,
@@ -1096,28 +1375,37 @@ function AlertasCard({
   onClickSnapshot,
   onClickMovimientos,
   onClickSinAsignar,
+  onVerTodas,
 }) {
   const { t } = useTranslation('centroTrabajo')
   const rows = [
     {
+      key: 'sinAsignar',
+      icon: UserX,
       label: t('personalDeHoyTab.alertSinAsignarLabel'),
       value: sinAsignar,
       onClick: onClickSinAsignar,
       color: '#EF4444',
     },
     {
-      label: t('personalDeHoyTab.alertSinEstacionLabel'),
-      value: sinEstacion,
-      onClick: onClickSinEstacion,
-      color: '#F59E0B',
-    },
-    {
+      key: 'snapshot',
+      icon: CalendarDays,
       label: t('personalDeHoyTab.alertSnapshotLabel'),
       value: snapshot,
       onClick: onClickSnapshot,
       color: '#F59E0B',
     },
     {
+      key: 'sinEstacion',
+      icon: TriangleAlert,
+      label: t('personalDeHoyTab.alertSinEstacionLabel'),
+      value: sinEstacion,
+      onClick: onClickSinEstacion,
+      color: '#F59E0B',
+    },
+    {
+      key: 'movimientos',
+      icon: ArrowLeftRight,
       label: t('personalDeHoyTab.alertMovimientosLabel'),
       value: movimientos,
       onClick: onClickMovimientos,
@@ -1125,70 +1413,203 @@ function AlertasCard({
     },
   ]
   return (
-    <div className={cardClass}>
+    <div className={cn(cardClass, 'flex flex-col')}>
       <div className={cardHeaderClass}>
-        <TriangleAlert className="h-[18px] w-[18px] text-[#F59E0B]" />
-        <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.alertasTitle')}</p>
+        <div>
+          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.alertasYPendientesTitle')}</p>
+          <p className={cardHeaderSubtitleClass}>
+            {t('personalDeHoyTab.alertasYPendientesSubtitle')}
+          </p>
+        </div>
       </div>
-      <div className="flex flex-col p-1">
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
         {rows.map((row) => (
           <button
             type="button"
-            key={row.label}
+            key={row.key}
             onClick={row.onClick}
-            className="flex items-center justify-between rounded-lg p-2.5 text-left hover:bg-accent"
+            disabled={!row.onClick}
+            className="flex items-center gap-2.5 rounded-xl p-2.5 text-left hover:bg-accent disabled:cursor-default disabled:opacity-60"
           >
-            <p className="text-[12.5px] font-semibold text-muted-foreground">{row.label}</p>
-            <span className="flex items-center gap-1">
-              <span className="text-sm font-extrabold" style={{ color: row.color }}>
-                {row.value}
-              </span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <span
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+              style={{ backgroundColor: hexToRgba(row.color, 0.14), color: row.color }}
+            >
+              <row.icon className="h-[16px] w-[16px]" />
             </span>
+            <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-muted-foreground">
+              {row.label}
+            </span>
+            <span className="shrink-0 text-base font-extrabold" style={{ color: row.color }}>
+              {row.value}
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
           </button>
         ))}
+      </div>
+      <div className="border-t border-border p-3 text-right">
+        <Button variant="ghost" size="sm" onClick={onVerTodas} className="font-bold">
+          {t('personalDeHoyTab.verTodasAlertasButton')}
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   )
 }
 
-/* Panel derecho 3/3 -- "Acciones rapidas": cuadricula 2x2. Asignar a
-   linea / Mover personal reutilizan el mismo RegisterPersonnelDialog
-   de siempre (su propio flujo ya distingue registrar de mover); Ver
-   bajas / Ver layout general solo cambian de pestaña. */
-function AccionesRapidasCard({ onAsignar, onMover, onVerBajas, onVerLayout }) {
+/* Fila 2, columna ancha (~70%) -- "Movimientos del día" compacto (2026-09-03, mockup exacto):
+   solo los ultimos 5, con badge de tipo (Asignación/Traslado/Cambio de rol -- ver
+   movementBadgeInfo arriba, los 3 son reales/derivados, nunca inventados). "Ver todos (N)" abre
+   la tabla completa (MovimientosDelDiaCard, sin cambios) en un Dialog. */
+function MovementsCompactCard({ onVerTodos }) {
+  const { t } = useTranslation('centroTrabajo')
+  const version = usePersonnelVersion()
+  const [state, setState] = useState({ loading: true, error: null, items: [] })
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza re-fetch aunque no se lea en el callback (mismo patron en todo este folder)
+  useEffect(() => {
+    let cancelled = false
+    setState((s) => ({ ...s, loading: true, error: null }))
+    fetch('/api/personnel/movements-today?limit=5', { credentials: 'include' })
+      .then((r) => {
+        if (!r.ok) throw new Error(`movements-today -> ${r.status}`)
+        return r.json()
+      })
+      .then((data) => {
+        if (!cancelled) setState({ loading: false, error: null, items: data.movements })
+      })
+      .catch((e) => {
+        if (!cancelled) setState({ loading: false, error: e.message, items: [] })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [version])
+
+  return (
+    <div className={cn(cardClass, 'flex flex-col')}>
+      <div className={cn(cardHeaderClass, 'justify-between')}>
+        <div>
+          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.movimientosDelDiaTitle')}</p>
+          <p className={cardHeaderSubtitleClass}>
+            {t('personalDeHoyTab.movimientosCompactSubtitle')}
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onVerTodos} className="shrink-0 font-bold">
+          {t('personalDeHoyTab.verTodosMovimientosButton', { count: state.items.length })}
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className={tableHeaderRowClass}>
+              <TableHead>{t('personalDeHoyTab.colHora')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colEmpleado')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colMovimiento')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colDetalle')}</TableHead>
+              <TableHead>{t('personalDeHoyTab.colRegistradoPor')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {state.items.map((m, idx) => {
+              const badge = movementBadgeInfo(m, t)
+              return (
+                <TableRow key={m.id} className={tableRowClass(idx)}>
+                  <TableCell className={cellTextSecondaryClass}>
+                    {dayjs(m.movedAt).format('HH:mm')}
+                  </TableCell>
+                  <TableCell className={cellTextClass}>
+                    <span className="font-mono font-semibold">{m.employeeNumber}</span>
+                    <span className="block text-[11.5px] font-normal text-muted-foreground">
+                      {m.employeeName}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={metricChipClass(badge.tone)}>{badge.label}</span>
+                  </TableCell>
+                  <TableCell className={cellTextSecondaryClass}>{badge.detail}</TableCell>
+                  <TableCell className={cellTextSecondaryClass}>{m.byName || '—'}</TableCell>
+                </TableRow>
+              )
+            })}
+            {!state.loading && !state.error && state.items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <EmptyState
+                    compact
+                    title={t('personalDeHoyTab.movimientosEmptyTitle')}
+                    description={t('personalDeHoyTab.movimientosEmptyDescription')}
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {state.error && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <EmptyState
+                    compact
+                    title={t('personalDeHoyTab.movimientosErrorTitle')}
+                    description={state.error}
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
+
+/* Fila 2, columna angosta (~30%) -- "Acciones rápidas" (2026-09-03, mockup exacto): grid 2x2,
+   fondo de color extremadamente suave por accion (azul/verde/rojo/violeta, tal como pide el
+   mockup). Asignar a línea / Mover personal reutilizan el mismo RegisterPersonnelDialog de
+   siempre; "Ver sin asignar" (reemplaza a "Ver bajas" en esta grilla especifica, a peticion
+   explicita del mockup) reutiliza onGoToSinAsignar ya existente; Ver layout general solo cambia
+   de pestaña. Bajas sigue disponible desde su propia pestaña de Centro de Trabajo, no desaparece
+   del sistema, solo de esta grilla puntual. */
+function QuickActionsGrid({ onAsignar, onMover, onVerSinAsignar, onVerLayout }) {
   const { t } = useTranslation('centroTrabajo')
   const actions = [
     {
       label: t('personalDeHoyTab.asignarLineaAction'),
+      desc: t('personalDeHoyTab.asignarLineaActionDesc'),
       icon: UserPlus,
       color: '#3B82F6',
       onClick: onAsignar,
     },
     {
       label: t('personalDeHoyTab.moverPersonalAction'),
+      desc: t('personalDeHoyTab.moverPersonalActionDesc'),
       icon: ArrowLeftRight,
       color: '#10B981',
       onClick: onMover,
     },
     {
-      label: t('personalDeHoyTab.verBajasAction'),
-      icon: UserX,
+      label: t('personalDeHoyTab.verSinAsignarAction'),
+      desc: t('personalDeHoyTab.verSinAsignarActionDesc'),
+      icon: UserCheck,
       color: '#EF4444',
-      onClick: onVerBajas,
+      onClick: onVerSinAsignar,
     },
     {
       label: t('personalDeHoyTab.verLayoutAction'),
+      desc: t('personalDeHoyTab.verLayoutActionDesc'),
       icon: LayoutGrid,
-      color: '#3B82F6',
+      color: '#8B5CF6',
       onClick: onVerLayout,
     },
   ]
   return (
     <div className={cardClass}>
       <div className={cardHeaderClass}>
-        <Zap className="h-[18px] w-[18px] text-muted-foreground" />
-        <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.accionesRapidasTitle')}</p>
+        <div>
+          <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.accionesRapidasTitle')}</p>
+          <p className={cardHeaderSubtitleClass}>
+            {t('personalDeHoyTab.accionesRapidasSubtitleNew')}
+          </p>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2.5 p-3">
         {actions.map((a) => (
@@ -1197,16 +1618,19 @@ function AccionesRapidasCard({ onAsignar, onMover, onVerBajas, onVerLayout }) {
             key={a.label}
             onClick={a.onClick}
             disabled={!a.onClick}
-            className="flex flex-col items-start gap-1.5 rounded-lg border border-border p-3 text-left transition-all duration-150 hover:-translate-y-px disabled:cursor-default"
-            style={{ backgroundColor: hexToRgba(a.color, 0.03) }}
+            className="flex flex-col items-start gap-1.5 rounded-xl border border-border p-3 text-left transition-all duration-150 hover:-translate-y-px disabled:cursor-default"
+            style={{ backgroundColor: hexToRgba(a.color, 0.05) }}
           >
             <span
               className="grid h-8 w-8 place-items-center rounded-full"
-              style={{ backgroundColor: hexToRgba(a.color, 0.14), color: a.color }}
+              style={{ backgroundColor: hexToRgba(a.color, 0.16), color: a.color }}
             >
               <a.icon className="h-[17px] w-[17px]" />
             </span>
             <p className="text-[12.5px] font-bold leading-[1.2]">{a.label}</p>
+            <p className="text-[10.5px] font-medium leading-[1.2] text-muted-foreground">
+              {a.desc}
+            </p>
           </button>
         ))}
       </div>

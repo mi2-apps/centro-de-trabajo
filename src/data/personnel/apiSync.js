@@ -27,6 +27,7 @@ import {
   readBaselineSuppressed,
   readEmployeeStatusOverrides,
   readEmployees,
+  readLateEmployeeIds,
   readMovements,
   readPendingMoves,
   readServerIdByLocalId,
@@ -35,6 +36,7 @@ import {
   writeBaselineSuppressed,
   writeEmployeeStatusOverrides,
   writeEmployees,
+  writeLateEmployeeIds,
   writeMovements,
   writePendingMoves,
   writeServerIdByLocalId,
@@ -331,6 +333,7 @@ async function pollOnce() {
   const {
     roster,
     absentEmployeeIds: serverAbsentIds = [],
+    lateEmployeeIds: serverLateIds = [],
     statusOverrides: serverStatusOverrides = [],
     pendingMoves = [],
     resolvedMoves = [],
@@ -580,6 +583,16 @@ async function pollOnce() {
     absentIds.length !== prevAbsentIds.length || absentIds.some((id) => !prevAbsentIds.includes(id))
   if (absentChanged) {
     writeAbsentEmployeeIds(absentIds)
+    changed = true
+  }
+
+  // Tardanzas (2026-09-03) -- mismo mecanismo exacto que Inasistencia arriba.
+  const lateIds = serverLateIds.map((id) => serverToLocalId.get(id)).filter(Boolean)
+  const prevLateIds = readLateEmployeeIds()
+  const lateChanged =
+    lateIds.length !== prevLateIds.length || lateIds.some((id) => !prevLateIds.includes(id))
+  if (lateChanged) {
+    writeLateEmployeeIds(lateIds)
     changed = true
   }
 

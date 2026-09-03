@@ -28,6 +28,7 @@ import {
   readBaselineSuppressed,
   readEmployeeStatusOverrides,
   readEmployees,
+  readLateEmployeeIds,
   readMovements,
   readPendingMoves,
   readSkills,
@@ -338,6 +339,12 @@ export function getAssignmentsForArea(areaId, date = todayISO()) {
    endpoint para el detalle). */
 export function getAbsentEmployeeIds() {
   return readAbsentEmployeeIds()
+}
+
+/* Ids de empleados con Attendance.status='RETARDO' HOY (2026-09-03, "Estado general del dia" de
+   Personal) -- mismo comentario que getAbsentEmployeeIds arriba, hoy siempre vacio. */
+export function getLateEmployeeIds() {
+  return readLateEmployeeIds()
 }
 
 export function getAssignmentHistory(employeeId) {

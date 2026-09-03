@@ -17,6 +17,7 @@ const KEYS = {
   pendingMoves: 'cp_pending_moves_v1',
   baselineSuppressed: 'cp_baseline_suppressed_v1',
   absentEmployeeIds: 'cp_absent_employee_ids_v1',
+  lateEmployeeIds: 'cp_late_employee_ids_v1',
   employeeStatusOverrides: 'cp_employee_status_overrides_v1',
   serverIdByLocalId: 'cp_server_id_by_local_id_v1',
 }
@@ -108,6 +109,11 @@ export const writeBaselineSuppressed = (rows) => writeList(KEYS.baselineSuppress
    "Inasistencia") lo lea sin volver a pedirlo por su cuenta. */
 export const readAbsentEmployeeIds = () => readList(KEYS.absentEmployeeIds)
 export const writeAbsentEmployeeIds = (ids) => writeList(KEYS.absentEmployeeIds, ids)
+
+/* Ids de empleados con Attendance.status='RETARDO' HOY (2026-09-03, "Estado general del dia" de
+   Personal) -- mismo mecanismo/motivo exacto que absentEmployeeIds de arriba. */
+export const readLateEmployeeIds = () => readList(KEYS.lateEmployeeIds)
+export const writeLateEmployeeIds = (ids) => writeList(KEYS.lateEmployeeIds, ids)
 
 /* "Personal sin asignar" con motivo (2026-09-02, a peticion explicita del usuario -- "poner si
    ya es baja o cambio de turno o si fue por falta"): mapa localId -> { active, unassignedReason,

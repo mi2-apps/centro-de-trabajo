@@ -60,6 +60,7 @@ export default requireAuth(async (req, res) => {
     activeAssignments,
     assignmentsForDate,
     absentAttendance,
+    lateAttendance,
     statusOverrides,
     pendingMoves,
     resolvedMoves,
@@ -107,6 +108,15 @@ export default requireAuth(async (req, res) => {
     db.query.attendance.findMany({
       where: (attendanceRow, { eq, and }) =>
         and(eq(attendanceRow.date, date), eq(attendanceRow.status, 'AUSENTE')),
+      columns: { employeeId: true },
+    }),
+    // Llegadas tardias (2026-09-03, "Estado general del dia" de Personal): mismo query real
+    // que absentAttendance de arriba, solo que contra status='RETARDO' -- mismo motivo exacto
+    // (ningun flujo escribe RETARDO todavia, se deja como consulta real para que el dia que
+    // exista una forma de marcar tardanza esta misma card empiece a reflejarlo).
+    db.query.attendance.findMany({
+      where: (attendanceRow, { eq, and }) =>
+        and(eq(attendanceRow.date, date), eq(attendanceRow.status, 'RETARDO')),
       columns: { employeeId: true },
     }),
     // "Personal sin asignar" con motivo (2026-09-02, a peticion explicita del usuario):
@@ -230,6 +240,7 @@ export default requireAuth(async (req, res) => {
     date: date.toISOString().slice(0, 10),
     roster,
     absentEmployeeIds: absentAttendance.map((a) => a.employeeId),
+    lateEmployeeIds: lateAttendance.map((a) => a.employeeId),
     statusOverrides,
     pendingMoves,
     resolvedMoves,
