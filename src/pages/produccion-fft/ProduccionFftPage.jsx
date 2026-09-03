@@ -175,7 +175,7 @@ export default function ProduccionFftPage() {
               comparisonLabel={t('noComparisonLabel')}
             />
             <ProductionKpiCard
-              title={t('palletsCardTitle')}
+              title={t('palletsCompletedKpiTitle')}
               value={`${data.pallets.closedCount} / ${data.pallets.totalCount}`}
               subtitle={t('palletsCompletedLabel')}
               icon={Boxes}
@@ -192,7 +192,7 @@ export default function ProduccionFftPage() {
               }}
             />
             <ProductionKpiCard
-              title={t('tagsCardTitle')}
+              title={t('tagTypesKpiTitle')}
               value={data.tags.length}
               subtitle={t('tagsUsedUnitLabel')}
               icon={TagIcon}
