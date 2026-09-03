@@ -36,6 +36,13 @@
       "when": 1788355982147,
       "tag": "0004_large_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788356000000,
+      "tag": "0005_add_employee_smartcontrol_synced_at",
+      "breakpoints": true
     }
   ]
 }

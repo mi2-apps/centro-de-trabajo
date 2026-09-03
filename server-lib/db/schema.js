@@ -63,11 +63,7 @@ export const employeeReconciliationStatus = pgEnum('EmployeeReconciliationStatus
 ])
 // 2026-09-02 (OIDC corregido segun apps.mi2.com.mx/stack -- flujo "Solicitar acceso" en vez
 // del error muerto no_local_account, ver AccessRequest abajo).
-export const accessRequestStatus = pgEnum('AccessRequestStatus', [
-  'PENDING',
-  'APPROVED',
-  'DENIED',
-])
+export const accessRequestStatus = pgEnum('AccessRequestStatus', ['PENDING', 'APPROVED', 'DENIED'])
 export const employeeSkillSource = pgEnum('EmployeeSkillSource', ['IMPORTED', 'MANUAL'])
 export const importBatchStatus = pgEnum('ImportBatchStatus', ['RUNNING', 'COMPLETED', 'FAILED'])
 export const pendingMoveStatus = pgEnum('PendingMoveStatus', ['PENDING', 'APPROVED', 'REJECTED'])
@@ -122,10 +118,7 @@ export const user = pgTable(
       'btree',
       table.employeeNumber.asc().nullsLast().op('text_ops'),
     ),
-    uniqueIndex('User_oidcSub_key').using(
-      'btree',
-      table.oidcSub.asc().nullsLast().op('text_ops'),
-    ),
+    uniqueIndex('User_oidcSub_key').using('btree', table.oidcSub.asc().nullsLast().op('text_ops')),
     index('User_role_idx').using('btree', table.role.asc().nullsLast().op('enum_ops')),
     uniqueIndex('User_username_key').using(
       'btree',
@@ -168,10 +161,7 @@ export const accessRequest = pgTable(
       'btree',
       table.oidcSub.asc().nullsLast().op('text_ops'),
     ),
-    index('AccessRequest_status_idx').using(
-      'btree',
-      table.status.asc().nullsLast().op('enum_ops'),
-    ),
+    index('AccessRequest_status_idx').using('btree', table.status.asc().nullsLast().op('enum_ops')),
   ],
 )
 export const importedAttendanceReference = pgTable(
@@ -710,6 +700,9 @@ export const employee = pgTable(
     unassignedReason: unassignedReason(),
     unassignedReasonSetAt: timestamp({ precision: 3, mode: 'date' }),
     unassignedReasonSetByUserId: text(),
+    // Ultima vez que el sync automatico con SmartControl (server-lib/personnel-sync.js) toco esta
+    // fila (alta o baja automatica) -- null = nunca tocada por el sync, sigue siendo 100% manual.
+    smartControlSyncedAt: timestamp({ precision: 3, mode: 'date' }),
   },
   (table) => [
     uniqueIndex('Employee_employeeNumber_key').using(

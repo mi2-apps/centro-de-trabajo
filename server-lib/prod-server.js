@@ -15,6 +15,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import { mountApiRoutes } from './api-routes.js'
+import { runPersonnelSync } from './personnel-sync.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(__dirname, '..', 'dist')
@@ -41,3 +42,26 @@ const PORT = process.env.PORT || 3000
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[prod-server] escuchando en 0.0.0.0:${PORT}`)
 })
+
+// Sync automatico Employee <-> SmartControl (2026-09-03, ver server-lib/personnel-sync.js) --
+// SOLO corre aqui, el proceso persistente de Coolify (nunca hay un equivalente en Vercel,
+// serverless, sin proceso propio -- ese remoto ya esta retirado para este repo de todas formas).
+// Nunca debe tumbar el servidor: cualquier error (SmartControl caido, credenciales faltantes) se
+// loguea y se reintenta en el siguiente ciclo, nunca se propaga.
+const PERSONNEL_SYNC_INTERVAL_MS = 30 * 60 * 1000
+async function runPersonnelSyncSafely() {
+  try {
+    const result = await runPersonnelSync()
+    if (result.skipped) {
+      console.log('[personnel-sync]', result.reason)
+    } else {
+      console.log(
+        `[personnel-sync] alta=${result.added.length} baja=${result.bajas.length} (${result.ranAt})`,
+      )
+    }
+  } catch (e) {
+    console.error('[personnel-sync] error:', e.message)
+  }
+}
+setTimeout(runPersonnelSyncSafely, 60 * 1000)
+setInterval(runPersonnelSyncSafely, PERSONNEL_SYNC_INTERVAL_MS)
