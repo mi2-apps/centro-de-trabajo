@@ -915,6 +915,7 @@
     "taktTimeCycleLabel": "Theoretical cycle (sec. per TV)",
     "taktTimeTargetLabel": "{{shiftLabel}} shift target (units)",
     "taktTimeCompactMeta": "(target {{targetPcs}} units, {{shiftLabel}})",
+    "taktTimeCompactMetaSplit": "(target {{targetPcs}} units · {{plantTargetPcs}} split across {{activeLineCount}} lines, {{shiftLabel}})",
     "taktTimeRealTitle": "Real Takt Time",
     "taktTimeRealCompactMeta": "({{realPieces}} real units today)",
     "noTemplateDefinedLabel": "No template defined",

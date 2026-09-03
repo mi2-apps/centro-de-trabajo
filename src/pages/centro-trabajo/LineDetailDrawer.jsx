@@ -66,6 +66,7 @@ import {
 import {
   classifyAreaStatus,
   getActividadForEmployee,
+  getAreaHeadcount,
   getAreaStatusMeta,
   getEffectiveTodayRoster,
   getGroupAreaStaffing,
@@ -235,7 +236,17 @@ export default function LineDetailDrawer({
   const coveragePct = staffing?.ideal ? Math.round((staffing.real / staffing.ideal) * 100) : null
   const currentOfficialShift = getCurrentShift()
   const ShiftIcon = currentOfficialShift.id === 'NOCHE' ? Moon : Sun
-  const taktTime = getTaktTime(currentOfficialShift)
+  // activeLineCount (2026-09-03, a peticion explicita del usuario -- "una linea no puede sacar
+  // las 1500, es imposible"): cuantas de las 11 lineas FFT (LINEA1..10 + PROYECTO/"WC LINEA 0")
+  // tienen al menos una persona real asignada hoy -- la meta de planta (1500/500) se reparte entre
+  // ellas para el Takt Time teorico de ESTA linea (ver getTaktTime, catalog.js). Se recalcula con
+  // `version` (mismo patron de todo este archivo) porque cambia en vivo con cada movimiento real.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version fuerza recalcular aunque no se lea en el callback
+  const activeLineCount = useMemo(
+    () => [...LINE_FAMILY_AREA_IDS].filter((id) => getAreaHeadcount(id) > 0).length,
+    [version],
+  )
+  const taktTime = getTaktTime(currentOfficialShift, activeLineCount)
   // biome-ignore lint/correctness/useExhaustiveDependencies: version/configVersion fuerzan recalcular aunque no se lean en el callback (mismo patron en todo este folder)
   const workstations = useMemo(
     () => (canonicalId ? getLineWorkstationsWithOccupancy(canonicalId) : []),

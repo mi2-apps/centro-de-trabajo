@@ -915,6 +915,7 @@
     "taktTimeCycleLabel": "Ciclo teórico (seg. por TV)",
     "taktTimeTargetLabel": "Meta turno {{shiftLabel}} (pzs)",
     "taktTimeCompactMeta": "(meta {{targetPcs}} pzs, {{shiftLabel}})",
+    "taktTimeCompactMetaSplit": "(meta {{targetPcs}} pzs · {{plantTargetPcs}} entre {{activeLineCount}} líneas, {{shiftLabel}})",
     "taktTimeRealTitle": "Takt Time real",
     "taktTimeRealCompactMeta": "({{realPieces}} pzs reales hoy)",
     "noTemplateDefinedLabel": "Sin plantilla definida",

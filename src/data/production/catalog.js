@@ -160,7 +160,24 @@ export function formatShiftSchedule(shift) {
    con el turno de dia los 1500", confirmado explicitamente) -- comparte
    la MISMA meta de 1500 piezas que Matutino, y por lo tanto el mismo
    Takt Time (20.8 s/pieza). No es un turno con meta propia distinta,
-   es una extension del de dia. */
+   es una extension del de dia.
+
+   2026-09-03, tercera correccion (a peticion explicita del usuario,
+   reportando el numero real: "una linea no puede sacar las 1500, es
+   imposible"): 1500/500 SIEMPRE fueron la meta de TODA LA PLANTA junta
+   (todas las lineas FFT sumadas) para ese turno, nunca la meta de una
+   sola linea -- pero se estaba aplicando el numero completo a CADA
+   linea por separado, como si cada una tuviera que sacar las 1500 ella
+   sola. `getTaktTime` ahora recibe `activeLineCount` (cuantas de las 11
+   lineas -- LINEA1..10 + PROYECTO/"WC LINEA 0", ver LINE_FAMILY_AREA_IDS
+   -- tienen al menos una persona real asignada hoy, calculado por el
+   caller vía getAreaHeadcount) y reparte la meta de planta entre ellas
+   en partes iguales: meta POR LINEA = meta de planta / lineas activas
+   hoy. Se ajusta solo cada dia segun cuantas lineas esten realmente
+   trabajando -- nunca un numero fijo por linea que alguien tendria que
+   mantener a mano. Si activeLineCount no se pasa (o es 0), se usa la
+   meta de planta completa sin repartir, para no dividir entre cero ni
+   romper a quien todavia no pasa este dato. */
 export const TAKT_TARGET_PCS_BY_SHIFT = {
   MATUTINO: 1500,
   TIEMPO_EXTRA: 1500,
@@ -168,12 +185,15 @@ export const TAKT_TARGET_PCS_BY_SHIFT = {
 }
 const TAKT_NET_SHIFT_SECONDS = 8 * 3600 + 40 * 60 // 8 h 40 min netos, mismo valor para ambos turnos
 
-export function getTaktTime(shift) {
+export function getTaktTime(shift, activeLineCount) {
   if (!shift) return null
-  const targetPcs = TAKT_TARGET_PCS_BY_SHIFT[shift.id]
-  if (!targetPcs) return null
+  const plantTargetPcs = TAKT_TARGET_PCS_BY_SHIFT[shift.id]
+  if (!plantTargetPcs) return null
+  const targetPcs = activeLineCount > 0 ? plantTargetPcs / activeLineCount : plantTargetPcs
   return {
     targetPcs,
+    plantTargetPcs,
+    activeLineCount: activeLineCount > 0 ? activeLineCount : null,
     durationSeconds: TAKT_NET_SHIFT_SECONDS,
     secondsPerUnit: TAKT_NET_SHIFT_SECONDS / targetPcs,
   }

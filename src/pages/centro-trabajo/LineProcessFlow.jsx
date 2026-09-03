@@ -435,12 +435,18 @@ export default function LineProcessFlow({
             segunda correccion: "debe estar ahi a lado de configurar
             puesto"): ya no es una card aparte arriba, vive compacto aqui
             mismo, justo a la izquierda de "Configurar puestos". Meta REAL
-            de piezas por turno (1500 Matutino/500 Noche, ver
+            de TODA LA PLANTA por turno (1500 Matutino/500 Noche, ver
             TAKT_TARGET_PCS_BY_SHIFT en catalog.js) y el ciclo TEORICO
             resultante -- solo el calculo teorico, sin captura de piezas
             reales (confirmado explicitamente con el usuario). Tiempo
             extra no tiene meta definida -- taktTime sale null y no se
-            muestra nada en vez de inventar un numero. */}
+            muestra nada en vez de inventar un numero.
+
+            2026-09-03 (a peticion explicita del usuario, "una linea no
+            puede sacar las 1500, es imposible"): la meta de planta ahora
+            se REPARTE entre las lineas activas hoy (getTaktTime recibe
+            activeLineCount desde LineDetailDrawer.jsx) -- taktTime.targetPcs
+            ya es la porcion de ESTA linea, no el total de planta. */}
         {taktTime && (
           <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E9D5FF] bg-[#FAF5FF] px-3 py-1.5 dark:border-[rgba(168,85,247,.25)] dark:bg-[rgba(168,85,247,.08)]">
             <Timer className="h-3.5 w-3.5 text-[#A855F7]" />
@@ -449,10 +455,17 @@ export default function LineProcessFlow({
             </p>
             <p className="text-[13px] font-extrabold">{taktTime.secondsPerUnit.toFixed(1)}s</p>
             <p className="text-[11px] text-muted-foreground">
-              {t('lineDetailDrawer.taktTimeCompactMeta', {
-                targetPcs: taktTime.targetPcs.toLocaleString(),
-                shiftLabel,
-              })}
+              {taktTime.activeLineCount
+                ? t('lineDetailDrawer.taktTimeCompactMetaSplit', {
+                    targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
+                    plantTargetPcs: taktTime.plantTargetPcs.toLocaleString(),
+                    activeLineCount: taktTime.activeLineCount,
+                    shiftLabel,
+                  })
+                : t('lineDetailDrawer.taktTimeCompactMeta', {
+                    targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
+                    shiftLabel,
+                  })}
             </p>
           </div>
         )}
