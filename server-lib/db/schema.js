@@ -838,48 +838,110 @@ export const userModulePermission = pgTable(
 // catalogo, y el resultado debe seguir siendo historicamente correcto
 // aunque esa area cambie de nombre despues.
 //
-// 2026-09-02, segunda correccion (a peticion explicita del usuario --
-// "solo es por area de trabajo... quita eso de puesto de trabajo"): la
-// auditoria 5S es por AREA, nunca por empleado/puesto especifico (tiene
-// sentido real: 5S clasifica el orden/limpieza de un espacio de
-// trabajo, no el desempeño de una persona) -- se quitan employeeId y
-// stationName por completo (la tabla estaba vacia, sin evaluaciones
-// reales guardadas todavia, migracion segura).
+// 2026-09-02: primera version de la auditoria 5S guardaba solo 1 clasificacion por S, por AREA
+// (se quito employeeId/stationName ese mismo dia -- "quita eso de puesto de trabajo").
+// 2026-09-03 (a peticion explicita del usuario, checklist completo por criterio + Puesto/
+// Empleado/Turno reales, mockup de resultado con radar): AuditEvaluation ya no alcanza --
+// reemplazada por FiveSAudit (cabecera, 1 fila por auditoria completa, puntaje 0-20 normalizado
+// por S en vez de una sola clasificacion) + FiveSAuditAnswer (1 fila por criterio real
+// respondido, ver src/data/audits5s/criteria.js). Tabla vieja confirmada vacia (0 filas reales,
+// verificado en vivo) antes de reemplazarla -- migracion segura, sin perdida de datos.
+// fiveSClassification se conserva tal cual (mismo significado real: como se clasifico un
+// criterio individual), ahora usado por FiveSAuditAnswer.answer en vez de AuditEvaluation.sN.
 export const fiveSClassification = pgEnum('FiveSClassification', [
   'CUMPLE',
   'CUMPLE_PARCIAL',
   'NO_CUMPLE',
 ])
-export const auditEvaluation = pgTable(
-  'AuditEvaluation',
+export const fiveSAudit = pgTable(
+  'FiveSAudit',
   {
     id: text()
       .primaryKey()
       .notNull()
       .$defaultFn(() => cuid()),
     areaId: text().notNull(),
+    // Puesto real (Workstation.name del catalogo de la linea/area, ver
+    // src/data/personnel/workstations.js) -- opcional: no todas las areas auditadas tienen
+    // desglose por puesto (ej. Insumos/Accesorios/Paletizado como area completa).
+    stationName: text(),
+    // employeeId real (FK nullable, onDelete set null -- la auditoria historica se conserva
+    // aunque el empleado ya no exista) + snapshot de numero/nombre AL MOMENTO de la auditoria
+    // (mismo criterio ya usado en DailyAssignment/EmployeeMovement de este mismo schema: el
+    // historial nunca debe cambiar si despues se corrige/renombra al empleado en Employee).
+    employeeId: text(),
+    employeeNumber: text(),
+    employeeName: text(),
+    shift: text(),
     auditDate: date({ mode: 'date' }).notNull(),
-    s1: fiveSClassification().notNull(),
-    s2: fiveSClassification().notNull(),
-    s3: fiveSClassification().notNull(),
-    s4: fiveSClassification().notNull(),
-    s5: fiveSClassification().notNull(),
-    scorePct: integer().notNull(),
+    s1Score: integer().notNull(),
+    s2Score: integer().notNull(),
+    s3Score: integer().notNull(),
+    s4Score: integer().notNull(),
+    s5Score: integer().notNull(),
+    totalScore: integer().notNull(),
+    notes: text(),
     createdByUserId: text().notNull(),
     createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   },
   (table) => [
-    index('AuditEvaluation_areaId_auditDate_idx').using(
+    index('FiveSAudit_areaId_auditDate_idx').using(
       'btree',
       table.areaId.asc().nullsLast().op('text_ops'),
       table.auditDate.asc().nullsLast().op('date_ops'),
     ),
+    index('FiveSAudit_areaId_stationName_idx').using(
+      'btree',
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.stationName.asc().nullsLast().op('text_ops'),
+    ),
     foreignKey({
       columns: [table.createdByUserId],
       foreignColumns: [user.id],
-      name: 'AuditEvaluation_createdByUserId_fkey',
+      name: 'FiveSAudit_createdByUserId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('restrict'),
+    foreignKey({
+      columns: [table.employeeId],
+      foreignColumns: [employee.id],
+      name: 'FiveSAudit_employeeId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+)
+// 1 fila por criterio real respondido -- nunca se recalcula desde la config actual de criterios
+// (src/data/audits5s/criteria.js puede evolucionar; el historial guarda la respuesta/puntaje TAL
+// CUAL se dieron ese dia, ver comentario grande en api/evaluaciones/[id].js sobre "reconstruir
+// exactamente, nunca recalcular").
+export const fiveSAuditAnswer = pgTable(
+  'FiveSAuditAnswer',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    auditId: text().notNull(),
+    category: text().notNull(), // 's1'..'s5'
+    criterionId: text().notNull(),
+    answer: fiveSClassification().notNull(),
+    score: integer().notNull(), // puntos crudos de este criterio (antes de normalizar la S a 0-20)
+    observation: text(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('FiveSAuditAnswer_auditId_idx').using(
+      'btree',
+      table.auditId.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.auditId],
+      foreignColumns: [fiveSAudit.id],
+      name: 'FiveSAuditAnswer_auditId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
   ],
 )

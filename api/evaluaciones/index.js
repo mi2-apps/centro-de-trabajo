@@ -1,70 +1,160 @@
-// Modulo Evaluaciones (2026-09-02, a peticion explicita del usuario):
-// resultados reales de auditorias 5S ya completadas -- ver AuditEvaluation
-// en server-lib/db/schema.js. GET lista (usado por EvaluacionesPage.jsx),
-// POST guarda una auditoria recien terminada (usado por AuditoriaPage.jsx,
-// FiveSDialog). scorePct se calcula SIEMPRE en el servidor a partir de las
-// 5 clasificaciones reales enviadas -- nunca se confia en un numero que
-// mande el cliente, para que el puntaje guardado sea consistente con lo
-// que de verdad se clasifico.
-import { desc, eq } from 'drizzle-orm'
+// Modulo Evaluaciones -- Auditoria 5S completa (2026-09-03, a peticion explicita del usuario:
+// "conviertelo en un sistema completo de evaluacion 5S", checklist real de 40 criterios/5
+// categorias, ver src/data/audits5s/criteria.js -- UNICA fuente de verdad de los criterios,
+// tanto para el frontend como para este endpoint, para que la puntuacion nunca pueda
+// desincronizarse entre lo que el usuario ve y lo que el servidor calcula).
+//
+// Reemplaza la primera version (2026-09-02, 1 sola clasificacion por S, area-only) -- ver
+// FiveSAudit/FiveSAuditAnswer en server-lib/db/schema.js, migracion
+// drizzle/0006_fiveS_audit_full_checklist.sql. GET lo consume EvaluacionesPage.jsx (modulo
+// "/evaluaciones"); POST lo consume AuditoriaPage.jsx al terminar una auditoria 5S completa
+// (modulo "/auditoria") -- mismos 2 module keys que ya existian, sin inventar uno nuevo.
+//
+// El puntaje SIEMPRE se calcula aqui, nunca se confia en un total que mande el cliente (a
+// peticion explicita: "la aplicacion debe calcular todo, NO permitir que el usuario escriba
+// manualmente el resultado total") -- el cliente solo manda las respuestas crudas por criterio.
+//
+// employeeId (2026-09-03, reintroducido a peticion explicita del usuario tras confirmar que
+// revierte la simplificacion "area-only" del 2026-09-02): si se manda, se resuelve el
+// nombre/numero REAL de Employee en este momento y se guarda como snapshot (employeeNumber/
+// employeeName en FiveSAudit) -- el historial nunca debe cambiar si despues se renombra/corrige
+// a ese empleado (mismo criterio ya usado en DailyAssignment/EmployeeMovement).
+import { and, desc, eq } from 'drizzle-orm'
 import { requireAuth } from '../../server-lib/auth.js'
-import { auditEvaluation, db } from '../../server-lib/db/client.js'
+import { db, employee, fiveSAudit, fiveSAuditAnswer, user } from '../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../server-lib/permissionService.js'
+import {
+  ANSWER_POINTS,
+  FIVE_S_CATEGORIES,
+  FIVE_S_CRITERIA,
+  normalizeCategoryScore,
+} from '../../src/data/audits5s/criteria.js'
 
-const CLASSIFICATIONS = new Set(['CUMPLE', 'CUMPLE_PARCIAL', 'NO_CUMPLE'])
-const STEP_SCORE = { CUMPLE: 100, CUMPLE_PARCIAL: 50, NO_CUMPLE: 0 }
-const STEPS = ['s1', 's2', 's3', 's4', 's5']
+const VALID_ANSWERS = new Set(['CUMPLE', 'CUMPLE_PARCIAL', 'NO_CUMPLE'])
+const CRITERIA_BY_ID = new Map(FIVE_S_CRITERIA.map((c) => [c.id, c]))
 
-// 2026-09-02, segunda correccion (a peticion explicita del usuario -- "solo
-// es por area de trabajo, quita eso de puesto de trabajo"): la auditoria 5S
-// es por AREA, ya no por empleado/puesto especifico -- ver comentario junto
-// a auditEvaluation en server-lib/db/schema.js.
 async function handleGet(req, res) {
-  const { areaId } = req.query || {}
+  const { areaId, stationName } = req.query || {}
+  const conditions = []
+  if (areaId) conditions.push(eq(fiveSAudit.areaId, areaId))
+  if (stationName) conditions.push(eq(fiveSAudit.stationName, stationName))
   const rows = await db
-    .select()
-    .from(auditEvaluation)
-    .where(areaId ? eq(auditEvaluation.areaId, areaId) : undefined)
-    .orderBy(desc(auditEvaluation.auditDate), desc(auditEvaluation.createdAt))
+    .select({
+      id: fiveSAudit.id,
+      areaId: fiveSAudit.areaId,
+      stationName: fiveSAudit.stationName,
+      employeeId: fiveSAudit.employeeId,
+      employeeNumber: fiveSAudit.employeeNumber,
+      employeeName: fiveSAudit.employeeName,
+      shift: fiveSAudit.shift,
+      auditDate: fiveSAudit.auditDate,
+      s1Score: fiveSAudit.s1Score,
+      s2Score: fiveSAudit.s2Score,
+      s3Score: fiveSAudit.s3Score,
+      s4Score: fiveSAudit.s4Score,
+      s5Score: fiveSAudit.s5Score,
+      totalScore: fiveSAudit.totalScore,
+      notes: fiveSAudit.notes,
+      createdAt: fiveSAudit.createdAt,
+      auditorName: user.name,
+    })
+    .from(fiveSAudit)
+    .leftJoin(user, eq(fiveSAudit.createdByUserId, user.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(fiveSAudit.auditDate), desc(fiveSAudit.createdAt))
   return res.status(200).json({ evaluations: rows })
 }
 
 async function handlePost(req, res) {
-  const { areaId, classifications } = req.body || {}
-  if (!areaId) {
+  const { areaId, stationName, employeeId, shift, notes, answers } = req.body || {}
+  if (!areaId || typeof areaId !== 'string') {
     return res.status(400).json({ error: 'Falta areaId.' })
   }
-  if (!classifications || STEPS.some((s) => !CLASSIFICATIONS.has(classifications[s]))) {
-    return res.status(400).json({ error: 'Las 5 clasificaciones (s1..s5) son requeridas.' })
+  if (!Array.isArray(answers)) {
+    return res.status(400).json({ error: 'Faltan las respuestas del checklist.' })
   }
 
-  const scorePct = Math.round(
-    STEPS.reduce((sum, s) => sum + STEP_SCORE[classifications[s]], 0) / STEPS.length,
+  const answerByCriterionId = new Map(answers.map((a) => [a.criterionId, a.answer]))
+  const missing = FIVE_S_CRITERIA.filter((c) => !answerByCriterionId.has(c.id))
+  if (missing.length > 0) {
+    return res.status(400).json({
+      error: `Faltan ${missing.length} criterio(s) por evaluar.`,
+      missingCriterionIds: missing.map((c) => c.id),
+    })
+  }
+  const invalid = answers.filter(
+    (a) => !VALID_ANSWERS.has(a.answer) || !CRITERIA_BY_ID.has(a.criterionId),
   )
+  if (invalid.length > 0) {
+    return res.status(400).json({ error: 'Hay respuestas invalidas en el checklist.' })
+  }
 
-  const [created] = await db
-    .insert(auditEvaluation)
+  let employeeSnapshot = { employeeNumber: null, employeeName: null }
+  if (employeeId) {
+    const [emp] = await db
+      .select({
+        id: employee.id,
+        employeeNumber: employee.employeeNumber,
+        fullName: employee.fullName,
+      })
+      .from(employee)
+      .where(eq(employee.id, employeeId))
+      .limit(1)
+    if (!emp) return res.status(400).json({ error: 'El empleado seleccionado ya no existe.' })
+    employeeSnapshot = { employeeNumber: emp.employeeNumber, employeeName: emp.fullName }
+  }
+
+  // Puntaje crudo por categoria -> normalizado a 0-20 (ver criteria.js, unico lugar donde vive
+  // esta formula) -- nunca se recibe ni se confia en un total mandado por el cliente.
+  const rawByCategory = Object.fromEntries(FIVE_S_CATEGORIES.map((c) => [c, 0]))
+  const answerRows = FIVE_S_CRITERIA.map((c) => {
+    const answer = answerByCriterionId.get(c.id)
+    const score = ANSWER_POINTS[answer] * c.weight
+    rawByCategory[c.category] += score
+    return { category: c.category, criterionId: c.id, answer, score }
+  })
+  const categoryScores = Object.fromEntries(
+    FIVE_S_CATEGORIES.map((c) => [c, normalizeCategoryScore(rawByCategory[c], c)]),
+  )
+  const totalScore = FIVE_S_CATEGORIES.reduce((sum, c) => sum + categoryScores[c], 0)
+
+  const now = new Date()
+  const [createdAudit] = await db
+    .insert(fiveSAudit)
     .values({
       areaId,
-      auditDate: new Date(),
-      s1: classifications.s1,
-      s2: classifications.s2,
-      s3: classifications.s3,
-      s4: classifications.s4,
-      s5: classifications.s5,
-      scorePct,
+      stationName: stationName || null,
+      employeeId: employeeId || null,
+      employeeNumber: employeeSnapshot.employeeNumber,
+      employeeName: employeeSnapshot.employeeName,
+      shift: shift || null,
+      auditDate: now,
+      s1Score: categoryScores.s1,
+      s2Score: categoryScores.s2,
+      s3Score: categoryScores.s3,
+      s4Score: categoryScores.s4,
+      s5Score: categoryScores.s5,
+      totalScore,
+      notes: notes || null,
       createdByUserId: req.user.id,
+      updatedAt: now,
     })
     .returning()
 
-  return res.status(201).json({ evaluation: created })
+  await db.insert(fiveSAuditAnswer).values(
+    answerRows.map((a) => ({
+      auditId: createdAudit.id,
+      category: a.category,
+      criterionId: a.criterionId,
+      answer: a.answer,
+      score: a.score,
+      observation: answers.find((x) => x.criterionId === a.criterionId)?.observation || null,
+    })),
+  )
+
+  return res.status(201).json({ evaluation: { ...createdAudit, auditorName: req.user.name } })
 }
 
-// GET lo consume EvaluacionesPage.jsx (modulo "/evaluaciones"); POST lo
-// consume AuditoriaPage.jsx (modulo "/auditoria") al terminar una auditoria
-// 5S -- son 2 modulos independientes en moduleRegistry.js, cada uno
-// configurable por separado, asi que cada verbo se protege contra el
-// modulo que realmente lo usa (nunca ambos contra el mismo).
 export default requireAuth(async (req, res) => {
   if (req.method === 'POST') {
     const allowed = await canUserAccessModule({

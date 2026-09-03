@@ -43,6 +43,13 @@
       "when": 1788356000000,
       "tag": "0005_add_employee_smartcontrol_synced_at",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788442400000,
+      "tag": "0006_fiveS_audit_full_checklist",
+      "breakpoints": true
     }
   ]
 }

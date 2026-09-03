@@ -17,6 +17,8 @@ import oidcStartHandler from '../api/auth/oidc/start.js'
 import oidcStatusHandler from '../api/auth/oidc/status.js'
 import sessionHandler from '../api/auth/session.js'
 import dashboardTrendsHandler from '../api/dashboard/trends.js'
+import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
+import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
 import modulesIndexHandler from '../api/modules/index.js'
 import moduleEffectiveUsersHandler from '../api/permissions/modules/[moduleKey]/users.js'
@@ -118,6 +120,8 @@ export function mountApiRoutes(app) {
 
   app.get('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
+  app.get('/api/evaluaciones/evolution', wrapAsync(evaluacionesEvolutionHandler))
+  app.get('/api/evaluaciones/:id', withDynamicParams(evaluacionByIdHandler))
 
   app.get('/api/work-areas/:code/workstations', withDynamicParams(workAreaWorkstationsIndexHandler))
   app.post(

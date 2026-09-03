@@ -12,9 +12,22 @@
   "colStation": "Puesto",
   "colDate": "Fecha",
   "colScore": "Calificación",
-  "classificationShort": {
-    "CUMPLE": "C",
-    "CUMPLE_PARCIAL": "P",
-    "NO_CUMPLE": "N"
-  }
+  "colAuditor": "Auditor",
+  "evolutionTitle": "Evolución 5S",
+  "evolutionSubtitle": "Tendencia mensual real por área y puesto",
+  "evolutionAreaPlaceholder": "Área",
+  "evolutionStationPlaceholder": "Puesto",
+  "evolutionStationAllOption": "Toda el área",
+  "monthJan": "Ene",
+  "monthFeb": "Feb",
+  "monthMar": "Mar",
+  "monthApr": "Abr",
+  "monthMay": "May",
+  "monthJun": "Jun",
+  "monthJul": "Jul",
+  "monthAug": "Ago",
+  "monthSep": "Sep",
+  "monthOct": "Oct",
+  "monthNov": "Nov",
+  "monthDec": "Dic"
 }
