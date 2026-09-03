@@ -636,6 +636,8 @@
     "movimientosErrorTitle": "Could not load the movements history",
     "directorioTitle": "Full Personnel Directory",
     "directorioSubtitle": "All personnel, person by person — with employee number or as Project",
+    "directoryNoAreaLabel": "No area assigned",
+    "directoryGroupCount": "{{count}} people",
     "withNumberTab": "With Employee Number ({{count}})",
     "projectsTab": "Projects ({{count}})",
     "directorySearchPlaceholder": "Search by name or number...",

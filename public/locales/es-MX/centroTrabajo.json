@@ -636,6 +636,8 @@
     "movimientosErrorTitle": "No se pudo cargar el historial de movimientos",
     "directorioTitle": "Directorio completo de personal",
     "directorioSubtitle": "Todo el personal, persona por persona — con número de empleado o como Proyecto",
+    "directoryNoAreaLabel": "Sin área asignada",
+    "directoryGroupCount": "{{count}} persona(s)",
     "withNumberTab": "Con número de empleado ({{count}})",
     "projectsTab": "Proyectos ({{count}})",
     "directorySearchPlaceholder": "Buscar por nombre o número...",

@@ -636,6 +636,8 @@
     "movimientosErrorTitle": "无法加载调动记录",
     "directorioTitle": "完整人员名录",
     "directorioSubtitle": "全部人员逐一列出 — 含员工编号或以项目形式登记",
+    "directoryNoAreaLabel": "未分配区域",
+    "directoryGroupCount": "{{count}} 人",
     "withNumberTab": "有员工编号（{{count}}）",
     "projectsTab": "项目（{{count}}）",
     "directorySearchPlaceholder": "按姓名或编号搜索…",

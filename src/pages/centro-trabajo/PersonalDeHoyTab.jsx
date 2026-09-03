@@ -18,7 +18,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -150,8 +150,34 @@ function buildEstadoOptions(t) {
 }
 
 const ROSTER_PAGE_SIZE = 8
-const DIRECTORY_PAGE_SIZE = 8
 const AREA_SUMMARY_TOP_N = 5
+
+// Orden de los grupos del Directorio (2026-09-03, a peticion explicita del usuario: "sepáralos
+// por áreas para que me sea más rápido ver si están duplicados o no y encontrar a la gente más
+// rápido") -- mismo orden fisico que WORK_CENTERS (catalog.js), para que coincida con el board de
+// Área operando; "Sin área asignada" siempre al final, nunca mezclado alfabeticamente entre las
+// áreas reales.
+function groupDirectoryByArea(list, t) {
+  const orderIndex = new Map(WORK_CENTERS.map((w, idx) => [w.id, idx]))
+  const groups = new Map()
+  for (const e of list) {
+    const areaId = getEffectiveAreaForEmployee(e.id)
+    const key = areaId || '__SIN_AREA__'
+    if (!groups.has(key)) groups.set(key, { areaId, members: [] })
+    groups.get(key).members.push(e)
+  }
+  return Array.from(groups.values())
+    .map((g) => ({
+      ...g,
+      label: g.areaId ? areaLabel(g.areaId) : t('personalDeHoyTab.directoryNoAreaLabel'),
+    }))
+    .sort((a, b) => {
+      const ia = a.areaId ? (orderIndex.get(a.areaId) ?? Number.MAX_SAFE_INTEGER) : Infinity
+      const ib = b.areaId ? (orderIndex.get(b.areaId) ?? Number.MAX_SAFE_INTEGER) : Infinity
+      if (ia !== ib) return ia - ib
+      return a.label.localeCompare(b.label, 'es')
+    })
+}
 
 export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAsignar }) {
   const { t } = useTranslation('centroTrabajo')
@@ -174,7 +200,6 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
   const [directoryTab, setDirectoryTab] = useState('CON_NUMERO')
   const [directoryQuery, setDirectoryQuery] = useState('')
   const [showAllRoster, setShowAllRoster] = useState(false)
-  const [showAllDirectory, setShowAllDirectory] = useState(false)
 
   const estadoOptions = useMemo(() => buildEstadoOptions(t), [t])
 
@@ -306,9 +331,7 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
     directoryTab === 'CON_NUMERO'
       ? filterDirectory(directoryWithNumber)
       : filterDirectory(directoryProyectos)
-  const visibleDirectory = showAllDirectory
-    ? directoryList
-    : directoryList.slice(0, DIRECTORY_PAGE_SIZE)
+  const directoryGroups = useMemo(() => groupDirectoryByArea(directoryList, t), [directoryList, t])
 
   // Resumen por area -- Top N por personal presente hoy (roster
   // completo, sin filtros de la barra, para que sea una foto general
@@ -589,10 +612,8 @@ export default function PersonalDeHoyTab({ onGoToBajas, onGoToAreas, onGoToSinAs
         proyectosCount={directoryProyectos.length}
         query={directoryQuery}
         onQueryChange={setDirectoryQuery}
-        rows={visibleDirectory}
+        groups={directoryGroups}
         total={directoryList.length}
-        showAll={showAllDirectory}
-        onToggleShowAll={() => setShowAllDirectory((v) => !v)}
         onRowClick={setHistoryEmployee}
       />
 
@@ -890,9 +911,13 @@ function MovimientosDelDiaCard() {
   )
 }
 
-/* Card "Directorio completo de personal" -- mismas 2 tabs/datos de
-   siempre (Con número de empleado / Proyectos), ahora con altura
-   controlada + "Ver directorio completo" para expandir. */
+/* Card "Directorio completo de personal" -- mismas 2 tabs/datos de siempre (Con número de
+   empleado / Proyectos). Rediseño 2026-09-03 (a peticion explicita del usuario: "sepáralos por
+   áreas para que me sea más rápido ver si están duplicados o no y encontrar a la gente más
+   rápido") -- en vez de una tabla larga truncada a N filas, se agrupa por área (mismo orden que
+   el board de Área operando, ver groupDirectoryByArea arriba) para que dos nombres parecidos en
+   la MISMA área salten a la vista de inmediato. Se quita el corte de paginacion (los totales
+   reales, ~80-140 personas, caben perfectamente en un scroll normal ya organizado por seccion). */
 function DirectorioCard({
   tab,
   onTabChange,
@@ -900,10 +925,8 @@ function DirectorioCard({
   proyectosCount,
   query,
   onQueryChange,
-  rows,
+  groups,
   total,
-  showAll,
-  onToggleShowAll,
   onRowClick,
 }) {
   const { t } = useTranslation('centroTrabajo')
@@ -939,46 +962,58 @@ function DirectorioCard({
           />
         </div>
       </div>
-      <div className={cn('mt-2 overflow-x-auto', showAll && 'max-h-[480px] overflow-y-auto')}>
+      <div className="mt-2 max-h-[640px] overflow-y-auto overflow-x-auto">
         <Table>
-          <TableHeader className={showAll ? 'sticky top-0 z-10 bg-card' : undefined}>
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className={tableHeaderRowClass}>
               <TableHead>{t('personalDeHoyTab.colEmpleado')}</TableHead>
               <TableHead>{t('personalDeHoyTab.colNombre')}</TableHead>
-              <TableHead>{t('personalDeHoyTab.colAreaActual')}</TableHead>
               <TableHead>{t('personalDeHoyTab.colFechaIngreso')}</TableHead>
               {tab === 'PROYECTOS' && <TableHead>{t('personalDeHoyTab.colTipo')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((e, idx) => (
-              <TableRow
-                key={e.id}
-                className={cn(tableRowClass(idx), 'cursor-pointer')}
-                onClick={() => onRowClick(e)}
-              >
-                <TableCell className={cn(cellTextClass, 'font-mono font-semibold')}>
-                  {hasRealNumber(e.employeeNumber) ? e.employeeNumber : '—'}
-                </TableCell>
-                <TableCell className={cellTextClass}>{e.name}</TableCell>
-                <TableCell className={cellTextSecondaryClass}>
-                  {areaLabel(getEffectiveAreaForEmployee(e.id)) || '—'}
-                </TableCell>
-                <TableCell className={cellTextSecondaryClass}>{e.fechaIngreso || '—'}</TableCell>
-                {tab === 'PROYECTOS' && (
-                  <TableCell>
-                    <span className={statusChipClass('PENDIENTE')}>
-                      {e.employeeNumber === 'PROYECTO'
-                        ? t('personalDeHoyTab.registeredAsProject')
-                        : t('personalDeHoyTab.sinNumeroConfirmado')}
+            {groups.map((g) => (
+              <Fragment key={g.areaId || '__SIN_AREA__'}>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableCell colSpan={tab === 'PROYECTOS' ? 4 : 3} className="py-1.5">
+                    <span className="text-[11.5px] font-extrabold uppercase tracking-[0.4px] text-muted-foreground">
+                      {g.label}
+                    </span>
+                    <span className="ml-2 text-[11px] font-semibold text-muted-foreground/70">
+                      {t('personalDeHoyTab.directoryGroupCount', { count: g.members.length })}
                     </span>
                   </TableCell>
-                )}
-              </TableRow>
+                </TableRow>
+                {g.members.map((e, idx) => (
+                  <TableRow
+                    key={e.id}
+                    className={cn(tableRowClass(idx), 'cursor-pointer')}
+                    onClick={() => onRowClick(e)}
+                  >
+                    <TableCell className={cn(cellTextClass, 'font-mono font-semibold')}>
+                      {hasRealNumber(e.employeeNumber) ? e.employeeNumber : '—'}
+                    </TableCell>
+                    <TableCell className={cellTextClass}>{e.name}</TableCell>
+                    <TableCell className={cellTextSecondaryClass}>
+                      {e.fechaIngreso || '—'}
+                    </TableCell>
+                    {tab === 'PROYECTOS' && (
+                      <TableCell>
+                        <span className={statusChipClass('PENDIENTE')}>
+                          {e.employeeNumber === 'PROYECTO'
+                            ? t('personalDeHoyTab.registeredAsProject')
+                            : t('personalDeHoyTab.sinNumeroConfirmado')}
+                        </span>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </Fragment>
             ))}
-            {rows.length === 0 && (
+            {total === 0 && (
               <TableRow>
-                <TableCell colSpan={tab === 'PROYECTOS' ? 5 : 4}>
+                <TableCell colSpan={tab === 'PROYECTOS' ? 4 : 3}>
                   <EmptyState
                     compact
                     title={t('personalDeHoyTab.emptyDirectoryTitle')}
@@ -990,16 +1025,6 @@ function DirectorioCard({
           </TableBody>
         </Table>
       </div>
-      {total > 0 && (
-        <div className="border-t border-border p-3 text-right">
-          <Button variant="ghost" size="sm" onClick={onToggleShowAll} className="font-bold">
-            {showAll
-              ? t('personalDeHoyTab.viewLessButton')
-              : t('personalDeHoyTab.viewAllDirectoryButton', { count: total })}
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
