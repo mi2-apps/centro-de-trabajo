@@ -66,6 +66,8 @@
   "weekdayVie": "周五",
   "weekdaySab": "周六",
   "weekdayDom": "周日",
+  "fetchErrorBanner": "无法刷新 FFT 生产数据。",
+  "retryLabel": "重试",
   "weeklyChartTitle": "周对比",
   "weeklyChartSubtitle": "本周与上周对比,按天",
   "weeklyCurrentSeries": "本周",

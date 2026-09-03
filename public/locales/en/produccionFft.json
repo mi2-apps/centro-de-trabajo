@@ -66,6 +66,8 @@
   "weekdayVie": "Friday",
   "weekdaySab": "Saturday",
   "weekdayDom": "Sunday",
+  "fetchErrorBanner": "Could not refresh FFT Production.",
+  "retryLabel": "Retry",
   "weeklyChartTitle": "Weekly comparison",
   "weeklyChartSubtitle": "Current week vs. previous week, by day",
   "weeklyCurrentSeries": "Current week",

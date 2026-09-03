@@ -1,8 +1,9 @@
 import dayjs from 'dayjs'
-import { Boxes, Package, Tag as TagIcon, Users } from 'lucide-react'
+import { Boxes, Package, RefreshCw, Tag as TagIcon, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { alertToneClass, pageClass } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
 import ClassificationMatrix from './ClassificationMatrix'
@@ -58,7 +59,11 @@ export default function ProduccionFftPage() {
       const json = await res.json().catch(() => null)
       if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
       setData(json)
-      setError('')
+      // json.error (2026-09-02): la respuesta puede venir 200 con datos vacios cuando SmartControl
+      // no respondio (best-effort, ver api/production/fft-summary.js) -- eso NO es un fetch fallido,
+      // pero igual debe mostrarse como error real dentro del modulo (a peticion explicita del
+      // usuario: "Si falla BinManager/SmartControl: mostrar error claro... No tumbar toda la app").
+      setError(json?.error ? t('fetchErrorBanner') : '')
     } catch (e) {
       setError(e.message || t('loadErrorGeneric'))
     } finally {
@@ -128,7 +133,20 @@ export default function ProduccionFftPage() {
         />
       )}
 
-      {error && <Alert className={cn(alertToneClass('error'), 'mb-4')}>{error}</Alert>}
+      {error && (
+        <Alert className={cn(alertToneClass('error'), 'mb-4 flex items-center justify-between gap-3')}>
+          <span>{error}</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="shrink-0 font-bold normal-case"
+            onClick={() => fetchData(appliedFilters)}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {t('retryLabel')}
+          </Button>
+        </Alert>
+      )}
 
       {data?.configured === false && (
         <Alert className={cn(alertToneClass('warning'), 'mb-4')}>{t('notConfiguredMessage')}</Alert>
