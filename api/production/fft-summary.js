@@ -15,7 +15,15 @@
 // verificado): Clasificacion/Usuarios/Tendencia desde el primer Takt Time real; Proveedor/
 // Categoria/Tamaño/Comparativa semanal agregados cuando el modulo resulto "muy reducido" frente a
 // la pagina real; Piezas por Tag cerrando un pendiente de una investigacion mucho mas vieja sobre
-// tags BULKY/SORP/PRIOR.J; Progreso de pallets agregado en este rediseño.
+// tags BULKY/SORP/PRIOR.J; Progreso de pallets agregado en este rediseño y CORREGIDO despues (ver
+// server-lib/binmanager-sql.js/getPalletsProgress) tras confirmar que usaba la fuente equivocada.
+//
+// Filtro "Turno" (2026-09-02, a peticion explicita del usuario): shift='1' (mañana + tiempo extra)
+// / '2' (noche/vespertino, cruza medianoche) / vacio (todos) -- ver buildFilteredBaseCte en
+// server-lib/binmanager-sql.js para el horario real verificado. NUNCA se aplica a "Progreso de
+// pallets" -- esa tarjeta es un snapshot fisico en vivo que combina ambos turnos, verificado
+// comparando 2 capturas reales del usuario tomadas en turnos distintos con RECIBIDOS/TERMINADOS
+// identicos.
 //
 // Pendiente sin resolver (documentado, no bloqueante, investigado 3 veces): el total de "Piezas
 // procesadas" de este modulo no cierra exacto contra el total que muestra la pagina real de
@@ -64,7 +72,14 @@ const EMPTY_RESPONSE = {
   tags: [],
   tagsSumToday: 0,
   tagsComparison: null,
-  pallets: { items: [], completedCount: 0, totalCount: 0 },
+  pallets: {
+    items: [],
+    summary: {
+      recibidos: { pallets: 0, pz: 0 },
+      enProceso: { pallets: 0, pz: 0 },
+      terminados: { pallets: 0, pz: 0 },
+    },
+  },
 }
 
 function parseDateParam(value, fallback) {
@@ -195,10 +210,11 @@ export default requireModuleAccess(
     const workCenterId = Number(req.query.workCenterId) || 49
     const classificationCode = req.query.classificationCode || undefined
     const size = req.query.size || undefined
+    const shift = req.query.shift || undefined
     const today = todayDateOnly()
     const dateFrom = parseDateParam(req.query.dateFrom, today)
     const dateTo = parseDateParam(req.query.dateTo, today)
-    const filters = { workCenterId, classificationCode, size }
+    const filters = { workCenterId, classificationCode, size, shift }
 
     const throughputFrom = new Date(dateTo)
     throughputFrom.setDate(throughputFrom.getDate() - (THROUGHPUT_DAYS - 1))
@@ -280,13 +296,6 @@ export default requireModuleAccess(
     const tagsSumToday = tags.reduce((sum, t) => sum + t.qty, 0)
     const prevTagsSum = prevTags ? prevTags.reduce((sum, t) => sum + t.qty, 0) : null
 
-    // "Completado" de pallets (2026-09-02, redefinido tras confusion real del usuario -- el KPI
-    // usaba IsClosedPallet, que en este work center nunca esta en 1 (0/25 siempre, sin importar el
-    // avance real) -- se redefine como pallets con TODAS sus piezas ya procesadas
-    // (PalletQuantityProcess >= PalletQuantityExpected), que si se mueve con el avance real que
-    // muestra la lista de abajo.
-    const completedCount = pallets.filter((p) => p.expected > 0 && p.processed >= p.expected).length
-
     return res.status(200).json({
       configured: true,
       updatedAt: new Date().toISOString(),
@@ -294,7 +303,14 @@ export default requireModuleAccess(
         workCenters,
         classifications: filterOptions.classifications,
         sizes: filterOptions.sizes,
-        selected: { workCenterId, dateFrom: toDateOnly(dateFrom), dateTo: toDateOnly(dateTo), classificationCode: classificationCode || null, size: size || null },
+        selected: {
+          workCenterId,
+          dateFrom: toDateOnly(dateFrom),
+          dateTo: toDateOnly(dateTo),
+          classificationCode: classificationCode || null,
+          size: size || null,
+          shift: shift || null,
+        },
       },
       totalToday,
       totalComparison: { previous: prevTotal, pctChange: pctChange(totalToday, prevTotal) },
@@ -309,7 +325,7 @@ export default requireModuleAccess(
       tags,
       tagsSumToday,
       tagsComparison: { previous: prevTagsSum, pctChange: pctChange(tagsSumToday, prevTagsSum) },
-      pallets: { items: pallets, completedCount, totalCount: pallets.length },
+      pallets,
     })
   },
 )

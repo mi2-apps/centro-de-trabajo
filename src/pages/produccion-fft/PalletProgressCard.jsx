@@ -5,40 +5,48 @@ import { EmptyState } from '../../ui'
 
 const PALLET_PREVIEW_COUNT = 5
 
-function palletPct(p) {
-  if (!p.expected) return 0
-  return Math.max(0, Math.min(100, (p.processed / p.expected) * 100))
-}
-
-/* Fila de un pallet -- 2026-09-02, mockup adjunto. NOTA HONESTA (documentada tambien en
-   server-lib/binmanager-sql.js getPalletsProgress): no se pudo verificar con certeza el
-   significado real de "Recibidos/En proceso/Terminados" a nivel de UN pallet individual con los
-   campos bit disponibles -- se muestran las cantidades REALES (recibido/esperado) en vez de
-   inventar 3 etiquetas de estado sin poder respaldarlas. */
+/* Fila de un pallet -- 2026-09-02, CORREGIDO tras confirmar que el widget real identifica cada
+   pallet por su BinCode (ver server-lib/binmanager-sql.js getPalletsProgress para la investigacion
+   completa: son bins fisicos de BM.Bins, no PO.PurchasePallets). pct = items ya clasificados en FFT
+   (ProductSKU sin sufijo -PNP) / total de items en el bin. */
 function PalletRow({ pallet, t }) {
-  const pct = palletPct(pallet)
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[12.5px] font-bold">{pallet.palletNumber}</span>
+        <span className="font-mono text-[12.5px] font-bold">{pallet.binCode}</span>
         <span className="text-[11px] text-muted-foreground">
-          {pallet.received}/{pallet.expected} {t('palletUnitsLabel')}
+          {pallet.pct.toFixed(0)}% · {pallet.done}/{pallet.total} {t('palletUnitsLabel')}
         </span>
       </div>
       <div className={progressBarClass}>
         <div
           className="h-full rounded-full bg-[#F59E0B] transition-[width] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
-          style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
+          style={{ width: `${Math.max(pallet.pct, pallet.pct > 0 ? 2 : 0)}%` }}
         />
       </div>
     </div>
   )
 }
 
-/* "PROGRESO DE PALLETS" del rediseño de "Producción FFT" (2026-09-02, mockup adjunto). Fuente
-   real: PO.PurchasePallets (ver getPalletsProgress) -- es una cola de pallets abiertos/recientes
-   de este work center, NO se filtra por rango de fechas (la tabla no tiene fecha propia por
-   pallet, mismo comportamiento que "Progreso de pallets" en la pagina externa real). */
+function SummaryStat({ label, bucket, t }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 rounded-md bg-muted/40 px-2 py-2 text-center">
+      <span className="text-[10px] font-bold uppercase tracking-[0.4px] text-muted-foreground">{label}</span>
+      <span className="text-[16px] font-extrabold">{bucket.pallets}</span>
+      <span className="text-[10.5px] text-muted-foreground">
+        {bucket.pz} {t('palletsPzLabel')}
+      </span>
+    </div>
+  )
+}
+
+/* "PROGRESO DE PALLETS" del rediseño de "Producción FFT" (2026-09-02, CORREGIDO el mismo dia tras
+   reportar el usuario que la version anterior -- basada en PO.PurchasePallets -- no coincidia con
+   la tarjeta real: IDs distintos ("405576-0700" vs. numeros de pallet chicos) y estructura distinta
+   (RECIBIDOS/EN PROCESO/TERMINADOS). Ver server-lib/binmanager-sql.js getPalletsProgress para la
+   investigacion completa via el MCP de BinManager. Snapshot fisico EN VIVO del area de FFT -- a
+   proposito NO se filtra por turno/fecha/clasificacion/pulgadas (confirmado con 2 capturas reales
+   del usuario en turnos distintos con RECIBIDOS/TERMINADOS identicos). */
 export default function PalletProgressCard({ t, pallets, emptyMessage }) {
   const [open, setOpen] = useState(false)
   const preview = pallets.items.slice(0, PALLET_PREVIEW_COUNT)
@@ -56,6 +64,11 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
         </div>
       ) : (
         <>
+          <div className="grid grid-cols-3 gap-2 px-5 pt-4">
+            <SummaryStat label={t('palletsReceivedLabel')} bucket={pallets.summary.recibidos} t={t} />
+            <SummaryStat label={t('palletsInProgressLabel')} bucket={pallets.summary.enProceso} t={t} />
+            <SummaryStat label={t('palletsDoneLabel')} bucket={pallets.summary.terminados} t={t} />
+          </div>
           <div className="space-y-3 px-5 py-4">
             {preview.map((p) => (
               <PalletRow key={p.id} pallet={p} t={t} />

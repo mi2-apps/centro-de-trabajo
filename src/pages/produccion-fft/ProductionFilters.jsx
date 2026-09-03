@@ -126,6 +126,31 @@ export default function ProductionFilters({
         </Select>
       </div>
 
+      {/* Turno (2026-09-02, a peticion explicita del usuario): horario real de ESTE work center
+          verificado en vivo contra el SP real (ver server-lib/binmanager-sql.js/
+          buildFilteredBaseCte) -- Turno 1 = manana + tiempo extra (06:00-20:59), Turno 2 =
+          noche/vespertino (21:00-05:59, cruza medianoche). Nombres alternos que usa la gente en la
+          planta (nocturno/vespertino/noche) se muestran juntos en la etiqueta para no imponer un
+          solo nombre "correcto". */}
+      <div className="flex min-w-[190px] flex-col gap-1">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
+          {t('filterShift')}
+        </span>
+        <Select
+          value={draft.shift || ALL_VALUE}
+          onValueChange={(v) => onDraftChange({ ...draft, shift: v === ALL_VALUE ? '' : v })}
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_VALUE}>{t('filterAll')}</SelectItem>
+            <SelectItem value="1">{t('shift1Label')}</SelectItem>
+            <SelectItem value="2">{t('shift2Label')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex gap-2">
         <Button
           onClick={onApply}

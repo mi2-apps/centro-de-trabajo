@@ -38,6 +38,7 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
         if (queryFilters.dateTo) params.set('dateTo', queryFilters.dateTo)
         if (queryFilters.classificationCode) params.set('classificationCode', queryFilters.classificationCode)
         if (queryFilters.size) params.set('size', queryFilters.size)
+        if (queryFilters.shift) params.set('shift', queryFilters.shift)
         const res = await fetch(`/api/production/sku-tracker?${params.toString()}`, { credentials: 'include' })
         const json = await res.json().catch(() => null)
         if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))

@@ -34,7 +34,14 @@ function todayIso() {
   return dayjs().format('YYYY-MM-DD')
 }
 
-const DEFAULT_FILTERS = { workCenterId: 49, dateFrom: todayIso(), dateTo: todayIso(), classificationCode: '', size: '' }
+const DEFAULT_FILTERS = {
+  workCenterId: 49,
+  dateFrom: todayIso(),
+  dateTo: todayIso(),
+  classificationCode: '',
+  size: '',
+  shift: '',
+}
 
 export default function ProduccionFftPage() {
   const { t } = useTranslation('produccionFft')
@@ -55,6 +62,7 @@ export default function ProduccionFftPage() {
       params.set('dateTo', filters.dateTo)
       if (filters.classificationCode) params.set('classificationCode', filters.classificationCode)
       if (filters.size) params.set('size', filters.size)
+      if (filters.shift) params.set('shift', filters.shift)
       const res = await fetch(`/api/production/fft-summary?${params.toString()}`, { credentials: 'include' })
       const json = await res.json().catch(() => null)
       if (!res.ok) throw new Error(json?.error || t('loadErrorGeneric'))
@@ -96,6 +104,10 @@ export default function ProduccionFftPage() {
     setSkuTrackerSearch(name)
     setSkuTrackerOpen(true)
   }
+
+  // Total real de pallets-bin activos ahora mismo en el area FFT (ver
+  // server-lib/binmanager-sql.js/getPalletsProgress) -- usado por el KPI y la tarjeta de abajo.
+  const palletsTotalCount = data?.pallets?.items?.length ?? 0
 
   const throughputData = useMemo(() => {
     if (!data?.dailyThroughput) return []
@@ -176,22 +188,19 @@ export default function ProduccionFftPage() {
             />
             <ProductionKpiCard
               title={t('palletsCompletedKpiTitle')}
-              value={`${data.pallets.completedCount} / ${data.pallets.totalCount}`}
+              value={`${data.pallets.summary.terminados.pallets} / ${palletsTotalCount}`}
               subtitle={t('palletsCompletedLabel')}
               icon={Boxes}
               accent="amber"
               rightSlot={
                 <span className="shrink-0 text-[15px] font-extrabold text-[#F59E0B]">
-                  {data.pallets.totalCount > 0
-                    ? `${((data.pallets.completedCount / data.pallets.totalCount) * 100).toFixed(1)}%`
+                  {palletsTotalCount > 0
+                    ? `${((data.pallets.summary.terminados.pallets / palletsTotalCount) * 100).toFixed(1)}%`
                     : '—'}
                 </span>
               }
               progress={{
-                pct:
-                  data.pallets.totalCount > 0
-                    ? (data.pallets.completedCount / data.pallets.totalCount) * 100
-                    : 0,
+                pct: palletsTotalCount > 0 ? (data.pallets.summary.terminados.pallets / palletsTotalCount) * 100 : 0,
               }}
             />
             <ProductionKpiCard

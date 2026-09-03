@@ -32,13 +32,14 @@ export default requireModuleAccess(
     const workCenterId = Number(req.query.workCenterId) || 49
     const classificationCode = req.query.classificationCode || undefined
     const size = req.query.size || undefined
+    const shift = req.query.shift || undefined
     const today = todayDateOnly()
     const dateFrom = parseDateParam(req.query.dateFrom, today)
     const dateTo = parseDateParam(req.query.dateTo, today)
 
     let rows
     try {
-      rows = await getSkuTrackerToday({ workCenterId, dateFrom, dateTo, classificationCode, size })
+      rows = await getSkuTrackerToday({ workCenterId, dateFrom, dateTo, classificationCode, size, shift })
     } catch (err) {
       return res.status(200).json({ configured: true, error: err.message, rows: [] })
     }

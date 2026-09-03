@@ -79,12 +79,36 @@ async function getPool() {
    antes de la agregacion de cada tarjeta -- nunca cambia la cardinalidad (LPN sigue siendo unico),
    asi que no reintroduce el problema de fan-out ya descartado en getProductionByClassificationToday.
    classificationCode/size son OPCIONALES -- cuando no se pasan, el comportamiento es identico al
-   que ya estaba en produccion antes de este filtro (sin filtro extra). */
-function buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size }) {
+   que ya estaba en produccion antes de este filtro (sin filtro extra).
+
+   shift (2026-09-02, agregado a peticion explicita del usuario -- "separa lo del turno 1 matutino
+   junto con tiempo extra y turno 2... nocturno... vespertino"): verificado en vivo llamando el SP
+   real de este work center (SmartControl.OE.sp_GetTodaysProducedByWorkCenter, via MCP de
+   BinManager) con shift=1 y shift=2 en 2 dias distintos -- el corte real de horario para ESTE work
+   center (FFT/WorkCenterID 49) es 06:00-20:59:59 para Turno 1 (manana + tiempo extra) y
+   21:00-05:59:59 (cruza medianoche) para Turno 2 (noche/vespertino). Con shift=1 el SP dio EXACTO
+   1328 piezas el 2026-09-02, igual al numero que el usuario mostro de la pagina real. Este horario
+   es DISTINTO del de OFFICIAL_SHIFTS en src/data/production/catalog.js (07:00-17:10/17:11-22:00/
+   22:01-07:00) -- ese es el horario de CT LINEA (ensamble), no el de FFT; no se reutiliza aqui a
+   proposito. Turno 2 cruza medianoche, asi que se extiende @dateTo un dia para no perder la cola de
+   madrugada del ultimo dia seleccionado -- igual que hace el SP real (verificado: con
+   startDate=endDate=un dia y shift=2, el SP regresa piezas hasta las ~05am del dia SIGUIENTE). */
+function buildFilteredBaseCte(
+  request,
+  { workCenterId, dateFrom, dateTo, classificationCode, size, shift },
+) {
   request.input('workCenterId', sql.Int, workCenterId)
   request.input('dateFrom', sql.Date, dateFrom)
   request.input('dateTo', sql.Date, dateTo)
   let extraWhere = ''
+  let dateWhere = 'CAST(I.InspectionDate AS DATE) >= @dateFrom AND CAST(I.InspectionDate AS DATE) <= @dateTo'
+  let shiftWhere = ''
+  if (String(shift) === '1') {
+    shiftWhere = " AND CAST(I.InspectionDate AS TIME) >= '06:00:00' AND CAST(I.InspectionDate AS TIME) < '21:00:00'"
+  } else if (String(shift) === '2') {
+    dateWhere = 'CAST(I.InspectionDate AS DATE) >= @dateFrom AND CAST(I.InspectionDate AS DATE) <= DATEADD(DAY, 1, @dateTo)'
+    shiftWhere = " AND (CAST(I.InspectionDate AS TIME) >= '21:00:00' OR CAST(I.InspectionDate AS TIME) < '06:00:00')"
+  }
   if (classificationCode) {
     request.input('classificationCode', sql.NVarChar, classificationCode)
     extraWhere += ' AND WPIC.ClassificationCode = @classificationCode'
@@ -100,8 +124,7 @@ function buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classif
       FROM oe.WorkPlanInspection I WITH (NOLOCK)
       INNER JOIN OE.WorkPlanItemClassifications WPIC WITH (NOLOCK) ON WPIC.ClassificationID = I.ClassificationID
       WHERE I.WorkCenterID = @workCenterId
-        AND CAST(I.InspectionDate AS DATE) >= @dateFrom
-        AND CAST(I.InspectionDate AS DATE) <= @dateTo
+        AND ${dateWhere}${shiftWhere}
     ),
     FilteredBase AS (
       SELECT
@@ -173,10 +196,11 @@ export async function getProductionByUserToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT InspectionBy, COUNT(*) AS Qty
@@ -202,10 +226,11 @@ export async function getProductionByClassificationToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT ClassificationCode, ClassificationName, COUNT(*) AS Qty
@@ -229,10 +254,11 @@ export async function getDailyThroughput({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT CAST(InspectionDate AS DATE) AS Day, COUNT(*) AS Qty
@@ -260,10 +286,11 @@ export async function getProductionBySupplierToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT S.SupplierName, COUNT(*) AS Qty
@@ -289,10 +316,11 @@ export async function getProductionByCategoryToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT C.CategoryName, COUNT(*) AS Qty
@@ -317,10 +345,11 @@ export async function getSizeByClassificationToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT ScreenSize, ClassificationCode, ClassificationName, COUNT(*) AS Qty
@@ -353,10 +382,11 @@ export async function getTagBreakdownToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte}
     SELECT T.Tag, COUNT(DISTINCT R.LicensePlateNumber) AS Qty
@@ -369,47 +399,67 @@ export async function getTagBreakdownToday({
   return result.recordset.map((r) => ({ tag: r.Tag, qty: r.Qty }))
 }
 
-/* Progreso de pallets (2026-09-02, a peticion explicita del usuario -- KPI y tarjeta del rediseño
-   de Producción FFT). Fuente real: PO.PurchasePallets, filtrada por WorkCenterID -- es una cola de
-   pallets abiertos/recientes de este work center (la tabla no tiene columna de fecha propia por
-   pallet, asi que NO se filtra por rango de fechas -- son los pallets vigentes ahora mismo, mismo
-   criterio que "Progreso de pallets" del dashboard real, que tampoco reacciona a los filtros de
-   fecha en la pagina externa). "Terminado" = IsClosedPallet=1 (unico estado inequivoco de los
-   campos reales); el % de cada pallet es PalletQuantityProcess/PalletQuantityExpected -- ambos
-   campos reales de la tabla, nunca una meta inventada. NOTA HONESTA: los campos PalletReceived/
-   PalletInspected/PalletProcess (bits) no tienen una interpretacion 100% verificada como
-   "Recibidos/En proceso" (pendiente de confirmar con mas tiempo online); se muestran las
-   cantidades REALES (Expected/Received/Process) sin forzar una etiqueta de estado que no se pueda
-   respaldar. */
+/* Progreso de pallets (2026-09-02, CORREGIDO tras reportar el usuario que "esta mal el como lo
+   tienes" comparando contra la tarjeta real -- los IDs reales que mostro ("405576-0700",
+   "118253-1392760") NO son PO.PurchasePallets: son BinCode de BM.Bins, verificado en vivo llamando
+   sc_pallet_details (MCP de BinManager, envuelve app.sp_PalletDetails_Get de SmartControl) con esos
+   2 IDs exactos -- devolvio BinID/BinCode identico, ParentBin en el area FFT
+   ("MTY-MAXX-FFT-AREA01"/"02"), y PalletItems = los LPN dentro de ese bin con su ProductSKU
+   completo (SKU + sufijo de condicion, ej. "SNTV008020-PNP", "SNTV007273-DMA").
+
+   Concepto real: un "pallet" aqui es un Bin contenedor fisico parado en el area de FFT, con
+   BinCode que tiene guion -- mismo criterio que usa la card oficial "Palletized (PCS)" del
+   dashboard real de BinManager (BinCode LIKE '%-%'), filtrado por WorkStationID = el work center
+   FFT seleccionado (BM.Bins tiene esa columna directa).
+
+   % completado de cada pallet = items cuyo ProductSKU NO termina en "-PNP" / total de items en el
+   bin. "-PNP" (Pass N Play) = pieza que salio de Sorting aprobada para FFT pero AUN no paso por la
+   inspeccion real de FFT; cualquier otro sufijo (-GRB/-DMA/-GRC/-DMT/-FRM/-TBD/...) significa que
+   YA se clasifico en FFT. Verificado contra los 2 ejemplos reales que dio el usuario: el pallet
+   "405576-0700" (los 16 items, TODOS -PNP) mostraba 0% en la pagina real -- coincide exacto; el
+   pallet "118253-1392760" (mezcla de -PNP con -DMA/-GRB/-DMT/-FRM/-TBD) mostraba 2% -- coincide con
+   muy pocos items resueltos de ~41.
+
+   Los 3 buckets (RECIBIDOS/EN PROCESO/TERMINADOS) son CONTEO DE PALLETS por estado de %, no de
+   piezas -- verificado porque en las 2 capturas del usuario (tomadas en turnos distintos)
+   RECIBIDOS=22 y TERMINADOS=14 se mantuvieron IDENTICOS mientras EN PROCESO subio de 48 a 49 ("creo
+   que ahi si juntan los dos turnos", palabras del usuario): esta tarjeta es un snapshot FISICO en
+   vivo de los pallets que hay AHORA MISMO en el area de FFT, sin filtro de turno/fecha/
+   clasificacion/pulgadas a proposito -- por eso NO pasa por buildFilteredBaseCte. RECIBIDOS = 0%
+   (aun ningun item paso FFT), EN PROCESO = 0% < % < 100%, TERMINADOS = 100%. "pz" de cada bucket =
+   suma de items de los pallets de ese bucket.
+
+   El parseo del sufijo de condicion se hace sobre ProductSKU (confirmado tal cual en vivo arriba)
+   en vez de depender de una columna SKUCondition separada sin poder confirmar antes su formato
+   exacto contra la conexion real de produccion. */
 export async function getPalletsProgress({ workCenterId = 49 }) {
   const pool = await getPool()
   const request = pool.request().input('workCenterId', sql.Int, workCenterId)
   const result = await request.query(`
-    SELECT
-      PurchasePalletID, PalletNumber, PalletQuantityExpected, PalletQuantityReceived,
-      PalletQuantityInspection, PalletQuantityProcess, IsClosedPallet
-    FROM PO.PurchasePallets WITH (NOLOCK)
-    WHERE WorkCenterID = @workCenterId AND PalletNumber <> 1
-    ORDER BY PalletNumber DESC
+    SELECT b.BinID, b.BinCode, bc.ProductSKU
+    FROM BinManagerRO.BM.Bins b WITH (NOLOCK)
+    INNER JOIN BinManagerRO.BM.BinContent bc WITH (NOLOCK) ON bc.BinID = b.BinID
+    WHERE b.WorkStationID = @workCenterId AND b.BinCode LIKE '%-%'
   `)
-  // NOTA HONESTA (2026-09-02, investigado a fondo tras confusion real del usuario viendo produccion):
-  // PalletNumber = 1 NO es un pallet de linea real -- es un valor default/legado que comparten
-  // decenas de registros distintos de intake masivo (PalletQuantityExpected en cientos/miles,
-  // PalletQuantityProcess siempre 0 -- material recibido en bulto que todavia no se reparte a
-  // pallets de trabajo individuales). Mezclarlos con los pallets reales de linea (numerados
-  // 151-158, con avance real pieza por pieza) es lo que hacia esta tarjeta ilegible ("veo 158 a 152
-  // y despues puros 1 con unidades muy altas"). Se excluyen aqui a proposito -- "Progreso de
-  // pallets" ahora muestra solo pallets de trabajo reales, nunca intake sin procesar disfrazado de
-  // pallet individual.
-  return result.recordset.map((r) => ({
-    id: r.PurchasePalletID,
-    palletNumber: r.PalletNumber,
-    expected: r.PalletQuantityExpected ?? 0,
-    received: r.PalletQuantityReceived ?? 0,
-    inspected: r.PalletQuantityInspection ?? 0,
-    processed: r.PalletQuantityProcess ?? 0,
-    isClosed: !!r.IsClosedPallet,
-  }))
+  const byBin = new Map()
+  for (const r of result.recordset) {
+    if (!byBin.has(r.BinID)) byBin.set(r.BinID, { id: r.BinID, binCode: r.BinCode, total: 0, done: 0 })
+    const bin = byBin.get(r.BinID)
+    bin.total += 1
+    if (!String(r.ProductSKU || '').toUpperCase().endsWith('-PNP')) bin.done += 1
+  }
+  const items = [...byBin.values()]
+    .map((bin) => ({ ...bin, pct: bin.total > 0 ? (bin.done / bin.total) * 100 : 0 }))
+    .sort((a, b) => a.binCode.localeCompare(b.binCode))
+
+  const emptyBucket = () => ({ pallets: 0, pz: 0 })
+  const summary = { recibidos: emptyBucket(), enProceso: emptyBucket(), terminados: emptyBucket() }
+  for (const it of items) {
+    const bucket = it.pct === 0 ? summary.recibidos : it.pct >= 100 ? summary.terminados : summary.enProceso
+    bucket.pallets += 1
+    bucket.pz += it.total
+  }
+  return { items, summary }
 }
 
 /* Rastreador de SKUs (2026-09-02, a peticion explicita del usuario: "un rastreador de skus... ver
@@ -438,10 +488,11 @@ export async function getSkuTrackerToday({
   dateTo,
   classificationCode,
   size,
+  shift,
 }) {
   const pool = await getPool()
   const request = pool.request()
-  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size })
+  const cte = buildFilteredBaseCte(request, { workCenterId, dateFrom, dateTo, classificationCode, size, shift })
   const result = await request.query(`
     ${cte},
     Base AS (
