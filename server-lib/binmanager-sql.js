@@ -386,13 +386,20 @@ export async function getPalletsProgress({ workCenterId = 49 }) {
   const request = pool.request().input('workCenterId', sql.Int, workCenterId)
   const result = await request.query(`
     SELECT
-      PalletNumber, PalletQuantityExpected, PalletQuantityReceived,
+      PurchasePalletID, PalletNumber, PalletQuantityExpected, PalletQuantityReceived,
       PalletQuantityInspection, PalletQuantityProcess, IsClosedPallet
     FROM PO.PurchasePallets WITH (NOLOCK)
     WHERE WorkCenterID = @workCenterId
-    ORDER BY PalletNumber DESC
+    ORDER BY PurchasePalletID DESC
   `)
+  // NOTA HONESTA (2026-09-02, encontrado verificando en produccion con datos reales): PalletNumber
+  // NO es unico -- varios pallets reales distintos de este work center comparten literalmente el
+  // valor 1 (probable default/legado, no un bug de esta consulta). Se usa PurchasePalletID (la
+  // llave real de la tabla) como `id` para que el frontend tenga una key de React estable y
+  // distinga pallets aunque PalletNumber se repita -- PalletNumber se sigue mostrando tal cual
+  // (nunca se inventa un numero "bonito" para disimular el dato real).
   return result.recordset.map((r) => ({
+    id: r.PurchasePalletID,
     palletNumber: r.PalletNumber,
     expected: r.PalletQuantityExpected ?? 0,
     received: r.PalletQuantityReceived ?? 0,

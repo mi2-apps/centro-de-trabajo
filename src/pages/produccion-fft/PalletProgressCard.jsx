@@ -58,7 +58,7 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
         <>
           <div className="space-y-3 px-5 py-4">
             {preview.map((p) => (
-              <PalletRow key={p.palletNumber} pallet={p} t={t} />
+              <PalletRow key={p.id} pallet={p} t={t} />
             ))}
           </div>
           <button
@@ -76,7 +76,7 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
           <DialogTitle className="font-extrabold">{t('palletsCardTitle')}</DialogTitle>
           <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
             {pallets.items.map((p) => (
-              <PalletRow key={p.palletNumber} pallet={p} t={t} />
+              <PalletRow key={p.id} pallet={p} t={t} />
             ))}
           </div>
         </DialogContent>
