@@ -18,6 +18,7 @@ const KEYS = {
   baselineSuppressed: 'cp_baseline_suppressed_v1',
   absentEmployeeIds: 'cp_absent_employee_ids_v1',
   employeeStatusOverrides: 'cp_employee_status_overrides_v1',
+  serverIdByLocalId: 'cp_server_id_by_local_id_v1',
 }
 
 function readList(key) {
@@ -118,6 +119,19 @@ export const writeAbsentEmployeeIds = (ids) => writeList(KEYS.absentEmployeeIds,
 export const readEmployeeStatusOverrides = () => readObject(KEYS.employeeStatusOverrides)
 export const writeEmployeeStatusOverrides = (overrides) =>
   writeObject(KEYS.employeeStatusOverrides, overrides)
+
+/* Mapa localId -> employeeId real del servidor (2026-09-03, corrige bug real reportado por el
+   usuario -- "Beckham" duplicado en el layout: uno con el nombre corto original y otro con el
+   nombre completo tras enriquecerlo en la base). serverIdByLocalId ya existia en apiSync.js pero
+   SOLO en memoria (se perdia en cada recarga de pagina) -- para gente sin numero de empleado,
+   apiSync.js resolvia la identidad servidor->local por COINCIDENCIA EXACTA DE NOMBRE en cada
+   sondeo; si el nombre real cambiaba en el servidor (o simplemente se recargaba la pestaña), esa
+   coincidencia se rompia y el poll creaba una "persona nueva" duplicada en vez de reconocer que
+   ya conocia a esta persona. Persistir el vinculo aqui hace que, una vez establecido una vez, un
+   cambio de nombre posterior en el servidor YA NO cree una segunda identidad -- ver pollOnce en
+   apiSync.js para donde se usa. */
+export const readServerIdByLocalId = () => readObject(KEYS.serverIdByLocalId)
+export const writeServerIdByLocalId = (map) => writeObject(KEYS.serverIdByLocalId, map)
 
 /* ── Suscripcion simple para que la UI se refresque cuando cambian
    datos de personal — sea por una escritura local (checkInEmployee,

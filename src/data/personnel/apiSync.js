@@ -29,6 +29,7 @@ import {
   readEmployees,
   readMovements,
   readPendingMoves,
+  readServerIdByLocalId,
   writeAbsentEmployeeIds,
   writeAssignments,
   writeBaselineSuppressed,
@@ -36,6 +37,7 @@ import {
   writeEmployees,
   writeMovements,
   writePendingMoves,
+  writeServerIdByLocalId,
 } from './store'
 
 /* Intervalo bajado de 7000 a 2000ms (2026-08-25, a peticion explicita del
@@ -61,7 +63,15 @@ async function apiFetch(path, options = {}) {
   return data
 }
 
-const serverIdByLocalId = new Map()
+/* Persistido en localStorage (2026-09-03, ver comentario grande en store.js junto a
+   readServerIdByLocalId/writeServerIdByLocalId) -- sobrevive recargas de pagina. Cualquier
+   escritura pasa SIEMPRE por linkServerId() de aqui abajo, nunca `.set()` directo, para que
+   quede persistido tambien. */
+const serverIdByLocalId = new Map(Object.entries(readServerIdByLocalId()))
+function linkServerId(localId, serverId) {
+  serverIdByLocalId.set(localId, serverId)
+  writeServerIdByLocalId(Object.fromEntries(serverIdByLocalId))
+}
 const serverPendingIdByLocalId = new Map()
 /* Id real (cuid de Prisma User) del usuario logueado en ESTE dispositivo -- lo fija AppLayout.jsx
    via setCurrentUserId cuando cambia la sesion. Se usa solo para decidir a quien mostrarle el
@@ -139,7 +149,7 @@ export function syncCheckIn({
     }),
   })
     .then((data) => {
-      if (data?.employee?.id) serverIdByLocalId.set(employeeId, data.employee.id)
+      if (data?.employee?.id) linkServerId(employeeId, data.employee.id)
     })
     .catch((e) => console.error('[personnel-sync] checkin', e))
 }
@@ -221,7 +231,7 @@ export async function syncSetUnassignedReason({ employeeId, employeeNumber, name
       reason: reason || null,
     }),
   })
-  if (data?.employee?.id) serverIdByLocalId.set(employeeId, data.employee.id)
+  if (data?.employee?.id) linkServerId(employeeId, data.employee.id)
   markRecentWrite(employeeId)
   return data
 }
@@ -327,6 +337,13 @@ async function pollOnce() {
   } = await apiFetch('/api/personnel/roster')
   const { byNumber, byName } = buildLocalIndex()
   const serverToLocalId = new Map()
+  // Vinculo ya conocido de un poll anterior (persistido, sobrevive recargas) -- SIEMPRE tiene
+  // prioridad sobre el match por nombre/numero. Corrige bug real 2026-09-03 ("Beckham"
+  // duplicado): si el fullName de alguien sin folio cambia en el servidor, el match por nombre
+  // ya no encuentra a la persona local existente y antes se creaba una identidad nueva
+  // (fantasma) en vez de reconocer que ya se conocia via su employeeId real.
+  const knownLocalIdByServerId = new Map()
+  serverIdByLocalId.forEach((sId, lId) => knownLocalIdByServerId.set(sId, lId))
 
   const dynamicEmployees = readEmployees()
   const newDynamicEmployees = []
@@ -336,10 +353,13 @@ async function pollOnce() {
   const today = dayjs().format('YYYY-MM-DD')
   const touchedIds = new Set(movements.filter((m) => m.date === today).map((m) => m.employeeId))
   let changed = false
+  let dynamicEmployeesHealed = false
 
   roster.forEach((row) => {
     const placeholder = isPlaceholderNumber(row.employeeNumber)
-    let localId = placeholder ? byName.get(row.fullName) : byNumber.get(row.employeeNumber)
+    let localId =
+      knownLocalIdByServerId.get(row.employeeId) ||
+      (placeholder ? byName.get(row.fullName) : byNumber.get(row.employeeNumber))
 
     if (!localId) {
       // Empleado que no existe localmente todavia (dado de alta desde otro dispositivo).
@@ -353,8 +373,26 @@ async function pollOnce() {
       })
       if (placeholder) byName.set(row.fullName, localId)
       else byNumber.set(row.employeeNumber, localId)
+    } else {
+      // Self-heal: el nombre/numero real pudo haber cambiado en el servidor desde el ultimo
+      // poll (ej. se completo un nombre corto) -- si esta persona ya es una fila dinamica local,
+      // se actualiza en el lugar. Si solo vivia en el snapshot estatico (EMPLOYEE_DIRECTORY,
+      // congelado hasta el proximo build), se deja como esta -- promoverla a fila dinamica aqui
+      // arriesgaria un id duplicado en getAllEmployees() (repository.js dedupea por
+      // employeeNumber, no por id).
+      const existingDynamic = dynamicEmployees.find((e) => e.id === localId)
+      const freshNumber = row.employeeNumber || 'PROYECTO'
+      if (
+        existingDynamic &&
+        (existingDynamic.name !== row.fullName || existingDynamic.employeeNumber !== freshNumber)
+      ) {
+        existingDynamic.name = row.fullName
+        existingDynamic.employeeNumber = freshNumber
+        dynamicEmployeesHealed = true
+        changed = true
+      }
     }
-    serverIdByLocalId.set(localId, row.employeeId)
+    linkServerId(localId, row.employeeId)
     serverToLocalId.set(row.employeeId, localId)
 
     if (row.baselineSuppressed && !baselineSuppressed.has(localId)) {
@@ -437,7 +475,7 @@ async function pollOnce() {
     }
   })
 
-  if (newDynamicEmployees.length) {
+  if (newDynamicEmployees.length || dynamicEmployeesHealed) {
     writeEmployees([...dynamicEmployees, ...newDynamicEmployees])
     changed = true
   }
@@ -561,7 +599,7 @@ async function pollOnce() {
       localId = byNumber.get(row.employeeNumber)
     }
     if (!localId) return
-    serverIdByLocalId.set(localId, row.id)
+    linkServerId(localId, row.id)
     nextStatusOverrides[localId] = {
       active: row.active,
       unassignedReason: row.unassignedReason,
