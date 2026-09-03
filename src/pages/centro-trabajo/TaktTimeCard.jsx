@@ -1,60 +1,68 @@
 import { Activity, Timer } from 'lucide-react'
-import { cardClass, cardHeaderClass, cardHeaderSubtitleClass, cardHeaderTitleClass } from '@/lib/pageStyles'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  cardClass,
+  cardHeaderClass,
+  cardHeaderSubtitleClass,
+  cardHeaderTitleClass,
+  cellTextClass,
+  cellTextSecondaryClass,
+  tableHeaderRowClass,
+  tableRowClass,
+} from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
 
-function StatBlock({ icon: Icon, tone, title, seconds, metaLine }) {
-  const toneClass =
-    tone === 'purple'
-      ? 'border-[#E9D5FF] bg-[#FAF5FF] dark:border-[rgba(168,85,247,.25)] dark:bg-[rgba(168,85,247,.08)]'
-      : 'border-[#BBF7D0] bg-[#F0FDF4] dark:border-[rgba(34,197,94,.25)] dark:bg-[rgba(34,197,94,.08)]'
-  const iconClass = tone === 'purple' ? 'text-[#A855F7]' : 'text-[#22C55E]'
-  return (
-    <div className={cn('flex-1 rounded-lg border px-4 py-3.5', toneClass)}>
-      <div className="flex items-center gap-1.5">
-        <Icon className={cn('h-4 w-4', iconClass)} />
-        <p className="text-[10.5px] font-bold uppercase tracking-[0.4px] text-muted-foreground">{title}</p>
-      </div>
-      <p className="mt-1.5 text-[28px] font-extrabold leading-none">
-        {seconds != null ? `${seconds.toFixed(1)}s` : '—'}
-      </p>
-      <p className="mt-1.5 text-[12px] text-muted-foreground">{metaLine}</p>
-    </div>
-  )
-}
-
-/* Card de Takt Time (teorico + real), UNA por cada una de las 11 lineas FFT (LINEA1..10 +
-   PROYECTO/"WC LINEA 0") -- rediseño 2026-09-03, a peticion explicita del usuario: "quiero la
-   card... en las 11 lineas para que este completo... haya o no haya pzs ya cuando haya que se
-   ponga ahi los resultados". Antes vivia comprimida como 2 pastillas en el header de "Distribución
-   de estaciones" (LineProcessFlow.jsx) -- se movio aqui, su propia card con mas espacio, debajo de
-   la barra de busqueda de personal (LineDetailDrawer.jsx), SIEMPRE visible en las 11 lineas
-   (mientras haya un turno oficial activo -- getCurrentShift() siempre devuelve uno) sin importar si
-   esta linea tiene personal o piezas reales hoy: cuando no hay piezas reales todavia, el bloque
-   verde muestra "—" y el aviso de "sin piezas reales hoy todavia" en vez de desaparecer o inventar
-   un numero.
-
-   Teorico (morado): tiempo neto del turno (31,200s) / meta de ESTA linea (meta de planta 1500/500
-   repartida entre las lineas activas hoy, ver getTaktTime en catalog.js).
-   Real (verde): mismo tiempo del turno / piezas reales de HOY que BinManager le atribuye a esta
-   linea (api/production/takt-real.js, cruce por nombre). Nunca cronometra pieza por pieza -- es una
-   proyeccion de "a este ritmo, cuanto tardaria cada pieza si se mantiene todo el turno". */
+/* Tabla de Takt Time (teorico + real), UNA por cada una de las 11 lineas FFT (LINEA1..10 +
+   PROYECTO/"WC LINEA 0") -- rediseño 2026-09-03, a peticion explicita del usuario, 2 rondas:
+   1ra ronda: card propia con mas espacio, debajo de la barra de busqueda, SIEMPRE visible en las
+   11 lineas (haya o no haya personal/piezas reales hoy -- ver LineDetailDrawer.jsx, realTakt nunca
+   sale null, solo secondsPerUnit null cuando no hay piezas reales todavia).
+   2da ronda ("te dije una card que explique que es cada quien y como se mide... te dije abajo del
+   buscador una TABLA CHICA no esa card gigante"): se cambia el formato de 2 bloques grandes a una
+   TABLA chica de 3 columnas (Tipo/Seg. por pieza/Qué significa), y cada fila explica el numero en
+   una frase directa ("sale 1 pieza cada Xs...") en vez de dejar el segundo suelto sin contexto. */
 export default function TaktTimeCard({ t, taktTime, realTakt, shiftLabel }) {
   if (!taktTime) return null
-  const theoreticalMeta = taktTime.activeLineCount
-    ? t('lineDetailDrawer.taktTimeCompactMetaSplit', {
-        targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
+
+  const targetPcs = Math.round(taktTime.targetPcs).toLocaleString()
+  const theoreticalExplanation = taktTime.activeLineCount
+    ? t('lineDetailDrawer.taktTimeExplanationSplit', {
+        seconds: taktTime.secondsPerUnit.toFixed(1),
+        targetPcs,
         plantTargetPcs: taktTime.plantTargetPcs.toLocaleString(),
         activeLineCount: taktTime.activeLineCount,
         shiftLabel,
       })
-    : t('lineDetailDrawer.taktTimeCompactMeta', {
-        targetPcs: Math.round(taktTime.targetPcs).toLocaleString(),
+    : t('lineDetailDrawer.taktTimeExplanation', {
+        seconds: taktTime.secondsPerUnit.toFixed(1),
+        targetPcs,
         shiftLabel,
       })
-  const realMeta =
-    realTakt?.secondsPerUnit != null
-      ? t('lineDetailDrawer.taktTimeRealCompactMeta', { realPieces: realTakt.realPieces.toLocaleString() })
-      : t('lineDetailDrawer.taktTimeRealEmptyLabel')
+
+  const rows = [
+    {
+      id: 'theoretical',
+      icon: Timer,
+      tone: 'text-[#A855F7]',
+      label: t('lineDetailDrawer.taktTimeTitle'),
+      seconds: taktTime.secondsPerUnit,
+      explanation: theoreticalExplanation,
+    },
+    {
+      id: 'real',
+      icon: Activity,
+      tone: 'text-[#22C55E]',
+      label: t('lineDetailDrawer.taktTimeRealTitle'),
+      seconds: realTakt?.secondsPerUnit ?? null,
+      explanation:
+        realTakt?.secondsPerUnit != null
+          ? t('lineDetailDrawer.taktTimeRealExplanation', {
+              seconds: realTakt.secondsPerUnit.toFixed(1),
+              realPieces: realTakt.realPieces.toLocaleString(),
+            })
+          : t('lineDetailDrawer.taktTimeRealEmptyLabel'),
+    },
+  ]
 
   return (
     <div className={cn(cardClass, 'mb-6')}>
@@ -64,22 +72,31 @@ export default function TaktTimeCard({ t, taktTime, realTakt, shiftLabel }) {
           <p className={cardHeaderSubtitleClass}>{t('lineDetailDrawer.taktTimeCardSubtitle')}</p>
         </div>
       </div>
-      <div className="flex flex-col gap-3 p-5 sm:flex-row">
-        <StatBlock
-          icon={Timer}
-          tone="purple"
-          title={t('lineDetailDrawer.taktTimeTitle')}
-          seconds={taktTime.secondsPerUnit}
-          metaLine={theoreticalMeta}
-        />
-        <StatBlock
-          icon={Activity}
-          tone="green"
-          title={t('lineDetailDrawer.taktTimeRealTitle')}
-          seconds={realTakt?.secondsPerUnit ?? null}
-          metaLine={realMeta}
-        />
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className={tableHeaderRowClass}>
+            <TableHead>{t('lineDetailDrawer.taktTimeColType')}</TableHead>
+            <TableHead>{t('lineDetailDrawer.taktTimeColSeconds')}</TableHead>
+            <TableHead>{t('lineDetailDrawer.taktTimeColMeaning')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row, idx) => (
+            <TableRow key={row.id} className={tableRowClass(idx)}>
+              <TableCell className={cn(cellTextClass, 'whitespace-nowrap font-bold')}>
+                <span className="flex items-center gap-1.5">
+                  <row.icon className={cn('h-3.5 w-3.5 shrink-0', row.tone)} />
+                  {row.label}
+                </span>
+              </TableCell>
+              <TableCell className={cn(cellTextClass, 'whitespace-nowrap font-extrabold')}>
+                {row.seconds != null ? `${row.seconds.toFixed(1)}s` : '—'}
+              </TableCell>
+              <TableCell className={cellTextSecondaryClass}>{row.explanation}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
