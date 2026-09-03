@@ -72,7 +72,7 @@ export default function PalletProgressCard({ t, pallets, emptyMessage }) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-[520px] flex-col">
+        <DialogContent className="flex max-h-[85vh] max-w-[520px] flex-col p-6">
           <DialogTitle className="font-extrabold">{t('palletsCardTitle')}</DialogTitle>
           <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
             {pallets.items.map((p) => (

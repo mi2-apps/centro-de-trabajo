@@ -86,7 +86,7 @@ export default function TagBreakdownCard({ t, tags, onTagClick, emptyMessage }) 
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className={cn('flex max-h-[85vh] max-w-[520px] flex-col')}>
+        <DialogContent className={cn('flex max-h-[85vh] max-w-[520px] flex-col p-6')}>
           <DialogTitle className="font-extrabold">{t('tagsCardTitle')}</DialogTitle>
           <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
             {tags.map((tg) => (

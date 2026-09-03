@@ -101,7 +101,7 @@ export default function TopInspectorsCard({ t, people, emptyMessage }) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-[720px] flex-col">
+        <DialogContent className="flex max-h-[85vh] max-w-[720px] flex-col p-6">
           <DialogTitle className="font-extrabold">{t('peopleTableTitle')}</DialogTitle>
           <p className="text-[12.5px] text-muted-foreground">{t('peopleTableSubtitle')}</p>
           <div className="min-h-0 flex-1 overflow-auto">

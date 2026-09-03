@@ -65,7 +65,7 @@ export default function SkuTrackerDialog({ open, onOpenChange, search, onSearchC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-[95vw] flex-col lg:max-w-[1200px]">
+      <DialogContent className="flex max-h-[85vh] max-w-[95vw] flex-col p-6 lg:max-w-[1200px]">
         <DialogTitle className="font-extrabold">{t('skuTrackerTitle')}</DialogTitle>
         <p className="text-[12.5px] text-muted-foreground">{t('skuTrackerSubtitle')}</p>
 
