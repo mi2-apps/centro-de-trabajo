@@ -22,6 +22,8 @@ async function getPool() {
     password: SMARTCONTROL_SQLSERVER_PASSWORD,
     database: SMARTCONTROL_SQLSERVER_DB,
     options: { encrypt: true, trustServerCertificate: true },
+    requestTimeout: 20000,
+    connectionTimeout: 15000,
   }).connect()
 }
 
@@ -31,15 +33,12 @@ export default requireModuleAccess(
     if (!isBinManagerSqlConfigured()) return res.status(200).json({ configured: false })
     try {
       const pool = await getPool()
-      const [sampleBins, countByStatus, sampleActive, contentForActive] = await Promise.all([
+      const [countByStatus, sampleActive] = await Promise.all([
         pool.request().query(`
-          SELECT * FROM BinManagerRO.BM.Bins WITH (NOLOCK) WHERE BinID IN (405576, 405670)
-        `),
-        pool.request().query(`
-          SELECT WorkStationID, isActive, BinStatus, COUNT(*) AS Qty
+          SELECT isActive, BinStatus, COUNT(*) AS Qty
           FROM BinManagerRO.BM.Bins WITH (NOLOCK)
           WHERE WorkStationID = 49 AND BinCode LIKE '%-%'
-          GROUP BY WorkStationID, isActive, BinStatus
+          GROUP BY isActive, BinStatus
           ORDER BY Qty DESC
         `),
         pool.request().query(`
@@ -48,21 +47,11 @@ export default requireModuleAccess(
           WHERE WorkStationID = 49 AND BinCode LIKE '%-%' AND isActive = 1
           ORDER BY EnteredDate DESC
         `),
-        pool.request().query(`
-          SELECT b.BinID, b.BinCode, COUNT(*) AS items
-          FROM BinManagerRO.BM.Bins b WITH (NOLOCK)
-          INNER JOIN BinManagerRO.BM.BinContent bc WITH (NOLOCK) ON bc.BinID = b.BinID
-          WHERE b.WorkStationID = 49 AND b.BinCode LIKE '%-%' AND b.isActive = 1
-          GROUP BY b.BinID, b.BinCode
-        `),
       ])
       await pool.close()
       return res.status(200).json({
-        sampleBins: sampleBins.recordset,
         countByStatus: countByStatus.recordset,
         sampleActive: sampleActive.recordset,
-        activeBinCount: contentForActive.recordset.length,
-        activeBinTotalItems: contentForActive.recordset.reduce((s, r) => s + r.items, 0),
       })
     } catch (err) {
       return res.status(200).json({ error: err.message })
