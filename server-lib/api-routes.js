@@ -34,6 +34,7 @@ import personnelRosterHandler from '../api/personnel/roster.js'
 import personnelSetUnassignedReasonHandler from '../api/personnel/set-unassigned-reason.js'
 import personnelSuppressBaselineHandler from '../api/personnel/suppress-baseline.js'
 import personnelSwapHandler from '../api/personnel/swap.js'
+import productionDebugBinsHandler from '../api/production/_debug-bins.js'
 import productionFftSummaryHandler from '../api/production/fft-summary.js'
 import productionSkuTrackerHandler from '../api/production/sku-tracker.js'
 import productionTaktRealHandler from '../api/production/takt-real.js'
@@ -111,6 +112,7 @@ export function mountApiRoutes(app) {
   app.get('/api/production/takt-real', wrapAsync(productionTaktRealHandler))
   app.get('/api/production/fft-summary', wrapAsync(productionFftSummaryHandler))
   app.get('/api/production/sku-tracker', wrapAsync(productionSkuTrackerHandler))
+  app.get('/api/production/_debug-bins', wrapAsync(productionDebugBinsHandler))
 
   app.get('/api/dashboard/trends', wrapAsync(dashboardTrendsHandler))
 
