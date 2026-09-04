@@ -104,14 +104,21 @@ function buildStatusMeta(t) {
   }
 }
 
-/* Clases Tailwind por estado -- los 4 colores de STATUS_META (antes hex
-   MUI: #10B981/#EF4444/#3B82F6/#94A3B8) son exactamente los defaults de
-   Tailwind (emerald-500/red-500/blue-500/slate-400), así que en vez de
-   `alpha()` en tiempo de ejecución se usan clases con opacidad entre
-   corchetes -- el MISMO número decimal que antes recibía `alpha(color, N)`,
-   nunca un valor inventado. Todos los literales completos están escritos
-   tal cual (Tailwind no puede descubrir clases armadas por interpolación
-   de string en tiempo de ejecución). */
+/* Clases Tailwind por estado -- originalmente los 4 colores de STATUS_META
+   eran los hex MUI #10B981/#EF4444/#3B82F6/#94A3B8 (emerald-500/red-500/
+   blue-500/slate-400), así que en vez de `alpha()` en tiempo de ejecución
+   se usan clases con opacidad entre corchetes -- el MISMO número decimal
+   que antes recibía `alpha(color, N)`, nunca un valor inventado. Todos los
+   literales completos están escritos tal cual (Tailwind no puede descubrir
+   clases armadas por interpolación de string en tiempo de ejecución).
+
+   2026-09-03 (a peticion explicita del usuario, viendo "Área operando" en
+   vivo -- "las WC LINEAS que no esten operando que esten en color
+   amarillo"): SIN_PERSONAL pasa de slate-400 (gris neutro) a amber-500 --
+   mismo criterio de color ya aplicado en la pestaña "Líneas" (LineasTab.jsx)
+   para líneas vacías. Como todas las áreas de este tablero (no solo WC
+   LINEA) comparten este mismo ZONE_TONE, el cambio aplica de forma
+   consistente a cualquier área con 0 personal, no solo a las líneas. */
 const ZONE_TONE = {
   COMPLETA: {
     border: 'border-emerald-500/[0.35]',
@@ -168,22 +175,22 @@ const ZONE_TONE = {
     text: 'text-blue-500',
   },
   SIN_PERSONAL: {
-    border: 'border-slate-400/[0.35]',
-    border30: 'border-slate-400/[0.3]',
-    borderTop: 'border-t-slate-400',
-    borderLeft: 'border-l-slate-400',
-    bgIdle: 'bg-slate-400/[0.035] dark:bg-slate-400/[0.05]',
-    bgIdleAlt: 'bg-slate-400/[0.06] dark:bg-slate-400/[0.1]',
-    ring25: 'hover:shadow-[0_0_0_2px_rgba(148,163,184,.25)]',
-    ring20: 'hover:shadow-[0_0_0_2px_rgba(148,163,184,.2)]',
-    track18: 'bg-slate-400/[0.18]',
-    divider25: 'bg-slate-400/[0.25]',
-    chip: 'bg-slate-400/[0.15] text-slate-400',
-    fill55: 'bg-slate-400/[0.55]',
-    empty8: 'bg-slate-400/[0.08]',
-    itemBorder25: 'border-slate-400/[0.25]',
-    solid: 'bg-slate-400',
-    text: 'text-slate-400',
+    border: 'border-amber-500/[0.35]',
+    border30: 'border-amber-500/[0.3]',
+    borderTop: 'border-t-amber-500',
+    borderLeft: 'border-l-amber-500',
+    bgIdle: 'bg-amber-500/[0.035] dark:bg-amber-500/[0.05]',
+    bgIdleAlt: 'bg-amber-500/[0.06] dark:bg-amber-500/[0.1]',
+    ring25: 'hover:shadow-[0_0_0_2px_rgba(245,158,11,.25)]',
+    ring20: 'hover:shadow-[0_0_0_2px_rgba(245,158,11,.2)]',
+    track18: 'bg-amber-500/[0.18]',
+    divider25: 'bg-amber-500/[0.25]',
+    chip: 'bg-amber-500/[0.15] text-amber-500',
+    fill55: 'bg-amber-500/[0.55]',
+    empty8: 'bg-amber-500/[0.08]',
+    itemBorder25: 'border-amber-500/[0.25]',
+    solid: 'bg-amber-500',
+    text: 'text-amber-500',
   },
 }
 
