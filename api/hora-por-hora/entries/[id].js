@@ -2,19 +2,25 @@
 // estandar de ESA hora unicamente -- 2026-09-04, a peticion explicita del usuario: "si una hora
 // requiere un estandar distinto, permitir editar unicamente esa hora... nunca modificar registros
 // historicos cuando despues cambie el rate estandar"). gap/cumplimiento NUNCA se guardan ni se
-// reciben del cliente -- son 100% derivados de standardQty/actualQty, calculados donde se
-// muestran (mismo criterio que 5S/ProcessAudit: el servidor nunca confia en un total que mande
-// el cliente, aqui simplemente no existe ese campo para mandar).
-import { eq } from 'drizzle-orm'
+// reciben del cliente -- son 100% derivados de standardQty/actualQty.
+//
+// Perdidas (2026-09-04 v2): el body manda `losses: { [causeId]: value }` -- cada causeId DEBE
+// pertenecer al catalogo del AREA de esta sesion (nunca se confia en un causeId cruzado de otra
+// area, aunque exista de verdad en la tabla). Cada par se guarda como upsert en
+// HourlyProductionIncident (unique entryId+causeId) -- nunca se borra la fila al llegar a 0, un
+// "0 explicito" es un estado valido (igual que las columnas fijas de la v1).
+import { and, eq, inArray } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
 import {
   db,
+  hourlyProductionDowntimeCause,
   hourlyProductionEntry,
+  hourlyProductionIncident,
   hourlyProductionSession,
 } from '../../../server-lib/db/client.js'
 import { loadSessionDetail } from '../../../server-lib/hourlyProduction.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
-import { LOSS_COLUMN_KEYS } from '../../../src/data/shiftProduction/lossColumns.js'
+import { resolveHourByHourAreaGroupKey } from '../../../src/data/production/catalog.js'
 
 const ADMIN_ROLES = new Set(['ADMINISTRADOR', 'SUPERVISOR'])
 
@@ -28,7 +34,7 @@ export default requireAuth(async (req, res) => {
   if (!allowed) return res.status(403).json({ error: 'No autorizado para este modulo' })
 
   const id = req.query.id ?? req.params?.id
-  const { actualQty, standardQty, observations, ...lossFields } = req.body || {}
+  const { actualQty, standardQty, observations, losses } = req.body || {}
 
   const [entry] = await db
     .select({ id: hourlyProductionEntry.id, sessionId: hourlyProductionEntry.sessionId })
@@ -38,7 +44,7 @@ export default requireAuth(async (req, res) => {
   if (!entry) return res.status(404).json({ error: 'Hora no encontrada.' })
 
   const [session] = await db
-    .select({ status: hourlyProductionSession.status })
+    .select({ status: hourlyProductionSession.status, areaId: hourlyProductionSession.areaId })
     .from(hourlyProductionSession)
     .where(eq(hourlyProductionSession.id, entry.sessionId))
     .limit(1)
@@ -66,20 +72,51 @@ export default requireAuth(async (req, res) => {
     values.standardQty = qty
   }
 
-  for (const key of LOSS_COLUMN_KEYS) {
-    if (lossFields[key] === undefined) continue
-    const value = Number(lossFields[key])
-    if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
-      return res.status(400).json({ error: 'Las perdidas deben ser un entero mayor o igual a 0.' })
-    }
-    values[key] = value
-  }
-
   if (observations !== undefined) {
     values.observations = observations === '' ? null : String(observations).slice(0, 2000)
   }
 
-  await db.update(hourlyProductionEntry).set(values).where(eq(hourlyProductionEntry.id, id))
+  if (Object.keys(values).length > 2) {
+    await db.update(hourlyProductionEntry).set(values).where(eq(hourlyProductionEntry.id, id))
+  }
+
+  if (losses && typeof losses === 'object') {
+    const causeIds = Object.keys(losses)
+    if (causeIds.length > 0) {
+      const areaGroupKey = resolveHourByHourAreaGroupKey(session.areaId)
+      const validCauses = await db
+        .select({ id: hourlyProductionDowntimeCause.id })
+        .from(hourlyProductionDowntimeCause)
+        .where(
+          and(
+            eq(hourlyProductionDowntimeCause.areaGroupKey, areaGroupKey || '__none__'),
+            inArray(hourlyProductionDowntimeCause.id, causeIds),
+          ),
+        )
+      const validIds = new Set(validCauses.map((c) => c.id))
+      for (const causeId of causeIds) {
+        if (!validIds.has(causeId)) {
+          return res.status(400).json({ error: `Causa invalida para esta area: ${causeId}` })
+        }
+        const value = Number(losses[causeId])
+        if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+          return res
+            .status(400)
+            .json({ error: 'Las perdidas deben ser un entero mayor o igual a 0.' })
+        }
+      }
+      for (const causeId of causeIds) {
+        const value = Number(losses[causeId])
+        await db
+          .insert(hourlyProductionIncident)
+          .values({ entryId: id, causeId, value, updatedByUserId: req.user.id })
+          .onConflictDoUpdate({
+            target: [hourlyProductionIncident.entryId, hourlyProductionIncident.causeId],
+            set: { value, updatedByUserId: req.user.id, updatedAt: new Date() },
+          })
+      }
+    }
+  }
 
   return res.status(200).json(await loadSessionDetail(entry.sessionId))
 })

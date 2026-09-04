@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { CheckCircle2, Download, History, MoreVertical } from 'lucide-react'
+import { CheckCircle2, Download, History, MoreVertical, Settings } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert } from '@/components/ui/alert'
@@ -32,6 +32,7 @@ import {
   progressBarClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
+import { computeShiftSummary, computeTotalLoss } from '../../data/horaPorHora/dynamicLossMetrics'
 import { exportHourlyProductionToExcel } from '../../data/horaPorHora/exportExcel'
 import {
   getCurrentShift,
@@ -40,12 +41,10 @@ import {
   WORK_CENTERS,
   workCenterById,
 } from '../../data/production/catalog'
-import { computeTotalLoss, LOSS_COLUMNS } from '../../data/shiftProduction/lossColumns'
 import {
   computeCompliancePct,
   computeCumulativeTotals,
   computeGap,
-  computeShiftSummary,
   getActiveEntryIndex,
   getEntryStatus,
   STATUS_LABEL_KEY,
@@ -54,6 +53,7 @@ import { useAuth } from '../../state/auth'
 import { EmptyState } from '../../ui'
 import { showToast } from '../../ui/toast'
 import HourlyAccumulatedChart from './HourlyAccumulatedChart'
+import HourlyCausesAdmin from './HourlyCausesAdmin'
 import HourlyHistoryView from './HourlyHistoryView'
 import HourlyParetoChart from './HourlyParetoChart'
 
@@ -116,6 +116,7 @@ export default function HoraPorHoraPage() {
 
   const [session, setSession] = useState(null)
   const [entries, setEntries] = useState([])
+  const [causes, setCauses] = useState([])
   const [lastStandardRate, setLastStandardRate] = useState(null)
   const [rateInput, setRateInput] = useState(String(DEFAULT_RATE))
   const [lossUnitInput, setLossUnitInput] = useState('PIECES')
@@ -124,6 +125,7 @@ export default function HoraPorHoraPage() {
   const [error, setError] = useState('')
 
   const [showHistory, setShowHistory] = useState(false)
+  const [showCausesAdmin, setShowCausesAdmin] = useState(false)
   const [finalizeConfirm, setFinalizeConfirm] = useState(false)
   const [finalizing, setFinalizing] = useState(false)
 
@@ -147,6 +149,7 @@ export default function HoraPorHoraPage() {
       if (!res.ok) throw new Error(data?.error || t('loadErrorGeneric'))
       setSession(data.session)
       setEntries(data.entries || [])
+      setCauses(data.causes || [])
       setLastStandardRate(data.lastStandardRate ?? null)
       if (!data.session) {
         setRateInput(String(data.lastStandardRate ?? DEFAULT_RATE))
@@ -208,6 +211,7 @@ export default function HoraPorHoraPage() {
       if (!res.ok) throw new Error(data?.error || t('loadErrorGeneric'))
       setSession(data.session)
       setEntries(data.entries || [])
+      setCauses(data.causes || [])
       showToast(t('toastSessionCreated'), 'success')
     } catch (err) {
       setError(err.message || t('loadErrorGeneric'))
@@ -230,6 +234,7 @@ export default function HoraPorHoraPage() {
       if (!res.ok) throw new Error(data?.error || t('loadErrorGeneric'))
       setSession(data.session)
       setEntries(data.entries || [])
+      setCauses(data.causes || [])
       showToast(t('toastShiftFinalized'), 'success')
     } catch (err) {
       showToast(err.message || t('loadErrorGeneric'), 'error')
@@ -252,6 +257,7 @@ export default function HoraPorHoraPage() {
       if (!res.ok) throw new Error(data?.error || t('loadErrorGeneric'))
       setSession(data.session)
       setEntries(data.entries || [])
+      setCauses(data.causes || [])
       showToast(t('toastShiftReopened'), 'success')
     } catch (err) {
       showToast(err.message || t('loadErrorGeneric'), 'error')
@@ -260,7 +266,7 @@ export default function HoraPorHoraPage() {
 
   function handleExport() {
     if (!session) return
-    exportHourlyProductionToExcel({ session, entries, t })
+    exportHourlyProductionToExcel({ session, entries, causes, t })
   }
 
   // flushEntry: manda al API SOLO los campos realmente modificados de esa hora, acumulados desde
@@ -283,6 +289,7 @@ export default function HoraPorHoraPage() {
         if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
         setSession(data.session)
         setEntries(data.entries || [])
+        setCauses(data.causes || [])
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus((s) => (s === 'saved' ? 'idle' : s)), 2000)
       } catch (err) {
@@ -302,6 +309,23 @@ export default function HoraPorHoraPage() {
     pendingRef.current[entryId] = existing
   }
 
+  // Perdida por causa (2026-09-04 v2): a diferencia de queueFieldChange, esto se anida bajo
+  // `losses: {causeId: value}` en vez de un campo plano -- el catalogo de causas varia por area,
+  // asi que no hay una columna fija por nombre (ver entries/[id].js: PATCH acepta `losses`).
+  function queueLossChange(entryId, causeId, value) {
+    setEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, losses: { ...e.losses, [causeId]: value } } : e)),
+    )
+    const existing = pendingRef.current[entryId] || { fields: {}, timer: null }
+    if (existing.timer) clearTimeout(existing.timer)
+    existing.fields = {
+      ...existing.fields,
+      losses: { ...existing.fields.losses, [causeId]: value },
+    }
+    existing.timer = setTimeout(() => flushEntry(entryId), AUTOSAVE_DELAY_MS)
+    pendingRef.current[entryId] = existing
+  }
+
   function flushEntryNow(entryId) {
     const pending = pendingRef.current[entryId]
     if (pending?.timer) clearTimeout(pending.timer)
@@ -310,7 +334,7 @@ export default function HoraPorHoraPage() {
 
   const activeIndex = getActiveEntryIndex(session, shiftConfig, entries)
   const isReadOnly = session?.status === 'FINALIZADO' && !canEditFinalized
-  const summary = useMemo(() => computeShiftSummary(entries), [entries])
+  const summary = useMemo(() => computeShiftSummary(entries, causes), [entries, causes])
   const cumulative = useMemo(
     () => computeCumulativeTotals(entries, activeIndex),
     [entries, activeIndex],
@@ -338,6 +362,18 @@ export default function HoraPorHoraPage() {
 
   if (showHistory) {
     return <HourlyHistoryView onBack={() => setShowHistory(false)} />
+  }
+
+  if (showCausesAdmin) {
+    return (
+      <HourlyCausesAdmin
+        defaultAreaGroupKey={groupKey}
+        onBack={() => {
+          setShowCausesAdmin(false)
+          loadSession()
+        }}
+      />
+    )
   }
 
   return (
@@ -370,6 +406,12 @@ export default function HoraPorHoraPage() {
                   <Download className="mr-2 h-4 w-4" />
                   {t('exportExcelButton')}
                 </DropdownMenuItem>
+                {user?.role === 'ADMINISTRADOR' && (
+                  <DropdownMenuItem onClick={() => setShowCausesAdmin(true)}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    {t('causesAdminMenuItem')}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -635,9 +677,9 @@ export default function HoraPorHoraPage() {
                     <StickyTh index={2}>{t('colActual')}</StickyTh>
                     <StickyTh index={3}>{t('colGap')}</StickyTh>
                     <StickyTh index={4}>{t('colCompliance')}</StickyTh>
-                    {LOSS_COLUMNS.map((c) => (
-                      <Th key={c.key} className="text-right">
-                        {t(c.labelKey)}
+                    {causes.map((c) => (
+                      <Th key={c.id} className="text-right">
+                        {c.name}
                       </Th>
                     ))}
                     <Th className="text-right">{t('colTotalLoss')}</Th>
@@ -697,17 +739,17 @@ export default function HoraPorHoraPage() {
                         <StickyTd index={4} rowBg={rowBg} title={t(STATUS_LABEL_KEY[status])}>
                           {pct == null ? '—' : `${pct.toFixed(1)}%`}
                         </StickyTd>
-                        {LOSS_COLUMNS.map((c) => (
-                          <Td key={c.key} className="p-0">
+                        {causes.map((c) => (
+                          <Td key={c.id} className="p-0">
                             <EditableCell
-                              id={`hph-cell-${rowIndex}-${c.key}`}
-                              value={String(entry[c.key] ?? 0)}
+                              id={`hph-cell-${rowIndex}-loss-${c.id}`}
+                              value={String(entry.losses?.[c.id] ?? 0)}
                               tone="amber"
                               disabled={isReadOnly}
-                              onKeyDown={(e) => handleCellKeyDown(e, rowIndex, c.key)}
+                              onKeyDown={(e) => handleCellKeyDown(e, rowIndex, `loss-${c.id}`)}
                               onChange={(raw) => {
                                 if (raw === '') return
-                                queueFieldChange(entry.id, c.key, parseNonNegativeInt(raw))
+                                queueLossChange(entry.id, c.id, parseNonNegativeInt(raw))
                               }}
                               onBlur={() => flushEntryNow(entry.id)}
                             />
@@ -756,8 +798,8 @@ export default function HoraPorHoraPage() {
                         ? `${summary.compliancePct.toFixed(1)}%`
                         : '—'}
                     </StickyTd>
-                    {summary.lossByColumn.map((c) => (
-                      <Td key={c.labelKey} className="text-right">
+                    {summary.lossByCause.map((c) => (
+                      <Td key={c.causeId} className="text-right">
                         {c.value}
                       </Td>
                     ))}
@@ -771,7 +813,7 @@ export default function HoraPorHoraPage() {
 
           <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <HourlyAccumulatedChart entries={entries} activeIndex={activeIndex} />
-            <HourlyParetoChart entries={entries} lossUnit={session.lossUnit} />
+            <HourlyParetoChart entries={entries} lossUnit={session.lossUnit} causes={causes} />
           </div>
 
           <ShiftSummaryCard summary={summary} lossUnitLabel={lossUnitLabel} t={t} />
@@ -915,10 +957,7 @@ function ShiftSummaryCard({ summary, lossUnitLabel, t }) {
           label={t('summaryTotalLoss')}
           value={summary.totalLoss > 0 ? `${summary.totalLoss} ${lossUnitLabel}` : '—'}
         />
-        <SummaryItem
-          label={t('summaryTopCause')}
-          value={summary.topCauseKey ? t(summary.topCauseKey) : '—'}
-        />
+        <SummaryItem label={t('summaryTopCause')} value={summary.topCauseName || '—'} />
         <SummaryItem
           label={t('summaryCompliantHours')}
           value={`${summary.compliantHours} / ${summary.totalHours}`}

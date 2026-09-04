@@ -20,20 +20,20 @@ import {
   pageTitleClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
+import { computeTotalLoss } from '../../data/horaPorHora/dynamicLossMetrics.js'
 import {
   LINE_FAMILY_AREA_IDS,
   OFFICIAL_SHIFTS,
   WORK_CENTERS,
   workCenterById,
 } from '../../data/production/catalog'
-import { computeTotalLoss, LOSS_COLUMNS } from '../../data/shiftProduction/lossColumns.js'
 import { computeCompliancePct, computeGap } from '../../data/shiftProduction/metrics.js'
 import { EmptyState } from '../../ui'
 
 /* Historico de turnos (2026-09-04, a peticion explicita del usuario -- "Fecha desde, Fecha
    hasta, Turno, Area/Linea... al seleccionar un registro: mostrar TODO el Hora por Hora de ese
-   dia"). SOLO LECTURA -- el detalle reutiliza exactamente las mismas columnas fijas de perdida
-   que la pagina principal (ver src/data/shiftProduction/lossColumns.js), sin inputs. */
+   dia"). SOLO LECTURA -- el detalle usa el catalogo de causas del AREA de esa sesion especifica
+   (selected.causes, ver server-lib/hourlyProduction.js), sin inputs. */
 export default function HourlyHistoryView({ onBack }) {
   const { t } = useTranslation('horaPorHora')
   const [dateFrom, setDateFrom] = useState(dayjs().subtract(7, 'day').format('YYYY-MM-DD'))
@@ -125,8 +125,8 @@ export default function HourlyHistoryView({ onBack }) {
                   <Th>{t('colActual')}</Th>
                   <Th>{t('colGap')}</Th>
                   <Th>{t('colCompliance')}</Th>
-                  {LOSS_COLUMNS.map((c) => (
-                    <Th key={c.key}>{t(c.labelKey)}</Th>
+                  {(selected.causes || []).map((c) => (
+                    <Th key={c.id}>{c.name}</Th>
                   ))}
                   <Th>{t('colTotalLoss')}</Th>
                   <Th>{t('colObservations')}</Th>
@@ -152,8 +152,8 @@ export default function HourlyHistoryView({ onBack }) {
                         {gap == null ? '—' : `${gap > 0 ? '+' : ''}${gap}`}
                       </Td>
                       <Td>{pct == null ? '—' : `${pct.toFixed(1)}%`}</Td>
-                      {LOSS_COLUMNS.map((c) => (
-                        <Td key={c.key}>{entry[c.key] > 0 ? entry[c.key] : '—'}</Td>
+                      {(selected.causes || []).map((c) => (
+                        <Td key={c.id}>{entry.losses?.[c.id] > 0 ? entry.losses[c.id] : '—'}</Td>
                       ))}
                       <Td className="font-bold">
                         {totalLoss > 0 ? `${totalLoss} ${unitLabel}` : '—'}
@@ -308,7 +308,7 @@ export default function HourlyHistoryView({ onBack }) {
                         {row.compliancePct != null ? `${row.compliancePct.toFixed(1)}%` : '—'}
                       </Td>
                       <Td>{row.totalLoss > 0 ? `${row.totalLoss} ${unitLabel}` : '—'}</Td>
-                      <Td>{row.topCauseKey ? t(row.topCauseKey) : '—'}</Td>
+                      <Td>{row.topCauseName || '—'}</Td>
                     </tr>
                   )
                 })}

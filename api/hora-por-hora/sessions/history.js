@@ -2,15 +2,19 @@
 // "Ver historico... Fecha desde, Fecha hasta, Turno, Area/Linea... Fecha, Turno, Area, Esperado,
 // Real, Gap, Cumplimiento, Perdidas, Principal causa"). Solo lectura -- el detalle hora por hora
 // de un registro especifico se pide aparte via GET /api/hora-por-hora/sessions/[id].
-import { and, asc, eq, gte, lte } from 'drizzle-orm'
+//
+// Perdidas (2026-09-04 v2): topCauseName es el NOMBRE real de la causa (texto libre del catalogo
+// por area, ya no una labelKey de i18n -- las causas ahora las escribe el admin, no son fijas).
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
 import {
   db,
+  hourlyProductionDowntimeCause,
   hourlyProductionEntry,
+  hourlyProductionIncident,
   hourlyProductionSession,
 } from '../../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
-import { LOSS_COLUMNS } from '../../../src/data/shiftProduction/lossColumns.js'
 
 export default requireAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
@@ -42,21 +46,44 @@ export default requireAuth(async (req, res) => {
   const results = []
   for (const session of sessions) {
     const entries = await db
-      .select()
+      .select({
+        id: hourlyProductionEntry.id,
+        standardQty: hourlyProductionEntry.standardQty,
+        actualQty: hourlyProductionEntry.actualQty,
+      })
       .from(hourlyProductionEntry)
       .where(eq(hourlyProductionEntry.sessionId, session.id))
 
     const expected = entries.reduce((sum, e) => sum + e.standardQty, 0)
     const actual = entries.reduce((sum, e) => sum + (e.actualQty ?? 0), 0)
 
-    const totalsByColumn = LOSS_COLUMNS.map((c) => ({
-      labelKey: c.labelKey,
-      total: entries.reduce((sum, e) => sum + (e[c.key] || 0), 0),
-    }))
-    const totalLoss = totalsByColumn.reduce((sum, c) => sum + c.total, 0)
-    const topCauseKey =
-      totalsByColumn.filter((c) => c.total > 0).sort((a, b) => b.total - a.total)[0]?.labelKey ||
-      null
+    const entryIds = entries.map((e) => e.id)
+    const incidentRows = entryIds.length
+      ? await db
+          .select({
+            causeId: hourlyProductionIncident.causeId,
+            value: hourlyProductionIncident.value,
+            causeName: hourlyProductionDowntimeCause.name,
+          })
+          .from(hourlyProductionIncident)
+          .innerJoin(
+            hourlyProductionDowntimeCause,
+            eq(hourlyProductionIncident.causeId, hourlyProductionDowntimeCause.id),
+          )
+          .where(inArray(hourlyProductionIncident.entryId, entryIds))
+      : []
+
+    const totalsByCause = new Map()
+    for (const row of incidentRows) {
+      totalsByCause.set(row.causeId, {
+        name: row.causeName,
+        total: (totalsByCause.get(row.causeId)?.total || 0) + row.value,
+      })
+    }
+    const totalLoss = [...totalsByCause.values()].reduce((sum, c) => sum + c.total, 0)
+    const topCauseName =
+      [...totalsByCause.values()].filter((c) => c.total > 0).sort((a, b) => b.total - a.total)[0]
+        ?.name || null
 
     results.push({
       id: session.id,
@@ -70,7 +97,7 @@ export default requireAuth(async (req, res) => {
       gap: actual - expected,
       compliancePct: expected > 0 ? Math.round((actual / expected) * 1000) / 10 : null,
       totalLoss,
-      topCauseKey,
+      topCauseName,
     })
   }
 

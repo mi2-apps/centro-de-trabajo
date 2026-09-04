@@ -1285,22 +1285,12 @@ export const hourlyProductionEntry = pgTable(
     endTime: text().notNull(),
     standardQty: integer().notNull(), // snapshot de session.standardRate AL CREAR esta entrada
     actualQty: integer(), // null = "sin captura" todavia
-    // Perdidas por causa (2026-09-04, columnas fijas -- a peticion explicita del usuario tras
-    // revisar el Excel real "Hora por Hora": ya NO es un catalogo dinamico/incidencias con
-    // modal, son exactamente las 11 causas fijas de esa hoja, una columna cada una, en la
-    // unidad de session.lossUnit. Default 0 (nunca null -- a diferencia de actualQty, "0
-    // perdidas" es un estado valido desde el inicio, no ambiguo con "sin captura").
-    materialVirginLoss: integer().default(0).notNull(),
-    materialWarehouseLoss: integer().default(0).notNull(),
-    systemLoss: integer().default(0).notNull(),
-    internetLoss: integer().default(0).notNull(),
-    scannerLoss: integer().default(0).notNull(),
-    printerLoss: integer().default(0).notNull(),
-    labelsLoss: integer().default(0).notNull(),
-    lpnPalletLoss: integer().default(0).notNull(),
-    personnelLoss: integer().default(0).notNull(),
-    qualityLoss: integer().default(0).notNull(),
-    otherLoss: integer().default(0).notNull(),
+    // Perdidas por causa: 2026-09-04 (v2, a peticion explicita del usuario -- "cada area tiene
+    // sus paros, no todas las areas son iguales... yo pongo el catalogo de cada area") vuelve a
+    // ser un catalogo dinamico (ver hourlyProductionDowntimeCause/hourlyProductionIncident mas
+    // abajo), esta vez escalado POR AREA -- ya no son 11 columnas fijas globales (esa version
+    // solo duro un dia: era exacta al Excel de LINEAS, pero Insumos/Accesorios/Midea/Paletizado
+    // no son produccion y tienen paros reales distintos).
     observations: text(),
     createdByUserId: text().notNull(),
     updatedByUserId: text(),
@@ -1331,6 +1321,95 @@ export const hourlyProductionEntry = pgTable(
       columns: [table.updatedByUserId],
       foreignColumns: [user.id],
       name: 'HourlyProductionEntry_updatedByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+)
+
+// Catalogo de causas de perdida de Hora por Hora (2026-09-04 v2, a peticion explicita del
+// usuario -- "yo pongo el catalogo de cada area, las WC LINEAS si son las mismas 11 pero
+// Paletizado/Insumos/etc no"). areaGroupKey ('LINEAS'/'INSUMOS'/'ACCESORIOS'/'MIDEA'/
+// 'PALETIZADO', ver resolveHourByHourAreaGroupKey en src/data/production/catalog.js) escala el
+// catalogo POR AREA -- cada area tiene su propio conjunto independiente de causas, code es
+// unico solo DENTRO de su area (dos areas pueden coincidir en el mismo code sin conflicto).
+// Nunca se borra fisico (active=false) si ya tiene historico -- mismo criterio que Skill/
+// Workstation.
+export const hourlyProductionDowntimeCause = pgTable(
+  'HourlyProductionDowntimeCause',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    areaGroupKey: text().notNull(),
+    name: text().notNull(),
+    code: text().notNull(),
+    active: boolean().default(true).notNull(),
+    sortOrder: integer().default(0).notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    uniqueIndex('HourlyProductionDowntimeCause_areaGroupKey_code_key').using(
+      'btree',
+      table.areaGroupKey.asc().nullsLast().op('text_ops'),
+      table.code.asc().nullsLast().op('text_ops'),
+    ),
+    index('HourlyProductionDowntimeCause_areaGroupKey_idx').using(
+      'btree',
+      table.areaGroupKey.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+)
+
+// Valor capturado de una causa en una hora especifica (2026-09-04 v2) -- 1 fila por
+// (entryId, causeId) real con valor > 0 o explicitamente capturado en 0, en la unidad de
+// session.lossUnit (una sola unidad por turno, nunca por incidencia individual). Reemplaza la
+// columna fija por causa de la v1 de este mismo dia -- mismo total, ahora normalizado para
+// soportar un catalogo distinto por area.
+export const hourlyProductionIncident = pgTable(
+  'HourlyProductionIncident',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    entryId: text().notNull(),
+    causeId: text().notNull(),
+    value: integer().default(0).notNull(),
+    updatedByUserId: text(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    uniqueIndex('HourlyProductionIncident_entryId_causeId_key').using(
+      'btree',
+      table.entryId.asc().nullsLast().op('text_ops'),
+      table.causeId.asc().nullsLast().op('text_ops'),
+    ),
+    index('HourlyProductionIncident_causeId_idx').using(
+      'btree',
+      table.causeId.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.entryId],
+      foreignColumns: [hourlyProductionEntry.id],
+      name: 'HourlyProductionIncident_entryId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.causeId],
+      foreignColumns: [hourlyProductionDowntimeCause.id],
+      name: 'HourlyProductionIncident_causeId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [user.id],
+      name: 'HourlyProductionIncident_updatedByUserId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('set null'),
@@ -1448,4 +1527,3 @@ export const sortingEntry = pgTable(
       .onDelete('set null'),
   ],
 )
-

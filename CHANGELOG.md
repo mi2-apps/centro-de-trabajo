@@ -105,22 +105,36 @@ para poder desplegar en el servidor privado (Coolify). Ver
   por hora con resaltado sutil de la hora activa ("En proceso"). Captura
   tipo hoja de cálculo directamente en la tabla (clic, escribir, Enter pasa
   a la hora siguiente, Tab avanza de columna) con guardado automático por
-  campo (debounce, sin botón "Guardar"), columnas fijas de pérdida
-  (Mat. virgen/Mat. almacén/Sistema/Internet/Escáner/Impresora/Etiquetas/
-  LPN-Pallet/Falta personal/Calidad/Otra + Observaciones) en una sola
-  unidad Piezas o Minutos por turno (nunca mezcladas), con Total pérdidas y
-  fila TOTAL TURNO automáticos. Columnas Hora/Estándar/Real/GAP/
-  Cumplimiento fijas (sticky) al hacer scroll horizontal en tablet. KPIs y
-  gráfica de acumulado muestran progreso hasta la hora en curso (nunca el
-  turno completo mientras aún faltan horas); "Resumen del turno" y el Excel
-  sí muestran el turno completo. Gráfica de pérdidas por causa, histórico
-  de turnos con detalle hora por hora de solo lectura, exportación a Excel
-  (2 hojas: Hora por Hora/Resumen, mismo layout que el Excel original), y
-  "Finalizar turno"/"Reabrir turno" con confirmación (nunca automático). El
-  rate estándar se congela por hora al capturar — cambiarlo después nunca
-  altera el histórico. Tablas `HourlyProductionSession`/
-  `HourlyProductionEntry` (migraciones `drizzle/0010_add_hourly_production.sql`
-  y `drizzle/0011_hourly_production_fixed_losses.sql`) + endpoints bajo
+  campo (debounce, sin botón "Guardar"), pérdidas por causa + Observaciones
+  en una sola unidad Piezas o Minutos por turno (nunca mezcladas), con
+  Total pérdidas y fila TOTAL TURNO automáticos. Columnas Hora/Estándar/
+  Real/GAP/Cumplimiento fijas (sticky) al hacer scroll horizontal en
+  tablet. KPIs y gráfica de acumulado muestran progreso hasta la hora en
+  curso (nunca el turno completo mientras aún faltan horas); "Resumen del
+  turno" y el Excel sí muestran el turno completo. Gráfica de pérdidas por
+  causa, histórico de turnos con detalle hora por hora de solo lectura,
+  exportación a Excel (2 hojas: Hora por Hora/Resumen, mismo layout que el
+  Excel original), y "Finalizar turno"/"Reabrir turno" con confirmación
+  (nunca automático). El rate estándar se congela por hora al capturar —
+  cambiarlo después nunca altera el histórico.
+  **Causas de pérdida por área** (2026-09-04 v2, a petición explícita del
+  usuario -- "cada área tiene sus paros, no todas las áreas son iguales...
+  yo pongo el catálogo de cada área"): el catálogo de causas ya NO es un
+  set fijo de 11 columnas para todas las áreas -- cada grupo de área
+  (Líneas de producción/Insumos/Accesorios/Midea/Paletizado) tiene su
+  propio catálogo independiente, editable por un ADMINISTRADOR desde
+  "•••" → "Configurar causas" (crear, renombrar, activar/desactivar,
+  reordenar -- nunca eliminar físicamente una causa con histórico). Líneas
+  de producción se sembró con las mismas 11 causas de la versión anterior
+  para no cambiar su comportamiento por defecto; Insumos/Accesorios/Midea/
+  Paletizado empiezan sin causas -- el administrador define las suyas
+  (p. ej. Insumos/Accesorios no son producción, entregan materiales/
+  accesorios a las líneas, así que sus paros reales son distintos). Tablas
+  `HourlyProductionSession`/`HourlyProductionEntry` + `HourlyProductionDowntimeCause`/
+  `HourlyProductionIncident` (migraciones
+  `drizzle/0010_add_hourly_production.sql`,
+  `drizzle/0011_hourly_production_fixed_losses.sql` y
+  `drizzle/0013_hourly_dynamic_causes.sql`) + endpoints bajo
   `/api/hora-por-hora/*`.
 - **Módulo nuevo Sorting** (mismo formato exacto que Hora por Hora, a
   petición explícita del usuario — "es un módulo distinto", no una vista

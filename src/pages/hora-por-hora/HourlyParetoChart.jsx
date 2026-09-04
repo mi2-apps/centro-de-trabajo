@@ -9,16 +9,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { computeParetoData } from '../../data/shiftProduction/metrics.js'
+import { computeParetoData } from '../../data/horaPorHora/dynamicLossMetrics.js'
 import ChartCard from '../dashboard/ChartCard'
 
 const GRID_COLOR = 'hsl(var(--foreground) / 0.06)'
 const AXIS_COLOR = 'hsl(var(--muted-foreground))'
 
-/* Perdidas por causa (2026-09-04, reescrito tras el Excel real "Hora por Hora" -- las 11 causas
-   son columnas fijas de la hora, no incidencias; una sola unidad por TURNO (session.lossUnit),
+/* Perdidas por causa (2026-09-04 v2 -- catalogo de causas por area, ver
+   src/data/horaPorHora/dynamicLossMetrics.js): una sola unidad por TURNO (session.lossUnit),
    nunca un selector -- ya no se puede "mezclar minutos con piezas" porque no hay nada que
-   mezclar). Barras + linea de % acumulado, mismo patron combo-chart ya establecido
+   mezclar. Barras + linea de % acumulado, mismo patron combo-chart ya establecido
    (MissingVsIdealComboCard). */
 function ChartTooltip({ active, payload, label, unitLabel }) {
   const { t } = useTranslation('horaPorHora')
@@ -37,10 +37,10 @@ function ChartTooltip({ active, payload, label, unitLabel }) {
   )
 }
 
-export default function HourlyParetoChart({ entries, lossUnit }) {
+export default function HourlyParetoChart({ entries, lossUnit, causes }) {
   const { t } = useTranslation('horaPorHora')
-  const rawData = computeParetoData(entries)
-  const data = rawData.map((c) => ({ ...c, cause: t(c.labelKey) }))
+  const rawData = computeParetoData(entries, causes)
+  const data = rawData.map((c) => ({ ...c, cause: c.name }))
   const unitLabel = lossUnit === 'MINUTES' ? t('unitMinutesShort') : t('unitPiecesShort')
 
   return (

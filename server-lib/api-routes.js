@@ -24,6 +24,8 @@ import equipmentAuditsIndexHandler from '../api/equipment-audits/index.js'
 import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
 import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
+import horaPorHoraCauseByIdHandler from '../api/hora-por-hora/causes/[id].js'
+import horaPorHoraCausesIndexHandler from '../api/hora-por-hora/causes/index.js'
 import horaPorHoraEntryByIdHandler from '../api/hora-por-hora/entries/[id].js'
 import horaPorHoraSessionByIdHandler from '../api/hora-por-hora/sessions/[id].js'
 import horaPorHoraSessionsHistoryHandler from '../api/hora-por-hora/sessions/history.js'
@@ -139,6 +141,9 @@ export function mountApiRoutes(app) {
   app.get('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
   app.post('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
 
+  app.get('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
+  app.post('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
+  app.patch('/api/hora-por-hora/causes/:id', withDynamicParams(horaPorHoraCauseByIdHandler))
   app.get('/api/hora-por-hora/sessions/history', wrapAsync(horaPorHoraSessionsHistoryHandler))
   app.get('/api/hora-por-hora/sessions', wrapAsync(horaPorHoraSessionsIndexHandler))
   app.post('/api/hora-por-hora/sessions', wrapAsync(horaPorHoraSessionsIndexHandler))

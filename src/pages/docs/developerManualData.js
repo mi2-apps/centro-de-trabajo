@@ -314,12 +314,38 @@ export const DATA_DICTIONARY = [
         'snapshot del standardRate de la sesión al crear la hora -- nunca se recalcula si el rate cambia después',
       ],
       ['actualQty', 'Int?', 'null = sin captura'],
-      [
-        'materialVirginLoss / materialWarehouseLoss / systemLoss / internetLoss / scannerLoss / printerLoss / labelsLoss / lpnPalletLoss / personnelLoss / qualityLoss / otherLoss',
-        'Int (default 0)',
-        '11 columnas fijas de pérdida por causa (reemplazan el catálogo dinámico de incidencias/causas), nunca null',
-      ],
       ['observations', 'String?', 'texto libre opcional por hora'],
+    ],
+  },
+  {
+    model: 'HourlyProductionDowntimeCause',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionDowntimeCause_purpose',
+    fields: [
+      [
+        'areaGroupKey',
+        'String',
+        'LINEAS | INSUMOS | ACCESORIOS | MIDEA | PALETIZADO -- escala el catálogo por área, ver resolveHourByHourAreaGroupKey() en src/data/production/catalog.js',
+      ],
+      [
+        'name / code',
+        'String / String',
+        'code se autogenera (slug) y es único DENTRO de areaGroupKey (no global)',
+      ],
+      ['active', 'Boolean', 'soft-delete -- nunca se borra físicamente una causa con histórico'],
+      ['sortOrder', 'Int', 'orden manual (flechas arriba/abajo en el admin)'],
+    ],
+  },
+  {
+    model: 'HourlyProductionIncident',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionIncident_purpose',
+    fields: [
+      ['entryId', 'String (FK HourlyProductionEntry)', 'unique con causeId'],
+      [
+        'causeId',
+        'String (FK HourlyProductionDowntimeCause)',
+        'debe pertenecer al areaGroupKey de la sesión (validado en el API, nunca solo por FK)',
+      ],
+      ['value', 'Int (default 0)', 'en la unidad de session.lossUnit -- nunca null'],
     ],
   },
   {

@@ -1132,6 +1132,26 @@ export const AREA_DETAIL_VARIANTS = {
 
 export const LINE_FAMILY_AREA_IDS = new Set([...LINES_ONLY.map((w) => w.id), 'PROYECTO'])
 
+/* Grupos de area de Hora por Hora (2026-09-04, a peticion explicita del usuario -- "cada area
+   tiene sus paros, no todas las areas son iguales... yo pongo el catalogo de cada area"): las
+   WC LINEAS comparten UN catalogo de causas (LINEAS), mientras que Insumos/Accesorios/Midea/
+   Paletizado tienen cada una su PROPIO catalogo independiente -- no son produccion (entregan
+   materiales/accesorios a las lineas), asi que sus paros reales son distintos. Unica fuente de
+   verdad de este mapeo -- la usan tanto el selector del cliente (HoraPorHoraPage.jsx) como el
+   API server-side (resolveHourByHourAreaGroupKey) para saber de que catalogo leer/escribir. */
+export const HOUR_BY_HOUR_GROUP_AREA_ID = {
+  INSUMOS: 'INSUMOS',
+  ACCESORIOS: 'ACCESORIOS',
+  MIDEA: 'HIGH_VALUE',
+  PALETIZADO: 'PALETIZADO',
+}
+
+export function resolveHourByHourAreaGroupKey(areaId) {
+  if (LINE_FAMILY_AREA_IDS.has(areaId)) return 'LINEAS'
+  const found = Object.entries(HOUR_BY_HOUR_GROUP_AREA_ID).find(([, id]) => id === areaId)
+  return found ? found[0] : null
+}
+
 /* WC Midea/High Value + Accesorios/Paletizado/Insumos (2026-08-26,
    segunda ronda -- a peticion explicita del usuario: "copia el diseño
    que tiene los WC LINEA 0 a la 10... quiero que pongas los puestos de

@@ -8,19 +8,17 @@
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 import { workCenterById } from '../production/catalog.js'
-import { computeTotalLoss, LOSS_COLUMNS } from '../shiftProduction/lossColumns.js'
 import {
   computeAccumulatedSeries,
   computeCompliancePct,
   computeGap,
-  computeParetoData,
-  computeShiftSummary,
 } from '../shiftProduction/metrics.js'
+import { computeParetoData, computeShiftSummary, computeTotalLoss } from './dynamicLossMetrics.js'
 
 const U = undefined
 
-export function exportHourlyProductionToExcel({ session, entries, t }) {
-  const summary = computeShiftSummary(entries)
+export function exportHourlyProductionToExcel({ session, entries, causes, t }) {
+  const summary = computeShiftSummary(entries, causes)
   const areaName = workCenterById(session.areaId)?.name || session.areaId
   const shiftLabel = t(`shift.${session.shift}`)
   // .slice(0,10): session.date llega como ISO string ("...T00:00:00.000Z") -- pasarlo completo a
@@ -33,7 +31,7 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
   const wb = XLSX.utils.book_new()
 
   // ---------------------------------------------------------------- Hoja "Hora por Hora"
-  const lossHeaders = LOSS_COLUMNS.map((c) => t(c.labelKey))
+  const lossHeaders = causes.map((c) => c.name)
   const hourlyRows = [
     [t('exportTitle')],
     [t('exportSubtitle')],
@@ -87,7 +85,7 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
       e.actualQty ?? '',
       gap ?? '',
       pct != null ? `${pct.toFixed(1)}%` : '',
-      ...LOSS_COLUMNS.map((c) => e[c.key] || 0),
+      ...causes.map((c) => e.losses?.[c.id] || 0),
       computeTotalLoss(e),
       e.observations || '',
     ])
@@ -98,7 +96,7 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
     summary.actual,
     summary.gap,
     summary.compliancePct != null ? `${summary.compliancePct.toFixed(1)}%` : '',
-    ...summary.lossByColumn.map((c) => c.value),
+    ...summary.lossByCause.map((c) => c.value),
     summary.totalLoss,
     '',
   ])
@@ -112,11 +110,11 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
     { wch: 10 },
     { wch: 8 },
     { wch: 12 },
-    ...LOSS_COLUMNS.map(() => ({ wch: 12 })),
+    ...causes.map(() => ({ wch: 12 })),
     { wch: 14 },
     { wch: 30 },
   ]
-  const lastCol = XLSX.utils.encode_col(4 + LOSS_COLUMNS.length + 2)
+  const lastCol = XLSX.utils.encode_col(4 + causes.length + 2)
   hourlyWs['!autofilter'] = { ref: `A${headerRowIndex + 1}:${lastCol}${headerRowIndex + 1}` }
   XLSX.utils.book_append_sheet(wb, hourlyWs, t('exportSheetHourly'))
 
@@ -150,15 +148,15 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
   resumenRows.push([])
   resumenRows.push([t('fieldCauseLabel'), t('colTotalLoss'), U, t('exportLossSummaryTitle')])
 
-  const paretoRows = computeParetoData(entries)
-  const causeTotals = LOSS_COLUMNS.map((c) => ({
-    label: t(c.labelKey),
-    value: paretoRows.find((p) => p.labelKey === c.labelKey)?.value || 0,
+  const paretoRows = computeParetoData(entries, causes)
+  const causeTotals = causes.map((c) => ({
+    label: c.name,
+    value: paretoRows.find((p) => p.causeId === c.id)?.value || 0,
   }))
   const summaryBlock = [
     [t('summaryTotalLoss'), summary.totalLoss],
     [t('fieldLossUnit'), unit],
-    [t('summaryTopCause'), summary.topCauseKey ? t(summary.topCauseKey) : '—'],
+    [t('summaryTopCause'), summary.topCauseName || '—'],
   ]
   causeTotals.forEach((row, idx) => {
     const extra = summaryBlock[idx]
