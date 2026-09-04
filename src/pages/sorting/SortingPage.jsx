@@ -32,14 +32,7 @@ import {
   progressBarClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
-import { exportHourlyProductionToExcel } from '../../data/horaPorHora/exportExcel'
-import {
-  getCurrentShift,
-  LINE_FAMILY_AREA_IDS,
-  OFFICIAL_SHIFTS,
-  WORK_CENTERS,
-  workCenterById,
-} from '../../data/production/catalog'
+import { getCurrentShift, OFFICIAL_SHIFTS } from '../../data/production/catalog'
 import { computeTotalLoss, LOSS_COLUMNS } from '../../data/shiftProduction/lossColumns'
 import {
   computeCompliancePct,
@@ -50,20 +43,22 @@ import {
   getEntryStatus,
   STATUS_LABEL_KEY,
 } from '../../data/shiftProduction/metrics'
+import { exportSortingToExcel } from '../../data/sorting/exportExcel'
 import { useAuth } from '../../state/auth'
 import { EmptyState } from '../../ui'
 import { showToast } from '../../ui/toast'
-import HourlyAccumulatedChart from './HourlyAccumulatedChart'
-import HourlyHistoryView from './HourlyHistoryView'
-import HourlyParetoChart from './HourlyParetoChart'
+import SortingAccumulatedChart from './SortingAccumulatedChart'
+import SortingHistoryView from './SortingHistoryView'
+import SortingParetoChart from './SortingParetoChart'
 
-const AREA_GROUPS = [
-  { key: 'LINEAS', labelKey: 'areaGroupLines' },
-  { key: 'INSUMOS', labelKey: 'areaGroupInsumos', areaId: 'INSUMOS' },
-  { key: 'ACCESORIOS', labelKey: 'areaGroupAccesorios', areaId: 'ACCESORIOS' },
-  { key: 'MIDEA', labelKey: 'areaGroupMidea', areaId: 'HIGH_VALUE' },
-  { key: 'PALETIZADO', labelKey: 'areaGroupPaletizado', areaId: 'PALETIZADO' },
-]
+// Sorting (2026-09-04, a peticion explicita del usuario -- "el de sorting no debe tener area/
+// linea ni lineas, Sorting es un area"): a diferencia de Hora por Hora (que aplica a cualquier
+// area/linea del catalogo existente), Sorting ES una sola area fija -- no hay nada que
+// seleccionar. areaId se manda fijo, nunca viene de un selector. No se agrega 'SORTING' a
+// WORK_CENTERS (src/data/production/catalog.js) porque ese catalogo alimenta personal/headcount
+// de todo el resto de la app -- agregar una fila ahi tendria efectos secundarios reales en
+// Dashboard/Centro de Trabajo que nadie pidio; aqui solo es un identificador de sesion.
+const SORTING_AREA_ID = 'SORTING'
 
 const ADMIN_ROLES = new Set(['ADMINISTRADOR', 'SUPERVISOR'])
 const DEFAULT_RATE = 65
@@ -102,17 +97,15 @@ function parseNonNegativeInt(raw) {
   return n
 }
 
-export default function HoraPorHoraPage() {
-  const { t } = useTranslation('horaPorHora')
+export default function SortingPage() {
+  const { t } = useTranslation('sorting')
   const { user } = useAuth()
   const canEditFinalized = ADMIN_ROLES.has(user?.role)
   const defaults = useMemo(() => getDefaultDateAndShift(), [])
 
   const [date, setDate] = useState(defaults.date)
   const [shift, setShift] = useState(defaults.shiftId)
-  const [groupKey, setGroupKey] = useState('LINEAS')
-  const [lineId, setLineId] = useState('')
-  const [areaId, setAreaId] = useState('')
+  const areaId = SORTING_AREA_ID
 
   const [session, setSession] = useState(null)
   const [entries, setEntries] = useState([])
@@ -142,7 +135,7 @@ export default function HoraPorHoraPage() {
     setError('')
     try {
       const params = new URLSearchParams({ date, shift, areaId })
-      const res = await fetch(`/api/hora-por-hora/sessions?${params}`, { credentials: 'include' })
+      const res = await fetch(`/api/sorting/sessions?${params}`, { credentials: 'include' })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || t('loadErrorGeneric'))
       setSession(data.session)
@@ -157,7 +150,7 @@ export default function HoraPorHoraPage() {
     } finally {
       setLoading(false)
     }
-  }, [date, shift, areaId, t])
+  }, [date, shift, t])
 
   useEffect(() => {
     loadSession()
@@ -174,25 +167,13 @@ export default function HoraPorHoraPage() {
     }
   }, [])
 
-  function handleGroupChange(nextGroupKey) {
-    setGroupKey(nextGroupKey)
-    setLineId('')
-    const group = AREA_GROUPS.find((g) => g.key === nextGroupKey)
-    setAreaId(group?.areaId || '')
-  }
-
-  function handleLineChange(nextLineId) {
-    setLineId(nextLineId)
-    setAreaId(nextLineId)
-  }
-
   async function handleCreateSession() {
     const rate = Number(rateInput)
     if (!Number.isFinite(rate) || rate <= 0) return
     setCreating(true)
     setError('')
     try {
-      const res = await fetch('/api/hora-por-hora/sessions', {
+      const res = await fetch('/api/sorting/sessions', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +201,7 @@ export default function HoraPorHoraPage() {
     if (!session) return
     setFinalizing(true)
     try {
-      const res = await fetch(`/api/hora-por-hora/sessions/${session.id}`, {
+      const res = await fetch(`/api/sorting/sessions/${session.id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -242,7 +223,7 @@ export default function HoraPorHoraPage() {
   async function handleReopen() {
     if (!session) return
     try {
-      const res = await fetch(`/api/hora-por-hora/sessions/${session.id}`, {
+      const res = await fetch(`/api/sorting/sessions/${session.id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -260,7 +241,7 @@ export default function HoraPorHoraPage() {
 
   function handleExport() {
     if (!session) return
-    exportHourlyProductionToExcel({ session, entries, t })
+    exportSortingToExcel({ session, entries, t })
   }
 
   // flushEntry: manda al API SOLO los campos realmente modificados de esa hora, acumulados desde
@@ -273,7 +254,7 @@ export default function HoraPorHoraPage() {
       pendingRef.current[entryId] = { fields: {}, timer: null }
       setSaveStatus('saving')
       try {
-        const res = await fetch(`/api/hora-por-hora/entries/${entryId}`, {
+        const res = await fetch(`/api/sorting/entries/${entryId}`, {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -329,15 +310,15 @@ export default function HoraPorHoraPage() {
   function handleCellKeyDown(e, rowIndex, colKey) {
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault()
-      document.getElementById(`hph-cell-${rowIndex + 1}-${colKey}`)?.focus()
+      document.getElementById(`sorting-cell-${rowIndex + 1}-${colKey}`)?.focus()
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      document.getElementById(`hph-cell-${rowIndex - 1}-${colKey}`)?.focus()
+      document.getElementById(`sorting-cell-${rowIndex - 1}-${colKey}`)?.focus()
     }
   }
 
   if (showHistory) {
-    return <HourlyHistoryView onBack={() => setShowHistory(false)} />
+    return <SortingHistoryView onBack={() => setShowHistory(false)} />
   }
 
   return (
@@ -400,38 +381,6 @@ export default function HoraPorHoraPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="mb-1.5 block text-xs">{t('fieldArea')}</Label>
-            <Select value={groupKey} onValueChange={handleGroupChange}>
-              <SelectTrigger className="w-[190px]">
-                <SelectValue placeholder={t('fieldAreaPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {AREA_GROUPS.map((g) => (
-                  <SelectItem key={g.key} value={g.key}>
-                    {t(g.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {groupKey === 'LINEAS' && (
-            <div>
-              <Label className="mb-1.5 block text-xs">{t('fieldLine')}</Label>
-              <Select value={lineId} onValueChange={handleLineChange}>
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder={t('fieldLinePlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {workCenterById(w.id).name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           {session && (
             <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground">
               <span>
@@ -455,13 +404,7 @@ export default function HoraPorHoraPage() {
 
       {error && <Alert className={cn(alertToneClass('error'), 'mb-4')}>{error}</Alert>}
 
-      {!areaId ? (
-        <div className={cardClass}>
-          <div className="px-5 py-10">
-            <EmptyState compact title={t('selectAreaPrompt')} />
-          </div>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className={cardClass}>
           <div className="px-5 py-10">
             <EmptyState compact title={t('loading')} />
@@ -671,7 +614,7 @@ export default function HoraPorHoraPage() {
                         </StickyTd>
                         <StickyTd index={2} rowBg={rowBg} className="p-0">
                           <EditableCell
-                            id={`hph-cell-${rowIndex}-actualQty`}
+                            id={`sorting-cell-${rowIndex}-actualQty`}
                             value={entry.actualQty == null ? '' : String(entry.actualQty)}
                             placeholder={t('noCaptureShort')}
                             tone="blue"
@@ -700,7 +643,7 @@ export default function HoraPorHoraPage() {
                         {LOSS_COLUMNS.map((c) => (
                           <Td key={c.key} className="p-0">
                             <EditableCell
-                              id={`hph-cell-${rowIndex}-${c.key}`}
+                              id={`sorting-cell-${rowIndex}-${c.key}`}
                               value={String(entry[c.key] ?? 0)}
                               tone="amber"
                               disabled={isReadOnly}
@@ -716,7 +659,7 @@ export default function HoraPorHoraPage() {
                         <Td className="text-right font-bold">{totalLoss > 0 ? totalLoss : '—'}</Td>
                         <Td className="min-w-[200px] p-0">
                           <EditableCell
-                            id={`hph-cell-${rowIndex}-observations`}
+                            id={`sorting-cell-${rowIndex}-observations`}
                             type="text"
                             value={entry.observations || ''}
                             placeholder={t('fieldObservationPlaceholder')}
@@ -770,8 +713,8 @@ export default function HoraPorHoraPage() {
           </div>
 
           <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <HourlyAccumulatedChart entries={entries} activeIndex={activeIndex} />
-            <HourlyParetoChart entries={entries} lossUnit={session.lossUnit} />
+            <SortingAccumulatedChart entries={entries} activeIndex={activeIndex} />
+            <SortingParetoChart entries={entries} lossUnit={session.lossUnit} />
           </div>
 
           <ShiftSummaryCard summary={summary} lossUnitLabel={lossUnitLabel} t={t} />

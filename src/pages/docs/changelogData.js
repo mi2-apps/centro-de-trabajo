@@ -39,6 +39,7 @@ export const RELEASES = [
           'addedLevantamientoEquipo',
           'addedPlantIssuesWidget',
           'addedHoraPorHora',
+          'addedSorting',
         ],
       },
       {

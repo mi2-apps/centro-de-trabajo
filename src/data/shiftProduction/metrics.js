@@ -1,8 +1,10 @@
-/* Calculos puros de Hora por Hora (2026-09-04) -- SIEMPRE derivados de standardQty/actualQty,
-   nunca un numero que el usuario escriba a mano (a peticion explicita del usuario: "el usuario
-   SOLO captura lo necesario... todo eso debe calcularlo el sistema"). Reutilizado tanto por la
-   pagina principal como por la exportacion a Excel, para que ambos muestren exactamente el mismo
-   numero siempre. */
+/* Calculos puros de seguimiento de produccion por hora (2026-09-04) -- SIEMPRE derivados de
+   standardQty/actualQty, nunca un numero que el usuario escriba a mano (a peticion explicita del
+   usuario: "el usuario SOLO captura lo necesario... todo eso debe calcularlo el sistema").
+   Compartido entre los modulos Hora por Hora y Sorting (mismo formato exacto, dos modulos/tablas
+   separados -- a peticion explicita del usuario) y por sus respectivas exportaciones a Excel,
+   para que todos muestren exactamente el mismo numero siempre. */
+import { computeTotalLoss, LOSS_COLUMNS } from './lossColumns.js'
 import { buildShiftBlocks, findActiveBlockIndex } from './shiftBlocks.js'
 
 // gap = real - estandar; cumplimiento = (real/estandar)*100, con estandar=0 manejado sin
@@ -78,25 +80,23 @@ export function computeAccumulatedSeries(entries, activeIndex) {
   return series
 }
 
-// Pareto de causas -- NUNCA mezcla minutos con piezas (a peticion explicita del usuario).
-export function computeParetoData(entries, measurementType) {
-  const byCause = new Map()
-  for (const entry of entries) {
-    for (const incident of entry.incidents || []) {
-      if (incident.measurementType !== measurementType) continue
-      const key = incident.causeName || 'Otra'
-      byCause.set(key, (byCause.get(key) || 0) + incident.value)
-    }
-  }
-  const total = [...byCause.values()].reduce((s, v) => s + v, 0)
-  const sorted = [...byCause.entries()].sort((a, b) => b[1] - a[1])
+// Perdidas por causa -- columnas fijas (2026-09-04, ver src/data/shiftProduction/lossColumns.js),
+// una sola unidad por turno (session.lossUnit) -- ya nunca se mezclan piezas con minutos porque
+// la unidad se elige una vez por turno, no por causa. Solo se muestran causas con total > 0
+// (a peticion explicita del usuario), ordenadas de mayor a menor.
+export function computeParetoData(entries) {
+  const totalsByColumn = LOSS_COLUMNS.map((c) => ({
+    labelKey: c.labelKey,
+    value: entries.reduce((sum, e) => sum + (e[c.key] || 0), 0),
+  })).filter((c) => c.value > 0)
+  const total = totalsByColumn.reduce((s, c) => s + c.value, 0)
+  const sorted = [...totalsByColumn].sort((a, b) => b.value - a.value)
   let cumulative = 0
-  return sorted.map(([cause, value]) => {
-    cumulative += value
+  return sorted.map((c) => {
+    cumulative += c.value
     return {
-      cause,
-      value,
-      pct: total > 0 ? (value / total) * 100 : 0,
+      ...c,
+      pct: total > 0 ? (c.value / total) * 100 : 0,
       cumulativePct: total > 0 ? (cumulative / total) * 100 : 0,
     }
   })
@@ -108,19 +108,14 @@ export function computeParetoData(entries, measurementType) {
 export function computeShiftSummary(entries) {
   const expected = entries.reduce((sum, e) => sum + e.standardQty, 0)
   const actual = entries.reduce((sum, e) => sum + (e.actualQty ?? 0), 0)
-  const allIncidents = entries.flatMap((e) => e.incidents || [])
-  const minutesLost = allIncidents
-    .filter((i) => i.measurementType === 'MINUTES')
-    .reduce((s, i) => s + i.value, 0)
-  const piecesLost = allIncidents
-    .filter((i) => i.measurementType === 'PIECES')
-    .reduce((s, i) => s + i.value, 0)
-  const byCause = new Map()
-  for (const i of allIncidents) {
-    const key = i.causeName || 'Otra'
-    byCause.set(key, (byCause.get(key) || 0) + i.value)
-  }
-  const topCause = [...byCause.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null
+  const totalLoss = entries.reduce((sum, e) => sum + computeTotalLoss(e), 0)
+  const totalsByColumn = LOSS_COLUMNS.map((c) => ({
+    labelKey: c.labelKey,
+    value: entries.reduce((sum, e) => sum + (e[c.key] || 0), 0),
+  }))
+  const topCauseKey =
+    [...totalsByColumn].filter((c) => c.value > 0).sort((a, b) => b.value - a.value)[0]?.labelKey ||
+    null
   const capturedHours = entries.filter((e) => e.actualQty != null).length
   const compliantHours = entries.filter((e) => {
     const pct = computeCompliancePct(e.standardQty, e.actualQty)
@@ -131,9 +126,9 @@ export function computeShiftSummary(entries) {
     actual,
     gap: actual - expected,
     compliancePct: expected > 0 ? (actual / expected) * 100 : null,
-    minutesLost,
-    piecesLost,
-    topCause,
+    totalLoss,
+    lossByColumn: totalsByColumn,
+    topCauseKey,
     capturedHours,
     compliantHours,
     totalHours: entries.length,

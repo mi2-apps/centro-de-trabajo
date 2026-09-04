@@ -1231,6 +1231,11 @@ export const hourlyProductionSession = pgTable(
     shift: text().notNull(),
     areaId: text().notNull(),
     standardRate: integer().notNull(),
+    // Unidad de TODAS las perdidas del turno (2026-09-04, rediseño a peticion explicita del
+    // usuario tras revisar el Excel real "Hora por Hora" -- las perdidas dejan de ser
+    // incidencias con su propia unidad individual y pasan a ser columnas fijas por hora; la
+    // unidad se elige UNA sola vez por turno, nunca se mezcla piezas con minutos).
+    lossUnit: hourlyMeasurementType().default('PIECES').notNull(),
     status: hourlySessionStatus().default('ABIERTO').notNull(),
     createdByUserId: text().notNull(),
     updatedByUserId: text(),
@@ -1280,6 +1285,23 @@ export const hourlyProductionEntry = pgTable(
     endTime: text().notNull(),
     standardQty: integer().notNull(), // snapshot de session.standardRate AL CREAR esta entrada
     actualQty: integer(), // null = "sin captura" todavia
+    // Perdidas por causa (2026-09-04, columnas fijas -- a peticion explicita del usuario tras
+    // revisar el Excel real "Hora por Hora": ya NO es un catalogo dinamico/incidencias con
+    // modal, son exactamente las 11 causas fijas de esa hoja, una columna cada una, en la
+    // unidad de session.lossUnit. Default 0 (nunca null -- a diferencia de actualQty, "0
+    // perdidas" es un estado valido desde el inicio, no ambiguo con "sin captura").
+    materialVirginLoss: integer().default(0).notNull(),
+    materialWarehouseLoss: integer().default(0).notNull(),
+    systemLoss: integer().default(0).notNull(),
+    internetLoss: integer().default(0).notNull(),
+    scannerLoss: integer().default(0).notNull(),
+    printerLoss: integer().default(0).notNull(),
+    labelsLoss: integer().default(0).notNull(),
+    lpnPalletLoss: integer().default(0).notNull(),
+    personnelLoss: integer().default(0).notNull(),
+    qualityLoss: integer().default(0).notNull(),
+    otherLoss: integer().default(0).notNull(),
+    observations: text(),
     createdByUserId: text().notNull(),
     updatedByUserId: text(),
     createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -1315,90 +1337,115 @@ export const hourlyProductionEntry = pgTable(
   ],
 )
 
-// Catalogo real de causas de perdida -- a diferencia de DOWNTIME_REASONS de Demoras (catalogo de
-// CODIGO, src/data/demoras/catalog.js), este SI es una tabla real con CRUD de administrador (a
-// peticion explicita del usuario -- "implementa un CATALOGO DE CAUSAS... agregar en el futuro
-// nuevas causas sin modificar toda la estructura de datos... ADMIN puede crear/editar/activar/
-// desactivar/reordenar"). code = 'otra' es el catch-all especial que habilita
-// customDescription en hourlyProductionIncident -- comparacion por string, mismo criterio que
-// reasonKey en DowntimeRecord. Nunca se borra fisico (active=false en vez de DELETE) si ya tiene
-// historico -- mismo criterio que Skill/Workstation.
-export const hourlyProductionDowntimeCause = pgTable(
-  'HourlyProductionDowntimeCause',
+// Modulo Sorting (2026-09-04, a peticion explicita del usuario -- "modulo NUEVO y separado de
+// Hora por Hora, mismo formato de captura EXACTO"). Mismas 2 tablas/mismo shape que
+// HourlyProductionSession/Entry de arriba (reutiliza los mismos 2 enums, hourlySessionStatus/
+// hourlyMeasurementType -- son genericos, no especificos de Hora por Hora), pero identidad
+// completamente separada (tablas/modulo/permiso propios) porque asi lo pidio el usuario
+// explicitamente ("es un modulo distinto"), no una vista alterna del mismo modulo.
+export const sortingSession = pgTable(
+  'SortingSession',
   {
     id: text()
       .primaryKey()
       .notNull()
       .$defaultFn(() => cuid()),
-    name: text().notNull(),
-    code: text().notNull(),
-    active: boolean().default(true).notNull(),
-    sortOrder: integer().default(0).notNull(),
-    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  },
-  (table) => [
-    uniqueIndex('HourlyProductionDowntimeCause_code_key').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
-  ],
-)
-
-export const hourlyProductionIncident = pgTable(
-  'HourlyProductionIncident',
-  {
-    id: text()
-      .primaryKey()
-      .notNull()
-      .$defaultFn(() => cuid()),
-    entryId: text().notNull(),
-    causeId: text().notNull(),
-    measurementType: hourlyMeasurementType().notNull(),
-    value: integer().notNull(), // siempre positivo (validado en el API), nunca minutos+piezas mezclados
-    customDescription: text(), // solo cuando causeId apunta a code='otra'
-    notes: text(),
+    date: date({ mode: 'date' }).notNull(),
+    shift: text().notNull(),
+    areaId: text().notNull(),
+    standardRate: integer().notNull(),
+    lossUnit: hourlyMeasurementType().default('PIECES').notNull(),
+    status: hourlySessionStatus().default('ABIERTO').notNull(),
     createdByUserId: text().notNull(),
     updatedByUserId: text(),
     createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   },
   (table) => [
-    index('HourlyProductionIncident_entryId_idx').using(
+    uniqueIndex('SortingSession_date_shift_areaId_key').using(
       'btree',
-      table.entryId.asc().nullsLast().op('text_ops'),
+      table.date.asc().nullsLast().op('date_ops'),
+      table.shift.asc().nullsLast().op('text_ops'),
+      table.areaId.asc().nullsLast().op('text_ops'),
     ),
-    index('HourlyProductionIncident_causeId_idx').using(
+    index('SortingSession_areaId_date_idx').using(
       'btree',
-      table.causeId.asc().nullsLast().op('text_ops'),
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.date.asc().nullsLast().op('date_ops'),
     ),
-    foreignKey({
-      columns: [table.entryId],
-      foreignColumns: [hourlyProductionEntry.id],
-      name: 'HourlyProductionIncident_entryId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.causeId],
-      foreignColumns: [hourlyProductionDowntimeCause.id],
-      name: 'HourlyProductionIncident_causeId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
     foreignKey({
       columns: [table.createdByUserId],
       foreignColumns: [user.id],
-      name: 'HourlyProductionIncident_createdByUserId_fkey',
+      name: 'SortingSession_createdByUserId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('restrict'),
     foreignKey({
       columns: [table.updatedByUserId],
       foreignColumns: [user.id],
-      name: 'HourlyProductionIncident_updatedByUserId_fkey',
+      name: 'SortingSession_updatedByUserId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('set null'),
   ],
 )
+
+export const sortingEntry = pgTable(
+  'SortingEntry',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    sessionId: text().notNull(),
+    startTime: text().notNull(),
+    endTime: text().notNull(),
+    standardQty: integer().notNull(),
+    actualQty: integer(),
+    materialVirginLoss: integer().default(0).notNull(),
+    materialWarehouseLoss: integer().default(0).notNull(),
+    systemLoss: integer().default(0).notNull(),
+    internetLoss: integer().default(0).notNull(),
+    scannerLoss: integer().default(0).notNull(),
+    printerLoss: integer().default(0).notNull(),
+    labelsLoss: integer().default(0).notNull(),
+    lpnPalletLoss: integer().default(0).notNull(),
+    personnelLoss: integer().default(0).notNull(),
+    qualityLoss: integer().default(0).notNull(),
+    otherLoss: integer().default(0).notNull(),
+    observations: text(),
+    createdByUserId: text().notNull(),
+    updatedByUserId: text(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    uniqueIndex('SortingEntry_sessionId_startTime_key').using(
+      'btree',
+      table.sessionId.asc().nullsLast().op('text_ops'),
+      table.startTime.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.sessionId],
+      foreignColumns: [sortingSession.id],
+      name: 'SortingEntry_sessionId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [user.id],
+      name: 'SortingEntry_createdByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [user.id],
+      name: 'SortingEntry_updatedByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+)
+

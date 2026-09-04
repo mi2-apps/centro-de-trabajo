@@ -20,7 +20,7 @@ const AXIS_COLOR = 'hsl(var(--muted-foreground))'
    chica (220 vs 280 del Dashboard), 2 series (esperado/real acumulado), mismo lenguaje visual
    (tokens de color, ChartCard) que el resto del sistema. */
 function ChartTooltip({ active, payload, label }) {
-  const { t } = useTranslation('horaPorHora')
+  const { t } = useTranslation('sorting')
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-[15px] border border-border bg-popover px-3 py-2 text-popover-foreground shadow-md">
@@ -34,8 +34,8 @@ function ChartTooltip({ active, payload, label }) {
   )
 }
 
-export default function HourlyAccumulatedChart({ entries, activeIndex }) {
-  const { t } = useTranslation('horaPorHora')
+export default function SortingAccumulatedChart({ entries, activeIndex }) {
+  const { t } = useTranslation('sorting')
   const data = computeAccumulatedSeries(entries, activeIndex)
 
   return (

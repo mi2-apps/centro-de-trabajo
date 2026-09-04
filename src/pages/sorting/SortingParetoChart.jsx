@@ -21,7 +21,7 @@ const AXIS_COLOR = 'hsl(var(--muted-foreground))'
    mezclar). Barras + linea de % acumulado, mismo patron combo-chart ya establecido
    (MissingVsIdealComboCard). */
 function ChartTooltip({ active, payload, label, unitLabel }) {
-  const { t } = useTranslation('horaPorHora')
+  const { t } = useTranslation('sorting')
   if (!active || !payload?.length) return null
   const row = payload[0].payload
   return (
@@ -37,8 +37,8 @@ function ChartTooltip({ active, payload, label, unitLabel }) {
   )
 }
 
-export default function HourlyParetoChart({ entries, lossUnit }) {
-  const { t } = useTranslation('horaPorHora')
+export default function SortingParetoChart({ entries, lossUnit }) {
+  const { t } = useTranslation('sorting')
   const rawData = computeParetoData(entries)
   const data = rawData.map((c) => ({ ...c, cause: t(c.labelKey) }))
   const unitLabel = lossUnit === 'MINUTES' ? t('unitMinutesShort') : t('unitPiecesShort')

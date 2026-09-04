@@ -21,6 +21,7 @@ import KpisPage from './pages/kpis/KpisPage'
 import ProduccionFftPage from './pages/produccion-fft/ProduccionFftPage'
 import RegistroPersonalPage from './pages/registro-personal/RegistroPersonalPage'
 import ComingSoonPage from './pages/shared/ComingSoonPage'
+import SortingPage from './pages/sorting/SortingPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 import DefaultRedirect from './routing/DefaultRedirect'
 import ProtectedRoute from './routing/ProtectedRoute'
@@ -164,6 +165,14 @@ export default function App() {
                   element={
                     <RequireModuleAccess>
                       <HoraPorHoraPage />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/sorting"
+                  element={
+                    <RequireModuleAccess>
+                      <SortingPage />
                     </RequireModuleAccess>
                   }
                 />

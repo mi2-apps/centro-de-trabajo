@@ -28,5 +28,6 @@
   "rechazoInterno": "Internal Rejection",
   "ppmInterno": "Internal PPM's",
   "controlEquipo": "Equipment Control",
-  "horaPorHora": "Hourly Production"
+  "horaPorHora": "Hourly Production",
+  "sorting": "Sorting"
 }

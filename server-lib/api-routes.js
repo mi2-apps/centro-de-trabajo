@@ -24,13 +24,9 @@ import equipmentAuditsIndexHandler from '../api/equipment-audits/index.js'
 import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
 import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
-import horaPorHoraCausesIndexHandler from '../api/hora-por-hora/causes/index.js'
-import horaPorHoraCauseByIdHandler from '../api/hora-por-hora/causes/[id].js'
 import horaPorHoraEntryByIdHandler from '../api/hora-por-hora/entries/[id].js'
-import horaPorHoraEntryIncidentsHandler from '../api/hora-por-hora/entries/[id]/incidents.js'
-import horaPorHoraIncidentByIdHandler from '../api/hora-por-hora/incidents/[id].js'
-import horaPorHoraSessionsHistoryHandler from '../api/hora-por-hora/sessions/history.js'
 import horaPorHoraSessionByIdHandler from '../api/hora-por-hora/sessions/[id].js'
+import horaPorHoraSessionsHistoryHandler from '../api/hora-por-hora/sessions/history.js'
 import horaPorHoraSessionsIndexHandler from '../api/hora-por-hora/sessions/index.js'
 import modulesIndexHandler from '../api/modules/index.js'
 import moduleEffectiveUsersHandler from '../api/permissions/modules/[moduleKey]/users.js'
@@ -56,6 +52,10 @@ import productionSkuTrackerHandler from '../api/production/sku-tracker.js'
 import productionTaktRealHandler from '../api/production/takt-real.js'
 import rolePermissionByRoleHandler from '../api/role-permissions/[role].js'
 import rolePermissionsIndexHandler from '../api/role-permissions/index.js'
+import sortingEntryByIdHandler from '../api/sorting/entries/[id].js'
+import sortingSessionByIdHandler from '../api/sorting/sessions/[id].js'
+import sortingSessionsHistoryHandler from '../api/sorting/sessions/history.js'
+import sortingSessionsIndexHandler from '../api/sorting/sessions/index.js'
 import userDeactivateHandler from '../api/users/[id]/deactivate.js'
 import userPermissionByModuleHandler from '../api/users/[id]/permissions/[moduleKey].js'
 import userPermissionsIndexHandler from '../api/users/[id]/permissions/index.js'
@@ -145,14 +145,13 @@ export function mountApiRoutes(app) {
   app.get('/api/hora-por-hora/sessions/:id', withDynamicParams(horaPorHoraSessionByIdHandler))
   app.patch('/api/hora-por-hora/sessions/:id', withDynamicParams(horaPorHoraSessionByIdHandler))
   app.patch('/api/hora-por-hora/entries/:id', withDynamicParams(horaPorHoraEntryByIdHandler))
-  app.post(
-    '/api/hora-por-hora/entries/:id/incidents',
-    withDynamicParams(horaPorHoraEntryIncidentsHandler),
-  )
-  app.delete('/api/hora-por-hora/incidents/:id', withDynamicParams(horaPorHoraIncidentByIdHandler))
-  app.get('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
-  app.post('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
-  app.patch('/api/hora-por-hora/causes/:id', withDynamicParams(horaPorHoraCauseByIdHandler))
+
+  app.get('/api/sorting/sessions/history', wrapAsync(sortingSessionsHistoryHandler))
+  app.get('/api/sorting/sessions', wrapAsync(sortingSessionsIndexHandler))
+  app.post('/api/sorting/sessions', wrapAsync(sortingSessionsIndexHandler))
+  app.get('/api/sorting/sessions/:id', withDynamicParams(sortingSessionByIdHandler))
+  app.patch('/api/sorting/sessions/:id', withDynamicParams(sortingSessionByIdHandler))
+  app.patch('/api/sorting/entries/:id', withDynamicParams(sortingEntryByIdHandler))
 
   app.get('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))

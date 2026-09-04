@@ -293,6 +293,11 @@ export const DATA_DICTIONARY = [
         'unique index -- 1 sesión por combinación',
       ],
       ['standardRate', 'Int', 'pzs/h configurado al crear la sesión'],
+      [
+        'lossUnit',
+        'HourlyMeasurementType',
+        'PIECES | MINUTES -- una sola unidad por turno, nunca mezclada por causa',
+      ],
       ['status', 'HourlySessionStatus', 'ABIERTO | FINALIZADO'],
       ['createdByUserId / updatedByUserId', 'String (FK User) / String? (FK User)', ''],
     ],
@@ -309,30 +314,43 @@ export const DATA_DICTIONARY = [
         'snapshot del standardRate de la sesión al crear la hora -- nunca se recalcula si el rate cambia después',
       ],
       ['actualQty', 'Int?', 'null = sin captura'],
-    ],
-  },
-  {
-    model: 'HourlyProductionDowntimeCause',
-    purposeKey: 'developerManualData.dataDictionary_HourlyProductionDowntimeCause_purpose',
-    fields: [
-      ['name / code', 'String / String', 'code se autogenera (slug) y es único'],
-      ['active', 'Boolean', 'soft-delete -- nunca se borra físicamente una causa con histórico'],
-      ['sortOrder', 'Int', 'orden manual (flechas arriba/abajo en el admin)'],
-    ],
-  },
-  {
-    model: 'HourlyProductionIncident',
-    purposeKey: 'developerManualData.dataDictionary_HourlyProductionIncident_purpose',
-    fields: [
-      ['entryId', 'String (FK HourlyProductionEntry)', ''],
-      ['causeId', 'String (FK HourlyProductionDowntimeCause)', ''],
       [
-        'measurementType',
-        'HourlyMeasurementType',
-        'MINUTES | PIECES -- nunca se mezclan en un total',
+        'materialVirginLoss / materialWarehouseLoss / systemLoss / internetLoss / scannerLoss / printerLoss / labelsLoss / lpnPalletLoss / personnelLoss / qualityLoss / otherLoss',
+        'Int (default 0)',
+        '11 columnas fijas de pérdida por causa (reemplazan el catálogo dinámico de incidencias/causas), nunca null',
       ],
-      ['value', 'Int', ''],
-      ['customDescription', 'String?', 'requerido cuando causeId es la causa "Otra"'],
+      ['observations', 'String?', 'texto libre opcional por hora'],
+    ],
+  },
+  {
+    model: 'SortingSession',
+    purposeKey: 'developerManualData.dataDictionary_SortingSession_purpose',
+    fields: [
+      [
+        'date / shift / areaId',
+        'Date / String / String',
+        'mismo esquema que HourlyProductionSession -- areaId siempre es la constante fija SORTING_AREA_ID, nunca viene de un selector',
+      ],
+      ['standardRate', 'Int', 'pzs/h configurado al crear la sesión'],
+      ['lossUnit', 'HourlyMeasurementType', 'PIECES | MINUTES -- una sola unidad por turno'],
+      ['status', 'HourlySessionStatus', 'ABIERTO | FINALIZADO'],
+      ['createdByUserId / updatedByUserId', 'String (FK User) / String? (FK User)', ''],
+    ],
+  },
+  {
+    model: 'SortingEntry',
+    purposeKey: 'developerManualData.dataDictionary_SortingEntry_purpose',
+    fields: [
+      ['sessionId', 'String (FK SortingSession)', 'unique con startTime'],
+      ['startTime / endTime', 'String / String', '"HH:MM", generadas por buildShiftBlocks()'],
+      ['standardQty', 'Int', 'snapshot del standardRate de la sesión al crear la hora'],
+      ['actualQty', 'Int?', 'null = sin captura'],
+      [
+        '11 columnas fijas de pérdida por causa',
+        'Int (default 0)',
+        'mismas columnas y mismo significado que HourlyProductionEntry, vía src/data/shiftProduction/',
+      ],
+      ['observations', 'String?', 'texto libre opcional por hora'],
     ],
   },
 ]
@@ -354,4 +372,5 @@ export const API_MAP = [
   ['/api/control-equipo', 'developerManualData.apiMap_controlEquipo'],
   ['/api/equipment-audits', 'developerManualData.apiMap_equipmentAudits'],
   ['/api/hora-por-hora/*', 'developerManualData.apiMap_horaPorHora'],
+  ['/api/sorting/*', 'developerManualData.apiMap_sorting'],
 ]

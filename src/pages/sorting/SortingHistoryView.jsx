@@ -20,49 +20,31 @@ import {
   pageTitleClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
-import {
-  LINE_FAMILY_AREA_IDS,
-  OFFICIAL_SHIFTS,
-  WORK_CENTERS,
-  workCenterById,
-} from '../../data/production/catalog'
+import { OFFICIAL_SHIFTS } from '../../data/production/catalog'
 import { computeTotalLoss, LOSS_COLUMNS } from '../../data/shiftProduction/lossColumns.js'
 import { computeCompliancePct, computeGap } from '../../data/shiftProduction/metrics.js'
 import { EmptyState } from '../../ui'
 
-/* Historico de turnos (2026-09-04, a peticion explicita del usuario -- "Fecha desde, Fecha
-   hasta, Turno, Area/Linea... al seleccionar un registro: mostrar TODO el Hora por Hora de ese
-   dia"). SOLO LECTURA -- el detalle reutiliza exactamente las mismas columnas fijas de perdida
-   que la pagina principal (ver src/data/shiftProduction/lossColumns.js), sin inputs. */
-export default function HourlyHistoryView({ onBack }) {
-  const { t } = useTranslation('horaPorHora')
+/* Historico de turnos de Sorting -- SOLO LECTURA, reutiliza exactamente las mismas columnas
+   fijas de perdida que la pagina principal (ver src/data/shiftProduction/lossColumns.js), sin
+   inputs. Sin filtro de area/linea (2026-09-04, a peticion explicita del usuario -- "Sorting es
+   un area", no hay nada que filtrar). */
+export default function SortingHistoryView({ onBack }) {
+  const { t } = useTranslation('sorting')
   const [dateFrom, setDateFrom] = useState(dayjs().subtract(7, 'day').format('YYYY-MM-DD'))
   const [dateTo, setDateTo] = useState(dayjs().format('YYYY-MM-DD'))
   const [shift, setShift] = useState('')
-  const [groupKey, setGroupKey] = useState('')
-  const [lineId, setLineId] = useState('')
-  const [areaId, setAreaId] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [selectedLoading, setSelectedLoading] = useState(false)
-
-  const AREA_GROUPS = [
-    { key: '', labelKey: 'historyAllAreas' },
-    { key: 'LINEAS', labelKey: 'areaGroupLines' },
-    { key: 'INSUMOS', labelKey: 'areaGroupInsumos', areaId: 'INSUMOS' },
-    { key: 'ACCESORIOS', labelKey: 'areaGroupAccesorios', areaId: 'ACCESORIOS' },
-    { key: 'MIDEA', labelKey: 'areaGroupMidea', areaId: 'HIGH_VALUE' },
-    { key: 'PALETIZADO', labelKey: 'areaGroupPaletizado', areaId: 'PALETIZADO' },
-  ]
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ dateFrom, dateTo })
       if (shift) params.set('shift', shift)
-      if (areaId) params.set('areaId', areaId)
-      const res = await fetch(`/api/hora-por-hora/sessions/history?${params}`, {
+      const res = await fetch(`/api/sorting/sessions/history?${params}`, {
         credentials: 'include',
       })
       const data = await res.json().catch(() => null)
@@ -70,23 +52,16 @@ export default function HourlyHistoryView({ onBack }) {
     } finally {
       setLoading(false)
     }
-  }, [dateFrom, dateTo, shift, areaId])
+  }, [dateFrom, dateTo, shift])
 
   useEffect(() => {
     load()
   }, [load])
 
-  function handleGroupChange(nextGroupKey) {
-    setGroupKey(nextGroupKey)
-    setLineId('')
-    const group = AREA_GROUPS.find((g) => g.key === nextGroupKey)
-    setAreaId(group?.areaId || '')
-  }
-
   async function openDetail(row) {
     setSelectedLoading(true)
     try {
-      const res = await fetch(`/api/hora-por-hora/sessions/${row.id}`, { credentials: 'include' })
+      const res = await fetch(`/api/sorting/sessions/${row.id}`, { credentials: 'include' })
       const data = await res.json().catch(() => null)
       setSelected(data)
     } finally {
@@ -110,8 +85,7 @@ export default function HourlyHistoryView({ onBack }) {
                   zona horaria local y puede mostrar el dia anterior (mismo bug que shiftBlocks.js). */}
               <p className={pageTitleClass}>
                 {dayjs(String(selected.session.date).slice(0, 10)).format('DD MMM YYYY')} ·{' '}
-                {t(`shift.${selected.session.shift}`)} ·{' '}
-                {workCenterById(selected.session.areaId)?.name}
+                {t(`shift.${selected.session.shift}`)}
               </p>
               <p className={pageSubtitleClass}>{t('historyDetailSubtitle')}</p>
             </div>
@@ -219,44 +193,6 @@ export default function HourlyHistoryView({ onBack }) {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="mb-1.5 block text-xs">{t('fieldArea')}</Label>
-            <Select value={groupKey} onValueChange={handleGroupChange}>
-              <SelectTrigger className="w-[190px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AREA_GROUPS.map((g) => (
-                  <SelectItem key={g.key} value={g.key}>
-                    {t(g.labelKey)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {groupKey === 'LINEAS' && (
-            <div>
-              <Label className="mb-1.5 block text-xs">{t('fieldLine')}</Label>
-              <Select
-                value={lineId}
-                onValueChange={(v) => {
-                  setLineId(v)
-                  setAreaId(v)
-                }}
-              >
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue placeholder={t('fieldLinePlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {workCenterById(w.id).name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </div>
 
@@ -276,7 +212,6 @@ export default function HourlyHistoryView({ onBack }) {
                 <tr className="border-b border-border">
                   <Th>{t('historyColDate')}</Th>
                   <Th>{t('fieldShift')}</Th>
-                  <Th>{t('fieldArea')}</Th>
                   <Th>{t('summaryExpected')}</Th>
                   <Th>{t('summaryActual')}</Th>
                   <Th>{t('summaryGap')}</Th>
@@ -297,7 +232,6 @@ export default function HourlyHistoryView({ onBack }) {
                     >
                       <Td>{dayjs(String(row.date).slice(0, 10)).format('DD MMM YYYY')}</Td>
                       <Td>{t(`shift.${row.shift}`)}</Td>
-                      <Td>{workCenterById(row.areaId)?.name || row.areaId}</Td>
                       <Td>{row.expected}</Td>
                       <Td>{row.actual}</Td>
                       <Td className={row.gap >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}>

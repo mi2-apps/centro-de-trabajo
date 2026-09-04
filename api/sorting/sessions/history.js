@@ -1,14 +1,8 @@
-// Historico de turnos de Hora por Hora (2026-09-04, a peticion explicita del usuario --
-// "Ver historico... Fecha desde, Fecha hasta, Turno, Area/Linea... Fecha, Turno, Area, Esperado,
-// Real, Gap, Cumplimiento, Perdidas, Principal causa"). Solo lectura -- el detalle hora por hora
-// de un registro especifico se pide aparte via GET /api/hora-por-hora/sessions/[id].
+// Historico de turnos de Sorting -- solo lectura, el detalle hora por hora de un registro
+// especifico se pide aparte via GET /api/sorting/sessions/[id].
 import { and, asc, eq, gte, lte } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
-import {
-  db,
-  hourlyProductionEntry,
-  hourlyProductionSession,
-} from '../../../server-lib/db/client.js'
+import { db, sortingEntry, sortingSession } from '../../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
 import { LOSS_COLUMNS } from '../../../src/data/shiftProduction/lossColumns.js'
 
@@ -17,7 +11,7 @@ export default requireAuth(async (req, res) => {
   const allowed = await canUserAccessModule({
     userId: req.user.id,
     role: req.user.role,
-    moduleKey: '/hora-por-hora',
+    moduleKey: '/sorting',
   })
   if (!allowed) return res.status(403).json({ error: 'No autorizado para este modulo' })
 
@@ -27,24 +21,24 @@ export default requireAuth(async (req, res) => {
   }
 
   const conditions = [
-    gte(hourlyProductionSession.date, new Date(`${dateFrom}T00:00:00`)),
-    lte(hourlyProductionSession.date, new Date(`${dateTo}T00:00:00`)),
+    gte(sortingSession.date, new Date(`${dateFrom}T00:00:00`)),
+    lte(sortingSession.date, new Date(`${dateTo}T00:00:00`)),
   ]
-  if (shift) conditions.push(eq(hourlyProductionSession.shift, shift))
-  if (areaId) conditions.push(eq(hourlyProductionSession.areaId, areaId))
+  if (shift) conditions.push(eq(sortingSession.shift, shift))
+  if (areaId) conditions.push(eq(sortingSession.areaId, areaId))
 
   const sessions = await db
     .select()
-    .from(hourlyProductionSession)
+    .from(sortingSession)
     .where(and(...conditions))
-    .orderBy(asc(hourlyProductionSession.date))
+    .orderBy(asc(sortingSession.date))
 
   const results = []
   for (const session of sessions) {
     const entries = await db
       .select()
-      .from(hourlyProductionEntry)
-      .where(eq(hourlyProductionEntry.sessionId, session.id))
+      .from(sortingEntry)
+      .where(eq(sortingEntry.sessionId, session.id))
 
     const expected = entries.reduce((sum, e) => sum + e.standardQty, 0)
     const actual = entries.reduce((sum, e) => sum + (e.actualQty ?? 0), 0)

@@ -1,34 +1,28 @@
-// Modulo Hora por Hora (2026-09-04, a peticion explicita del usuario -- convertir a digital el
-// formato fisico de produccion "Hora por Hora"). GET busca la sesion real de fecha+turno+area
+// Modulo Sorting (2026-09-04, a peticion explicita del usuario -- modulo NUEVO y separado de
+// Hora por Hora, mismo formato de captura EXACTO). GET busca la sesion real de fecha+turno+area
 // (nunca crea nada -- solo lectura); POST es un GET-OR-CREATE real: si ya existe una sesion para
 // esa combinacion (indice unico date+shift+areaId), la devuelve tal cual (nunca sobreescribe su
 // standardRate ya guardado); si no existe, la crea junto con TODAS sus horas
 // (buildShiftBlocks + OFFICIAL_SHIFTS, ver src/data/shiftProduction/shiftBlocks.js), cada una con
 // standardQty = snapshot del standardRate recibido (nunca se recalcula despues si cambia el
-// rate). Esto es lo que satisface "NO DUPLICAR REGISTROS" del usuario -- el indice unico real en
-// DB es la garantia de fondo, esto solo maneja el conflicto de insertar dos veces sin generar un
-// error feo al usuario.
+// rate).
 import { and, desc, eq } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
-import {
-  db,
-  hourlyProductionEntry,
-  hourlyProductionSession,
-} from '../../../server-lib/db/client.js'
-import { loadSessionDetail } from '../../../server-lib/hourlyProduction.js'
+import { db, sortingEntry, sortingSession } from '../../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
+import { loadSortingSessionDetail } from '../../../server-lib/sorting.js'
 import { OFFICIAL_SHIFTS } from '../../../src/data/production/catalog.js'
 import { buildShiftBlocks } from '../../../src/data/shiftProduction/shiftBlocks.js'
 
-const MODULE_KEY = '/hora-por-hora'
+const MODULE_KEY = '/sorting'
 const SHIFT_IDS = new Set(OFFICIAL_SHIFTS.map((s) => s.id))
 const LOSS_UNITS = new Set(['PIECES', 'MINUTES'])
 
 function sessionWhere(sessionDate, shift, areaId) {
   return and(
-    eq(hourlyProductionSession.date, sessionDate),
-    eq(hourlyProductionSession.shift, shift),
-    eq(hourlyProductionSession.areaId, areaId),
+    eq(sortingSession.date, sessionDate),
+    eq(sortingSession.shift, shift),
+    eq(sortingSession.areaId, areaId),
   )
 }
 
@@ -39,22 +33,19 @@ async function handleGet(req, res) {
   }
 
   const [existing] = await db
-    .select({ id: hourlyProductionSession.id })
-    .from(hourlyProductionSession)
+    .select({ id: sortingSession.id })
+    .from(sortingSession)
     .where(sessionWhere(new Date(`${date}T00:00:00`), shift, areaId))
     .limit(1)
 
-  // Ultimo rate usado en esta area (cualquier turno/fecha) -- sugerencia para pre-llenar "Rate
-  // estandar" en un area/turno nuevo, nunca un numero inventado (2026-09-04, a peticion explicita
-  // del usuario -- "no quiero escribir 65 en cada hora manualmente").
   const [lastForArea] = await db
     .select({
-      standardRate: hourlyProductionSession.standardRate,
-      lossUnit: hourlyProductionSession.lossUnit,
+      standardRate: sortingSession.standardRate,
+      lossUnit: sortingSession.lossUnit,
     })
-    .from(hourlyProductionSession)
-    .where(eq(hourlyProductionSession.areaId, areaId))
-    .orderBy(desc(hourlyProductionSession.createdAt))
+    .from(sortingSession)
+    .where(eq(sortingSession.areaId, areaId))
+    .orderBy(desc(sortingSession.createdAt))
     .limit(1)
 
   if (!existing) {
@@ -65,7 +56,7 @@ async function handleGet(req, res) {
       lastLossUnit: lastForArea?.lossUnit ?? null,
     })
   }
-  const detail = await loadSessionDetail(existing.id)
+  const detail = await loadSortingSessionDetail(existing.id)
   return res.status(200).json({
     ...detail,
     lastStandardRate: lastForArea?.standardRate ?? null,
@@ -87,12 +78,12 @@ async function handlePost(req, res) {
 
   const sessionDate = new Date(`${date}T00:00:00`)
   const [existing] = await db
-    .select({ id: hourlyProductionSession.id })
-    .from(hourlyProductionSession)
+    .select({ id: sortingSession.id })
+    .from(sortingSession)
     .where(sessionWhere(sessionDate, shift, areaId))
     .limit(1)
   if (existing) {
-    return res.status(200).json(await loadSessionDetail(existing.id))
+    return res.status(200).json(await loadSortingSessionDetail(existing.id))
   }
 
   const shiftConfig = OFFICIAL_SHIFTS.find((s) => s.id === shift)
@@ -100,7 +91,7 @@ async function handlePost(req, res) {
 
   try {
     const [created] = await db
-      .insert(hourlyProductionSession)
+      .insert(sortingSession)
       .values({
         date: sessionDate,
         shift,
@@ -111,7 +102,7 @@ async function handlePost(req, res) {
       })
       .returning()
 
-    await db.insert(hourlyProductionEntry).values(
+    await db.insert(sortingEntry).values(
       blocks.map((b) => ({
         sessionId: created.id,
         startTime: b.startTime,
@@ -121,18 +112,15 @@ async function handlePost(req, res) {
       })),
     )
 
-    return res.status(201).json(await loadSessionDetail(created.id))
+    return res.status(201).json(await loadSortingSessionDetail(created.id))
   } catch (err) {
-    // Race real: dos personas abrieron el modulo a la vez y ambas mandaron POST -- el indice
-    // unico (date+shift+areaId) gana, aqui solo se recupera la sesion real ya creada en vez de
-    // mostrar un error de "conflicto" al segundo usuario.
     if (err?.code === '23505') {
       const [raceWinner] = await db
-        .select({ id: hourlyProductionSession.id })
-        .from(hourlyProductionSession)
+        .select({ id: sortingSession.id })
+        .from(sortingSession)
         .where(sessionWhere(sessionDate, shift, areaId))
         .limit(1)
-      if (raceWinner) return res.status(200).json(await loadSessionDetail(raceWinner.id))
+      if (raceWinner) return res.status(200).json(await loadSortingSessionDetail(raceWinner.id))
     }
     throw err
   }

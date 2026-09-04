@@ -57,6 +57,7 @@ i18n
       'demoras',
       'controlEquipo',
       'horaPorHora',
+      'sorting',
     ],
     defaultNS: 'common',
     detection: {

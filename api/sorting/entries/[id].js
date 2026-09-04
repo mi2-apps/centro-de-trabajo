@@ -1,19 +1,11 @@
-// Captura de produccion real de una hora especifica (y, mediante accion secundaria, override del
-// estandar de ESA hora unicamente -- 2026-09-04, a peticion explicita del usuario: "si una hora
-// requiere un estandar distinto, permitir editar unicamente esa hora... nunca modificar registros
-// historicos cuando despues cambie el rate estandar"). gap/cumplimiento NUNCA se guardan ni se
-// reciben del cliente -- son 100% derivados de standardQty/actualQty, calculados donde se
-// muestran (mismo criterio que 5S/ProcessAudit: el servidor nunca confia en un total que mande
-// el cliente, aqui simplemente no existe ese campo para mandar).
+// Captura de produccion real de una hora especifica de Sorting. gap/cumplimiento NUNCA se
+// guardan ni se reciben del cliente -- son 100% derivados de standardQty/actualQty, calculados
+// donde se muestran.
 import { eq } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
-import {
-  db,
-  hourlyProductionEntry,
-  hourlyProductionSession,
-} from '../../../server-lib/db/client.js'
-import { loadSessionDetail } from '../../../server-lib/hourlyProduction.js'
+import { db, sortingEntry, sortingSession } from '../../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
+import { loadSortingSessionDetail } from '../../../server-lib/sorting.js'
 import { LOSS_COLUMN_KEYS } from '../../../src/data/shiftProduction/lossColumns.js'
 
 const ADMIN_ROLES = new Set(['ADMINISTRADOR', 'SUPERVISOR'])
@@ -23,7 +15,7 @@ export default requireAuth(async (req, res) => {
   const allowed = await canUserAccessModule({
     userId: req.user.id,
     role: req.user.role,
-    moduleKey: '/hora-por-hora',
+    moduleKey: '/sorting',
   })
   if (!allowed) return res.status(403).json({ error: 'No autorizado para este modulo' })
 
@@ -31,16 +23,16 @@ export default requireAuth(async (req, res) => {
   const { actualQty, standardQty, observations, ...lossFields } = req.body || {}
 
   const [entry] = await db
-    .select({ id: hourlyProductionEntry.id, sessionId: hourlyProductionEntry.sessionId })
-    .from(hourlyProductionEntry)
-    .where(eq(hourlyProductionEntry.id, id))
+    .select({ id: sortingEntry.id, sessionId: sortingEntry.sessionId })
+    .from(sortingEntry)
+    .where(eq(sortingEntry.id, id))
     .limit(1)
   if (!entry) return res.status(404).json({ error: 'Hora no encontrada.' })
 
   const [session] = await db
-    .select({ status: hourlyProductionSession.status })
-    .from(hourlyProductionSession)
-    .where(eq(hourlyProductionSession.id, entry.sessionId))
+    .select({ status: sortingSession.status })
+    .from(sortingSession)
+    .where(eq(sortingSession.id, entry.sessionId))
     .limit(1)
   if (session.status === 'FINALIZADO' && !ADMIN_ROLES.has(req.user.role)) {
     return res.status(403).json({ error: 'Este turno ya esta finalizado -- solo lectura.' })
@@ -79,7 +71,7 @@ export default requireAuth(async (req, res) => {
     values.observations = observations === '' ? null : String(observations).slice(0, 2000)
   }
 
-  await db.update(hourlyProductionEntry).set(values).where(eq(hourlyProductionEntry.id, id))
+  await db.update(sortingEntry).set(values).where(eq(sortingEntry.id, id))
 
-  return res.status(200).json(await loadSessionDetail(entry.sessionId))
+  return res.status(200).json(await loadSortingSessionDetail(entry.sessionId))
 })

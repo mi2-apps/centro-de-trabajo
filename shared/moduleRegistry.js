@@ -613,13 +613,14 @@ export const MODULE_REGISTRY = [
     order: 20,
   },
   // 2026-09-04 (a peticion explicita del usuario -- "quiero convertir a digital nuestro formato
-  // fisico de produccion 'Hora por Hora'"): registro real de produccion estandar/real/gap/
-  // cumplimiento por hora + incidencias, ver server-lib/hourlyProduction.js y
-  // src/data/horaPorHora/.
+  // fisico de produccion 'Hora por Hora'", luego reescrito para reproducir EXACTAMENTE el Excel
+  // real "Hora_por_Hora_FFT_7a5.xlsx"): registro real de produccion estandar/real/gap/
+  // cumplimiento por hora + perdidas por causa (columnas fijas), ver server-lib/hourlyProduction.js
+  // y src/data/horaPorHora/.
   {
     key: '/hora-por-hora',
     name: 'Hora por Hora',
-    description: 'Seguimiento de producción estándar vs. real por hora, turno e incidencias',
+    description: 'Seguimiento de producción estándar vs. real por hora, turno y pérdidas por causa',
     icon: 'Timer',
     active: true,
     permissionProtected: true,
@@ -627,6 +628,23 @@ export const MODULE_REGISTRY = [
     labelKey: 'horaPorHora',
     group: 'P',
     order: 60,
+  },
+  // 2026-09-04 (a peticion explicita del usuario -- "modulo NUEVO y separado de Hora por Hora,
+  // mismo formato de captura EXACTO"): mismo formato de Hora por Hora (estandar/real/gap/
+  // cumplimiento por hora + perdidas por causa) pero para el proceso de Sorting, con sus propias
+  // tablas/permiso -- ver server-lib/sorting.js y src/data/sorting/. NUNCA afecta los permisos ya
+  // otorgados de Hora por Hora (modulo nuevo = 0 accesos hasta que ADMINISTRADOR los otorgue).
+  {
+    key: '/sorting',
+    name: 'Sorting',
+    description: 'Seguimiento de producción estándar vs. real por hora, turno y pérdidas por causa (Sorting)',
+    icon: 'ListFilter',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'sorting',
+    group: 'P',
+    order: 65,
   },
 ]
 

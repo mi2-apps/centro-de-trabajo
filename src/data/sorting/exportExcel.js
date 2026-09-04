@@ -1,13 +1,9 @@
-// Exportacion a Excel de un turno de Hora por Hora (2026-09-04, reescrito para reproducir
-// EXACTAMENTE la estructura del Excel real entregado por el usuario --
-// "Hora_por_Hora_FFT_7a5.xlsx": 2 hojas, "Hora por Hora" (encabezado + KPIs + tabla + TOTAL
-// TURNO) y "Resumen" (KPIs + acumulado + perdidas por causa). Misma libreria y mismo criterio ya
-// establecido en src/pages/dashboard/DashboardExportButton.jsx: xlsx (SheetJS edicion community,
-// instalada sin costo) soporta anchos de columna + autofilter al escribir un archivo, pero NO
-// freeze panes ni negritas de encabezado -- se documenta aqui en vez de fingir que se aplicaron.
+// Exportacion a Excel de un turno de Sorting -- mismo formato exacto que Hora por Hora
+// (src/data/horaPorHora/exportExcel.js), tablas/modulo separados a peticion explicita del
+// usuario. Los textos vienen del namespace i18n 'sorting' (pasado por quien llama), nunca de
+// 'horaPorHora'.
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
-import { workCenterById } from '../production/catalog.js'
 import { computeTotalLoss, LOSS_COLUMNS } from '../shiftProduction/lossColumns.js'
 import {
   computeAccumulatedSeries,
@@ -19,9 +15,8 @@ import {
 
 const U = undefined
 
-export function exportHourlyProductionToExcel({ session, entries, t }) {
+export function exportSortingToExcel({ session, entries, t }) {
   const summary = computeShiftSummary(entries)
-  const areaName = workCenterById(session.areaId)?.name || session.areaId
   const shiftLabel = t(`shift.${session.shift}`)
   // .slice(0,10): session.date llega como ISO string ("...T00:00:00.000Z") -- pasarlo completo a
   // dayjs() lo reinterpreta en zona horaria local y puede mostrar el dia anterior.
@@ -32,7 +27,7 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
 
   const wb = XLSX.utils.book_new()
 
-  // ---------------------------------------------------------------- Hoja "Hora por Hora"
+  // ---------------------------------------------------------------- Hoja "Sorting"
   const lossHeaders = LOSS_COLUMNS.map((c) => t(c.labelKey))
   const hourlyRows = [
     [t('exportTitle')],
@@ -48,7 +43,6 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
       t('fieldLossUnit'),
       unit,
     ],
-    [t('exportMetricArea'), areaName],
     [],
     [
       `${t('kpiExpectedTitle')}\n${summary.expected} ${t('unitPieces')}`,
@@ -124,9 +118,7 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
   const accumulated = computeAccumulatedSeries(entries, entries.length - 1)
   const resumenRows = [
     [t('exportSummaryTitle')],
-    [
-      `${t('exportMetricDate')}: ${dateStr}   |   ${t('exportMetricShift')}: ${shiftLabel}   |   ${t('exportMetricArea')}: ${areaName}`,
-    ],
+    [`${t('exportMetricDate')}: ${dateStr}   |   ${t('exportMetricShift')}: ${shiftLabel}`],
     [],
     [
       `${t('summaryExpected')}\n${summary.expected} ${t('unitPieces')}`,
@@ -171,5 +163,5 @@ export function exportHourlyProductionToExcel({ session, entries, t }) {
   resumenWs['!cols'] = [{ wch: 24 }, { wch: 16 }, { wch: 4 }, { wch: 20 }, { wch: 4 }, { wch: 16 }]
   XLSX.utils.book_append_sheet(wb, resumenWs, t('exportSheetSummary'))
 
-  XLSX.writeFile(wb, `hora-por-hora_${fileDateStr}_${session.shift}_${session.areaId}.xlsx`)
+  XLSX.writeFile(wb, `sorting_${fileDateStr}_${session.shift}_${session.areaId}.xlsx`)
 }

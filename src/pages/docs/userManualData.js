@@ -88,6 +88,12 @@ export const MODULES = [
     bodyKey: 'horaPorHoraBody',
   },
   {
+    nameKey: 'sorting',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
+    bodyKey: 'sortingBody',
+  },
+  {
     nameKey: 'organigrama',
     status: 'proximamente',
     statusLabelKey: 'statusProximamente',

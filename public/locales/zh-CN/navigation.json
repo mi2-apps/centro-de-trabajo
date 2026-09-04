@@ -28,5 +28,6 @@
   "rechazoInterno": "内部拒收",
   "ppmInterno": "内部PPM",
   "controlEquipo": "设备管控",
-  "horaPorHora": "每小时产量"
+  "horaPorHora": "每小时产量",
+  "sorting": "分拣"
 }

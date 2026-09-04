@@ -13,6 +13,7 @@ import {
   History,
   Hourglass,
   LayoutDashboard,
+  ListFilter,
   Map as MapIcon,
   Network,
   Star,
@@ -53,6 +54,7 @@ const ICONS = {
   Gauge: Gauge,
   Wrench: Wrench,
   Timer: Timer,
+  ListFilter: ListFilter,
 }
 
 export function getModuleIcon(iconKey) {
