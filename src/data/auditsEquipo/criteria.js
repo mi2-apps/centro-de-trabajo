@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES } from '../controlEquipo/catalog'
+import { EQUIPMENT_TYPES } from '../controlEquipo/catalog.js'
 
 /* Checklist real de "Levantamiento de equipos" (2026-09-04, a peticion explicita del usuario --
    "en el modulo de auditoria se debe hacer el check list [de Control de equipo]"). Un criterio
