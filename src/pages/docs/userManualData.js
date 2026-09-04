@@ -1,9 +1,13 @@
 // User Manual -- ayuda real para usuarios finales (MI Stack Reference,
 // sección 17a, HARD RULE). Contenido separado de la presentación
-// (UserManualPage.jsx). Refleja el estado REAL de cada módulo -- KPI's/
-// Asistencia/Auditoría están marcados "próximamente" a propósito, son
-// placeholders reales en el código (ComingSoonPage), no se inventa
-// funcionalidad que todavía no existe.
+// (UserManualPage.jsx). Refleja el estado REAL de cada módulo -- se
+// actualiza en cada cambio real (2026-09-04, a peticion explicita del
+// usuario: "ve actualizando esas 3 cada vez que se actualice algo... deben
+// estar a la mano con la pagina web"), nunca se inventa funcionalidad que
+// todavia no existe. KPI's/Asistencia/Auditoría/Evaluaciones YA estan
+// disponibles (dejaron de ser ComingSoonPage hace varias sesiones) -- antes
+// este archivo seguia diciendo "próximamente"/"en construcción" para los 3
+// primeros, y Evaluaciones ni siquiera aparecia en la lista.
 //
 // Textos traducibles movidos a public/locales/*/docs.json (namespace
 // "docs", sub-objeto "userManualData") -- este archivo solo guarda
@@ -43,21 +47,27 @@ export const MODULES = [
   },
   {
     nameKey: 'kpis',
-    status: 'próximamente',
-    statusLabelKey: 'statusProximamente',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
     bodyKey: 'kpisBody',
   },
   {
     nameKey: 'asistencia',
-    status: 'próximamente',
-    statusLabelKey: 'statusProximamente',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
     bodyKey: 'asistenciaBody',
   },
   {
     nameKey: 'auditoria',
-    status: 'próximamente',
-    statusLabelKey: 'statusProximamente',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
     bodyKey: 'auditoriaBody',
+  },
+  {
+    nameKey: 'evaluaciones',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
+    bodyKey: 'evaluacionesBody',
   },
 ]
 

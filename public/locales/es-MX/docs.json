@@ -4,9 +4,9 @@
     "centroTrabajoBody": "El módulo principal. Tres pestañas:\n\n- Estaciones: mapa operativo de todas las WC (Líneas 0-10, Paletizado,\n  Accesorios, Insumos, Midea/High Value, Conveyor y áreas de soporte).\n  Haz clic en cualquier área para ver el detalle de sus puestos y quién\n  los ocupa.\n- Personal: buscador de personas y su ubicación actual, con historial de\n  movimientos.\n- Bajas: personal marcado como baja (ya no forma parte de la plantilla\n  activa) -- nunca se borra del sistema, solo se marca inactivo.\n\nDentro del detalle de cada área puedes: registrar a alguien en un puesto\nlibre, mover a alguien de puesto, liberar un puesto, y (si tu rol lo\npermite) configurar los puestos de esa área. Un LIDER que pide un\nmovimiento necesita aprobación de un SUPERVISOR o ADMINISTRADOR antes de\nque se aplique -- esa solicitud pendiente aparece señalada hasta que se\nresuelve.",
     "usuariosBody": "Solo visible para quien tiene el módulo \"Usuarios\" habilitado (típicamente\nADMINISTRADOR). Crear/editar/desactivar cuentas, restablecer contraseñas,\ny configurar qué módulos puede ver cada rol o cada persona en particular\n(los overrides individuales ganan sobre el permiso general del rol).",
     "registroPersonalBody": "Pantalla pensada para check-in rápido en tablet/piso: buscar a una persona\ny asignarla a un puesto libre en pocos toques, sin pasar por el detalle\ncompleto de Centro de Trabajo.",
-    "kpisBody": "Módulo en construcción -- todavía no tiene funcionalidad propia.",
-    "asistenciaBody": "Módulo en construcción -- todavía no tiene funcionalidad propia.",
-    "auditoriaBody": "Módulo en construcción -- todavía no tiene funcionalidad propia.",
+    "kpisBody": "Tabla de indicadores clave (KPI) importada tal cual del Excel oficial de la empresa, agrupada por área, con semáforo de colores igual al formato condicional del Excel original.",
+    "asistenciaBody": "Personal por área de trabajo con su asistencia de hoy: presentes, pendientes, inasistencias y cobertura por área, con buscador y navegación hasta cada persona.",
+    "auditoriaBody": "Auditoría de Proceso (checklist real por puesto, hoy disponible para Etiquetado) y Auditoría de 5'S (checklist de 40 criterios, radar y evolución mensual por área); Auditoría de Seguridad sigue en construcción.",
     "statusDisponible": "disponible",
     "statusProximamente": "próximamente",
     "faq1Question": "¿Por qué no puedo ver un módulo que antes sí veía?",
@@ -14,7 +14,8 @@
     "faq2Question": "¿Qué significa que a alguien le falte \"estación\"?",
     "faq2Answer": "Pasa cuando la estación donde estaba asignada esa persona ya no existe en la configuración actual del área (por ejemplo, un administrador la eliminó o renombró). La persona nunca desaparece del sistema -- aparece en \"Personal sin estación\" hasta que alguien la reasigne a un puesto real.",
     "faq3Question": "¿Se puede deshacer un movimiento?",
-    "faq3Answer": "El historial de movimientos nunca se borra ni se edita (es un registro permanente). Para corregir una ubicación, simplemente se hace un nuevo movimiento -- el sistema no \"reescribe\" el pasado."
+    "faq3Answer": "El historial de movimientos nunca se borra ni se edita (es un registro permanente). Para corregir una ubicación, simplemente se hace un nuevo movimiento -- el sistema no \"reescribe\" el pasado.",
+    "evaluacionesBody": "Historial de auditorías de 5'S y de Proceso ya realizadas, con su resultado detallado y comparación contra la auditoría anterior de la misma área/puesto."
   },
   "userManualPage": {
     "title": "Manual de Usuario",
@@ -86,6 +87,15 @@
     "addedCoolify": "Despliegue a Coolify (Fase 7): PM2 (pm2-runtime) + servidor Express propio como entrypoint fuera de Vercel. En vivo en https://centro-de-trabajo.mi2.com.mx desde el 2026-09-01.",
     "changedFormat": "Formato de código en todo el repo (Biome), sin cambios de comportamiento.",
     "pendingSso": "SSO real de Nextcloud (OIDC), reemplaza el login propio.",
-    "v100Description": "Estado de producción antes de iniciar la migración de stack. Gestión completa de personal de piso: asignación diaria por estación, movimientos con aprobación (LIDER → SUPERVISOR/ADMINISTRADOR), asistencia, catálogo de personal importado desde Excel (con colas de revisión para conflictos de baja/duplicados), permisos por rol y por usuario, y un plano operativo 2D del piso. Desplegado en Vercel con integración automática de GitHub (desarrollo-personal → Preview, main → Producción)."
+    "v100Description": "Estado de producción antes de iniciar la migración de stack. Gestión completa de personal de piso: asignación diaria por estación, movimientos con aprobación (LIDER → SUPERVISOR/ADMINISTRADOR), asistencia, catálogo de personal importado desde Excel (con colas de revisión para conflictos de baja/duplicados), permisos por rol y por usuario, y un plano operativo 2D del piso. Desplegado en Vercel con integración automática de GitHub (desarrollo-personal → Preview, main → Producción).",
+    "addedPersonnelSync": "Sincronización automática de personal entre SmartControl y el catálogo de Empleados: altas y bajas se reflejan solas cada 30 minutos en producción, sin captura manual.",
+    "addedProcessManuals": "Manuales de proceso reales (con imágenes, extraídos del manual oficial) embebidos en \"Hoja de Proceso\" de cada línea, para los puestos de Prueba eléctrica, Limpieza de TV, Empaque y Etiquetado.",
+    "addedFiveSAudit": "Auditoría de 5'S completa: checklist real de 40 criterios (5 categorías), radar de resultados, historial y evolución mensual por área.",
+    "addedProcessAudit": "Auditoría de Proceso: checklist real de 28 criterios para el puesto de Etiquetado, con el empleado autocompletado desde quien está asignado ahí, resultado y % calculado por categoría.",
+    "changedPersonalTab": "Rediseño compacto de las cards \"Estado general del día\", \"Directorio rápido de personal\" y \"Alertas y pendientes\" en el módulo de Personal.",
+    "changedFiveSIntro": "La Auditoría 5'S vuelve a ser \"por área\" (sin puesto/empleado), con un campo Auditor visible que muestra el usuario de la sesión.",
+    "changedAreaColors": "Las líneas sin personal asignado ahora se ven en amarillo (antes gris/rojo), tanto en la pestaña Líneas como en el tablero Área operando.",
+    "changedSidebar": "El menú lateral se reorganiza en categorías (Visión general, Operación diaria, Personal, Análisis y control, Administración, Recursos, Sistema), generadas dinámicamente desde el registro de módulos en vez de una lista fija.",
+    "changedAsistenciaAreas": "\"Personal por área\" en Asistencia ya no muestra Calidad, WC Gerente de FFT ni WC Supervisor como tarjetas propias."
   }
 }

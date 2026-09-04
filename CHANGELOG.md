@@ -42,9 +42,36 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `https://centro-de-trabajo.mi2.com.mx` desde el 2026-09-01 (fix de
   `NIXPACKS_START_CMD` para que la fase `start` use la ruta completa de
   pnpm, mismo problema que ya afectaba a `build`).
+- **Sincronización automática de personal.** `server-lib/personnel-sync.js`
+  corre cada 30 minutos en producción: altas y bajas reales de SmartControl
+  se reflejan solas en el catálogo de Empleados, sin captura manual.
+- **Manuales de proceso reales.** Extraídos con imágenes del manual oficial
+  y embebidos directamente en "Hoja de Proceso" (Centro de Trabajo) para
+  Prueba eléctrica, Limpieza de TV, Empaque y Etiquetado.
+- **Auditoría de 5'S completa.** Checklist real de 40 criterios (5
+  categorías), radar de resultados, historial y evolución mensual por área
+  (`FiveSAudit`/`FiveSAuditAnswer`).
+- **Auditoría de Proceso.** Checklist real de 28 criterios para el puesto de
+  Etiquetado (tomado del formato de Calidad), empleado autocompletado desde
+  quien está asignado a esa estación hoy, puntaje por categoría calculado en
+  servidor (`ProcessAudit`/`ProcessAuditAnswer`).
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.
+- Rediseño compacto de las cards "Estado general del día"/"Directorio
+  rápido de personal"/"Alertas y pendientes" en el módulo de Personal.
+- La Auditoría 5'S vuelve a ser "por área" (sin puesto/empleado), con un
+  campo Auditor visible que muestra el usuario de la sesión real.
+- Líneas sin personal asignado ahora se ven en amarillo (antes gris/rojo),
+  tanto en la pestaña Líneas como en el tablero Área operando.
+- **Sidebar reorganizado por categorías.** El menú lateral (Visión general/
+  Operación diaria/Personal/Análisis y control/Administración/Recursos/
+  Sistema) ahora se genera dinámicamente desde `shared/moduleRegistry.js`
+  (`src/layout/navigationConfig.js`) en vez de una lista fija en el
+  componente — agregar un módulo nuevo con su `group`/`order` ya no requiere
+  tocar el JSX del sidebar.
+- "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
+  ni WC Supervisor como tarjetas propias.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - SSO real de Nextcloud (OIDC), reemplaza el login propio.

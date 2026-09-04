@@ -237,6 +237,14 @@ const KPI_ACCENTS = {
 
 const ACTIVE_SELECTION_CLASS = 'border-blue-400 bg-blue-500/[0.06]'
 
+// "Personal por área" (2026-09-04, a peticion explicita del usuario, viendo esta pantalla en
+// vivo -- "elimina calidad, wc gerente de fft y wc supervisor"): estas 3 areas NUNCA se
+// muestran como card de nivel 1 aqui -- exclusivo de esta vista, no afecta a Centro de
+// Trabajo/Auditoria/otras paginas que si siguen usando estas mismas areas para su proposito
+// real (asignacion de personal, auditorias, etc). El personal real de esas areas sigue
+// existiendo/contando en todos lados, solo deja de tener su propia tarjeta AQUI.
+const ASISTENCIA_HIDDEN_AREA_IDS = new Set(['CALIDAD', 'GERENTE', 'SUPERVISOR'])
+
 /* Identidad visual por area (2026-09-02, a peticion explicita del usuario:
    "cada area conserve la misma estructura funcional, pero tenga identidad
    visual propia mediante icono especifico + color/acento propio" -- SOLO
@@ -608,7 +616,7 @@ export default function AsistenciaPage() {
     const linesTotalPeople = lines.reduce((sum, l) => sum + l.people.length, 0)
 
     const otherAreaGroups = canonicalAreas
-      .filter((w) => !LINE_FAMILY_AREA_IDS.has(w.id))
+      .filter((w) => !LINE_FAMILY_AREA_IDS.has(w.id) && !ASISTENCIA_HIDDEN_AREA_IDS.has(w.id))
       .map((w) => ({
         id: w.id,
         kind: 'people',

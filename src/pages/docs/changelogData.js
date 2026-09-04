@@ -26,11 +26,22 @@ export const RELEASES = [
           'addedI18n',
           'addedTailwind',
           'addedCoolify',
+          'addedPersonnelSync',
+          'addedProcessManuals',
+          'addedFiveSAudit',
+          'addedProcessAudit',
         ],
       },
       {
         labelKey: 'sectionChanged',
-        itemKeys: ['changedFormat'],
+        itemKeys: [
+          'changedFormat',
+          'changedPersonalTab',
+          'changedFiveSIntro',
+          'changedAreaColors',
+          'changedSidebar',
+          'changedAsistenciaAreas',
+        ],
       },
       {
         labelKey: 'sectionPending',

@@ -4,9 +4,9 @@
     "centroTrabajoBody": "The main module. Three tabs:\n\n- Stations: an operational map of all work centers (Lines 0-10, Palletizing,\n  Accessories, Supplies, Midea/High Value, Conveyor, and support areas).\n  Click any area to see the detail of its positions and who occupies them.\n- Personnel: a search tool for people and their current location, with\n  movement history.\n- Terminated: personnel marked as terminated (no longer part of the\n  active roster) -- they are never deleted from the system, only marked inactive.\n\nInside each area's detail view you can: register someone at an open\nposition, move someone between positions, release a position, and (if your\nrole allows) configure that area's positions. A move requested by a LIDER\nrequires approval from a SUPERVISOR or ADMINISTRADOR before it takes\neffect -- that pending request stays flagged until it is resolved.",
     "usuariosBody": "Visible only to those with the \"Users\" module enabled (typically\nADMINISTRADOR). Create/edit/deactivate accounts, reset passwords,\nand configure which modules each role or individual person can see\n(individual overrides take precedence over the role's general permission).",
     "registroPersonalBody": "A screen designed for quick check-in on a tablet/floor: search for a\nperson and assign them to an open position in a few taps, without going\nthrough the full Work Center detail view.",
-    "kpisBody": "Module under construction -- it does not yet have its own functionality.",
-    "asistenciaBody": "Module under construction -- it does not yet have its own functionality.",
-    "auditoriaBody": "Module under construction -- it does not yet have its own functionality.",
+    "kpisBody": "Key indicator (KPI) table imported as-is from the company's official spreadsheet, grouped by area, with the same color coding as the original spreadsheet's conditional formatting.",
+    "asistenciaBody": "Personnel by work area with today's attendance: present, pending, absences and coverage by area, with a search bar and drill-down to each person.",
+    "auditoriaBody": "Process Audit (real per-station checklist, currently available for Labeling) and 5S Audit (40-criteria checklist, radar and monthly evolution by area); Security Audit is still under construction.",
     "statusDisponible": "available",
     "statusProximamente": "coming soon",
     "faq1Question": "Why can't I see a module I used to see?",
@@ -14,7 +14,8 @@
     "faq2Question": "What does it mean when someone is missing a \"station\"?",
     "faq2Answer": "This happens when the station that person was assigned to no longer exists in the area's current configuration (for example, an administrator deleted or renamed it). The person is never removed from the system -- they appear under \"Personnel without a station\" until someone reassigns them to an actual position.",
     "faq3Question": "Can a movement be undone?",
-    "faq3Answer": "Movement history is never deleted or edited (it is a permanent record). To correct a location, you simply make a new movement -- the system does not \"rewrite\" the past."
+    "faq3Answer": "Movement history is never deleted or edited (it is a permanent record). To correct a location, you simply make a new movement -- the system does not \"rewrite\" the past.",
+    "evaluacionesBody": "History of completed 5S and Process audits, with a detailed result and comparison against the previous audit for the same area/station."
   },
   "userManualPage": {
     "title": "User Manual",
@@ -86,6 +87,15 @@
     "addedCoolify": "Deployment to Coolify (Phase 7): PM2 (pm2-runtime) + a dedicated Express server as the entrypoint outside Vercel. Live at https://centro-de-trabajo.mi2.com.mx since 2026-09-01.",
     "changedFormat": "Code formatting across the whole repo (Biome), with no behavior changes.",
     "pendingSso": "Real Nextcloud SSO (OIDC), replacing the in-house login.",
-    "v100Description": "Production state before starting the stack migration. Full floor personnel management: daily station assignment, movements with approval (LIDER → SUPERVISOR/ADMINISTRADOR), attendance, personnel catalog imported from Excel (with review queues for termination/duplicate conflicts), role- and user-level permissions, and a 2D operational floor plan. Deployed on Vercel with automatic GitHub integration (desarrollo-personal → Preview, main → Production)."
+    "v100Description": "Production state before starting the stack migration. Full floor personnel management: daily station assignment, movements with approval (LIDER → SUPERVISOR/ADMINISTRADOR), attendance, personnel catalog imported from Excel (with review queues for termination/duplicate conflicts), role- and user-level permissions, and a 2D operational floor plan. Deployed on Vercel with automatic GitHub integration (desarrollo-personal → Preview, main → Production).",
+    "addedPersonnelSync": "Automatic personnel sync between SmartControl and the Employee catalog: new hires and terminations are reflected on their own every 30 minutes in production, with no manual entry.",
+    "addedProcessManuals": "Real process manuals (with images, extracted from the official manual) embedded in each line's \"Process Sheet\", for the Electrical Test, TV Cleaning, Packing and Labeling stations.",
+    "addedFiveSAudit": "Full 5S Audit system: a real 40-criteria checklist (5 categories), results radar, history, and monthly evolution by area.",
+    "addedProcessAudit": "Process Audit: a real 28-criteria checklist for the Labeling station, with the employee auto-filled from whoever is currently assigned there, and a result with a per-category score.",
+    "changedPersonalTab": "Compact redesign of the \"Daily Status\", \"Quick Personnel Directory\" and \"Alerts & Pending\" cards in the Personnel module.",
+    "changedFiveSIntro": "5S Audit goes back to being \"area-only\" (no station/employee), with a visible Auditor field showing the session user.",
+    "changedAreaColors": "Lines with no assigned personnel now show in amber (previously gray/red), both in the Lines tab and the Operating Floor board.",
+    "changedSidebar": "The sidebar is reorganized into categories (Overview, Daily Operation, Personnel, Analysis & Control, Administration, Resources, System), generated dynamically from the module registry instead of a fixed list.",
+    "changedAsistenciaAreas": "\"Personnel by Area\" in Attendance no longer shows Quality, FFT Manager, or Supervisor as their own cards."
   }
 }
