@@ -97,6 +97,8 @@
     "changedFiveSIntro": "5S Audit goes back to being \"area-only\" (no station/employee), with a visible Auditor field showing the session user.",
     "changedAreaColors": "Lines with no assigned personnel now show in amber (previously gray/red), both in the Lines tab and the Operating Floor board.",
     "changedSidebar": "The sidebar is reorganized into categories, generated dynamically from the module registry instead of a fixed list.",
+    "changedOrganigramaVisionGeneral": "Org Chart moves from M · Personnel to Overview (right below Dashboard), since it's a plant-wide transversal view rather than a PQCDSM family. Personnel Registration and Attendance stay unchanged in M · Personnel.",
+    "changedLogoThemed": "The logo now uses two real official assets depending on the active theme (light/dark), no CSS filters -- it switches immediately when the theme is toggled, no reload needed.",
     "changedAsistenciaAreas": "\"Personnel by Area\" in Attendance no longer shows Quality, FFT Manager, or Supervisor as their own cards.",
     "addedCalidadManual": "Real process manual (official Quality SOP) embedded in the \"Process Sheet\" for the Quality station across all WC LINEA.",
     "addedDemorasPlaneacion": "Two new menu modules -- Delays and Planning -- marked \"Under development\", navigation only for now.",

@@ -44,6 +44,8 @@ export const RELEASES = [
           'changedAreaColors',
           'changedSidebar',
           'changedPqcdsm',
+          'changedOrganigramaVisionGeneral',
+          'changedLogoThemed',
           'changedAsistenciaAreas',
           'changedLogo',
         ],

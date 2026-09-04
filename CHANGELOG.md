@@ -89,6 +89,22 @@ para poder desplegar en el servidor privado (Coolify). Ver
   clasificador automático (`inferNavigationGroup`, usado solo cuando un
   módulo no trae `group` explícito) se reescribió con palabras clave por
   familia y una regla exacta dedicada para variantes de "organigrama".
+- **Organigrama se mueve a Visión General.** Al ser una vista transversal
+  de toda la planta (no una familia PQCDSM), Organigrama pasa de M ·
+  Personal a Visión General, justo debajo de Dashboard — Registro de
+  personal y Asistencia se quedan sin cambios en M · Personal. La regla
+  exacta y las palabras clave de "organigrama"/variantes en el
+  clasificador automático apuntan ahora a Visión General.
+- **Logo real por tema (light/dark).** `BrandLogo.jsx` usa dos assets
+  oficiales reales por variante (`centro-control-full.png`/
+  `-full-dark.png`, `centro-control-icon.png`/`-icon-dark.png`),
+  mostrados/ocultados con las mismas clases `dark:` de Tailwind que ya usa
+  toda la app — nunca un filtro CSS (invert/brightness) sobre el logo
+  claro. El asset dark se preparó quitándole su fondo sólido horneado (no
+  traía canal alfa) para dejarlo transparente de verdad, mismo criterio
+  con que ya se recortó el icono actual de la imagen oficial. El parche
+  anterior que pintaba de blanco toda la franja del header del sidebar en
+  modo oscuro ya no hace falta -- se retira.
 - "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
   ni WC Supervisor como tarjetas propias.
 - **Logo real definitivo.** Se usa la imagen oficial COMPLETA (icono +

@@ -107,11 +107,25 @@ function stripAccents(text) {
 // quiere una garantia dura sin depender de que el nombre visible contenga
 // la palabra clave correcta -- funciona aunque la ruta cambie ligeramente
 // en el futuro (organigrama/org-chart/organization-chart/
-// estructura-organizacional siguen firmes a M, sin importar el nombre).
+// organizational-chart/estructura-organizacional/estructura-de-planta
+// siguen firmes a visionGeneral, sin importar el nombre).
+//
+// 2026-09-04, correccion (a peticion explicita del usuario -- "ORGANIGRAMA
+// es una vista TRANSVERSAL de toda la planta, NO pertenece a PQCDSM... ->
+// VISION GENERAL"): el destino de esta regla cambia de 'M' a
+// 'visionGeneral' -- unica fuente de esta clasificacion, sin dejar la
+// regla vieja en paralelo en ningun otro lado.
 const EXACT_ID_ROUTE_RULES = [
   {
-    group: 'M',
-    patterns: ['organigrama', 'org-chart', 'organization-chart', 'estructura-organizacional'],
+    group: 'visionGeneral',
+    patterns: [
+      'organigrama',
+      'org-chart',
+      'organization-chart',
+      'organizational-chart',
+      'estructura-organizacional',
+      'estructura-de-planta',
+    ],
   },
 ]
 
@@ -211,9 +225,6 @@ const CLASSIFIER_KEYWORDS = [
       'empleados',
       'asistencia',
       'ausentismo',
-      'organigrama',
-      'org-chart',
-      'estructura-organizacional',
       'capacitacion',
       'headcount',
       'turnos',
@@ -249,7 +260,17 @@ const CLASSIFIER_KEYWORDS = [
   },
   {
     group: 'visionGeneral',
-    keywords: ['dashboard', 'home', 'inicio'],
+    keywords: [
+      'dashboard',
+      'home',
+      'inicio',
+      'organigrama',
+      'org-chart',
+      'organization-chart',
+      'organizational-chart',
+      'estructura-organizacional',
+      'estructura-de-planta',
+    ],
   },
 ]
 
@@ -356,7 +377,7 @@ export const MODULE_REGISTRY = [
     systemReserved: false,
     labelKey: 'kpis',
     group: 'visionGeneral',
-    order: 20,
+    order: 30,
   },
   {
     key: '/asistencia',
@@ -502,9 +523,15 @@ export const MODULE_REGISTRY = [
   },
   // 2026-09-04, PQCDSM (a peticion explicita del usuario -- "el objetivo
   // principal es: registrar correctamente el modulo, navegacion, permiso
-  // correspondiente segun arquitectura, ubicacion automatica en M ·
-  // PERSONAL... sin inventar funcionalidad compleja"): mismo patron minimo
-  // que Demoras/Planeacion (ComingSoonPage, sin logica de negocio todavia).
+  // correspondiente segun arquitectura... sin inventar funcionalidad
+  // compleja"): mismo patron minimo que Demoras/Planeacion (ComingSoonPage,
+  // sin logica de negocio todavia).
+  //
+  // 2026-09-04, MISMO DIA, correccion (a peticion explicita del usuario --
+  // "ORGANIGRAMA -> VISION GENERAL... debe quedar exactamente debajo de
+  // Dashboard... NO -> M PERSONAL"): pasa de M a visionGeneral, order:20
+  // (Dashboard=10, Organigrama=20, KPI's=30) -- Registro de personal y
+  // Asistencia se quedan tal cual en M, sin tocarse.
   {
     key: '/organigrama',
     name: 'Organigrama',
@@ -514,7 +541,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'organigrama',
-    group: 'M',
+    group: 'visionGeneral',
     order: 20,
   },
 ]
