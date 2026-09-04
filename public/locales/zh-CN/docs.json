@@ -1,12 +1,12 @@
 {
   "userManualData": {
-    "dashboardBody": "运营状态总览：今日已分配人数与理想编制的对比、各区域覆盖率、当日动态、\nFFT 指标（效率/延误/产量/计划达成率），以及按班次/区域划分的分布图表。\n本页面为只读页面——如需分配或调动人员，请使用工作中心模块。",
+    "dashboardBody": "运营状态总览：今日已分配人数与理想编制的对比、各区域覆盖率、当日动态、\nFFT 指标（效率/延误/产量/计划达成率），以及按班次/区域划分的分布图表。\n页面最底部的\"工厂问题（今日）\"卡片会实时汇总今日的延误和设备问题。\n本页面为只读页面——如需分配或调动人员，请使用工作中心模块。",
     "centroTrabajoBody": "核心模块，包含三个标签页：\n\n- 工位：所有工作中心（WC）的运营地图（0-10 号产线、码垛、\n  配件、物料、Midea/高价值区、传送带以及支持区域）。\n  点击任意区域可查看该区域各岗位的详情及在岗人员。\n- 人员：按人员及其当前位置进行查询的搜索工具，附带调动历史。\n- 离职人员：已标记为离职的人员（不再属于在岗编制）——\n  系统中永远不会删除，只会标记为不活跃。\n\n在每个区域的详情页中，你可以：将某人登记到空缺岗位、调动某人的岗位、\n释放某个岗位，以及（如果你的角色具有相应权限）配置该区域的岗位。\nLIDER（组长）发起的调动需要经过 SUPERVISOR（主管）或 ADMINISTRADOR（管理员）\n审批后才会生效——该待审批请求会一直标记，直到被处理完毕。",
     "usuariosBody": "仅对启用了“用户”模块的人员可见（通常是 ADMINISTRADOR 管理员）。\n可创建/编辑/停用账户、重置密码，并配置每个角色或每位具体人员\n可查看哪些模块（个人级别的例外设置优先于该角色的通用权限）。",
     "registroPersonalBody": "专为在平板电脑/生产现场快速签到设计的界面：只需几次点击即可搜索到某人\n并将其分配到空缺岗位，无需进入工作中心的完整详情页面。",
     "kpisBody": "按原样从公司官方 Excel 导入的关键指标（KPI）表，按区域分组，配色与原 Excel 的条件格式一致。",
     "asistenciaBody": "按工作区域显示人员及其当日考勤情况：出勤、待处理、缺勤和各区域的覆盖率，支持搜索并可逐层查看到每个人。",
-    "auditoriaBody": "流程审核（真实的分工位检查清单，目前支持贴标工位）和 5S 审核（40 项检查清单、雷达图及按区域的月度趋势）；安全审核仍在建设中。",
+    "auditoriaBody": "三种真实审核类型：流程审核（真实的分工位检查清单，目前支持贴标工位）、5S 审核（40 项检查清单、雷达图及按区域的月度趋势），以及设备巡查（对设备管控的9种物理设备类型进行检查清单，立即显示结果）；安全审核仍在建设中。",
     "statusDisponible": "可用",
     "statusProximamente": "即将上线",
     "faq1Question": "为什么我看不到以前能看到的某个模块？",
@@ -15,7 +15,13 @@
     "faq2Answer": "当该人员原本所在的工位在该区域当前的配置中已不存在时（例如，\n管理员已删除或重命名了该工位），就会出现这种情况。该人员绝不会从系统中\n消失——会显示在“无工位人员”列表中，直到有人将其重新分配到实际岗位为止。",
     "faq3Question": "可以撤销某次调动吗？",
     "faq3Answer": "调动历史记录永远不会被删除或编辑（它是永久性记录）。如需更正某个位置，\n只需进行一次新的调动即可——系统不会“改写”过去的记录。",
-    "evaluacionesBody": "已完成的 5S 审核和流程审核历史记录，包含详细结果，并与同一区域/工位的上一次审核进行对比。"
+    "evaluacionesBody": "已完成的 5S 审核和流程审核历史记录，包含详细结果，并与同一区域/工位的上一次审核进行对比。",
+    "demorasBody": "真实的停机时间登记：选择区域/产线、工位（可选）、原因（14种可选：等待、系统/网络故障、设备故障、缺物料/配件/缓冲垫/保护套/包装袋/工具、缺陷、评级不一致、重复、型号）、时长（分钟）、班次，以及可选备注。时长4分钟及以上的延误会在历史记录中标记为\"需上报\"。LIDER角色只能看到登记表单，不显示最近记录历史。",
+    "controlEquipoBody": "真实的物理设备状态登记（打印机、热风枪、缓冲垫枪、平板电脑、对讲机、扫描枪、胶带机、打包机、托盘搬运车）：选择类型、区域/产线、工位（可选）、可选标识（例如\"打印机3号\"），以及状态（正常运行、已损坏、维修中、已报废），加上可选备注。历史记录会显示所有登记及其状态。",
+    "organigramaBody": "人员组织架构图。目前仍在开发中——暂时只在菜单中显示。",
+    "planeacionBody": "生产规划。目前仍在开发中——暂时只在菜单中显示。",
+    "rechazoInternoBody": "内部生产拒收登记/目录。目前仍在开发中——暂时只在菜单中显示。",
+    "ppmInternoBody": "内部PPM登记/目录（每百万件制造产品中被拒收的数量）。目前仍在开发中——暂时只在菜单中显示。"
   },
   "userManualPage": {
     "title": "用户手册",
@@ -24,7 +30,7 @@
     "faqHeading": "常见问题"
   },
   "developerManualData": {
-    "architectureOverview": "工作中心 FFT 是一款生产现场人员管理应用：记录今日谁被分配到哪个工位、\n调动历史、考勤情况、官方编制模板（Excel）的导入，以及按角色/模块划分的权限。\n\n当前技术栈：React 18 + Vite（JS，自合规第一阶段起采用宽松的 tsconfig）+\nMUI + 基于 Postgres（Neon）的 Drizzle ORM + 自建的基于签名 Cookie（JWT）的\n身份验证 + Vercel 上的自动部署（GitHub -> 每次推送到 desarrollo-personal\n分支时生成 Preview 预览环境，每次推送到 main 分支时部署到生产环境）。\n\n数据层（server-lib/db/）：schema.ts 与 relations.ts 是通过对真实数据库\n直接执行“drizzle-kit introspect”生成的（从未手写）——共 18 张表/12 个枚举。\nclient.ts 导出“db”（单例模式，与旧版 Prisma 客户端相同的模式）以及每张表，\n供服务器端任意文件直接导入使用。已在合规第三阶段从 Prisma 迁移完成\n（详见 CHANGELOG.md）——业务行为完全一致，已逐文件核实。\n\n前端（src/）：页面按模块组织于 src/pages/<模块>/ 下，会话状态位于\nsrc/state/auth.jsx，人员数据层位于 src/data/personnel/ 与\nsrc/data/production/（区域/班次目录、导入的基线快照等）。\n\n后端（api/、server-lib/）：api/**/*.js 下的每个文件都是一个 Vercel\n无服务器函数（按文件夹约定路由，无需在 vercel.json 中额外配置）。\nserver-lib/dev-server.js 会在本地开发环境中将这些函数原样 1:1 挂载到\nExpress 上运行（concurrently 同时启动 \"vite\" 与\n\"node server-lib/dev-server.js\"）。server-lib/auth.js 集中处理身份验证\n（getSessionUser）以及包裹几乎所有接口的 3 个授权包装函数\n（requireAuth/requireRole/requireModuleAccess）——这是 Sentry 用来捕获\n错误的唯一关卡，无需逐个接口单独处理。\n\n维护脚本（scripts/*.mjs）：一次性的幂等迁移脚本（对过时工位执行软删除，\n从不进行物理 DELETE）以及 scripts/seed-personnel.mjs，该脚本用于将\nWorkstation 与纯生成器 src/data/personnel/workstations.js 保持同步。\nscripts/verify-line-logic.mjs 是本项目的纯逻辑验证套件（目前尚无\nVitest/Playwright）——每次修改 catalog.js/workstations.js 后都会运行该脚本。",
+    "architectureOverview": "工作中心 FFT 是一款生产现场人员管理应用：记录今日谁被分配到哪个工位、\n调动历史、考勤情况、官方编制模板（Excel）的导入，以及按角色/模块划分的权限。\n\n当前技术栈：React 18 + Vite（JS，自合规第一阶段起采用宽松的 tsconfig）+\nTailwind CSS + shadcn/ui + 基于 Postgres（Neon）的 Drizzle ORM + 自建的基于\n签名 Cookie（JWT）的身份验证 + 真实的多语言支持（react-i18next，\nes-MX/en/zh-CN）。主要部署在 Coolify 上（直接推送到\"mi2\"远程仓库的 main\n分支，无预览环境——centro-de-trabajo.mi2.com.mx）；Vercel/GitHub 仍作为\n次要远程仓库保留。\n\n数据层（server-lib/db/）：schema.js 与 relations.js 是通过对真实数据库\n直接执行\"drizzle-kit introspect\"生成的（从未手写）——通过一次性的增量迁移\n增长（详见 drizzle/*.sql + scripts/apply-*-migration-*.mjs；drizzle-kit\ngenerate/migrate 在非交互式shell中无法运行）。client.js 导出\"db\"\n（单例模式）以及每张表，供服务器端任意文件直接导入使用。\n\n前端（src/）：页面按模块组织于 src/pages/<模块>/ 下，会话状态位于\nsrc/state/auth.jsx，人员数据层位于 src/data/personnel/ 与\nsrc/data/production/（区域/班次目录、导入的基线快照等）。\n\n动态侧边栏（shared/moduleRegistry.js + src/layout/navigationConfig.js）：\nMODULE_REGISTRY 是记录哪些模块存在（key/名称/图标/权限）的唯一真实来源——\n新增模块永远不需要修改侧边栏的 JSX 代码。每个模块要么带有明确的 `group`，\n要么通过关键词自动推断（inferNavigationGroup，不使用AI）。工厂运营类模块\n按照 PQCDSM 方法论分类（生产力/质量/成本/交付/安全/人事，每个都带有\n字母+颜色徽标）；管理/资源/系统则作为支持性分类，不属于 PQCDSM。真实的\n处理流程为：用户 -> 权限 -> 可见模块 -> 分类 -> 侧边栏（绝不反过来）——\n没有可见模块的分类不会显示。\n\n后端（api/、server-lib/）：api/**/*.js 下的每个文件都是一个无服务器函数\n（同一份代码同时服务于 Vercel 或 Coolify）。server-lib/api-routes.js\n（mountApiRoutes）是唯一注册所有路由的地方——新增接口始终需要在这里\nimport 并调用 app.get/post，没有基于文件的自动发现机制。\nserver-lib/dev-server.js/prod-server.js 会将这些函数挂载到 Express 上\n（本地开发通过 concurrently 同时启动 \"vite\" 与\n\"node server-lib/dev-server.js\"；生产环境通过 PM2/pm2-runtime，详见\necosystem.config.cjs）。server-lib/auth.js 集中处理身份验证\n（getSessionUser）以及包裹几乎所有接口的 3 个授权包装函数\n（requireAuth/requireRole/requireModuleAccess）。\n\n重要提示（真实的 Node ESM，无打包工具，与使用 Vite 的前端不同）：\napi/**/src/data/**/server-lib/** 下的任何 import 都必须带有明确的 .js\n扩展名——不带扩展名的 import（Vite 风格）只会在生产环境/dev-server 中\n出错（Node 无法解析），在 `npm run build` 中永远不会出错（Vite 可以\n容忍不带扩展名的 import）。这类真实 bug 曾在 2026-09-04 导致整个生产环境\n宕机（502 Bad Gateway）——务必在本地运行 `node server-lib/prod-server.js`\n验证后再确认后端改动完成，而不仅仅依赖 `npm run build`。\n\n维护脚本（scripts/*.mjs）：一次性的幂等迁移脚本（对过时工位执行软删除，\n从不进行物理 DELETE）以及 scripts/seed-personnel.mjs，该脚本用于将\nWorkstation 与纯生成器 src/data/personnel/workstations.js 保持同步。\nscripts/verify-line-logic.mjs 是本项目的纯逻辑验证套件（目前尚无\nVitest/Playwright）——每次修改 catalog.js/workstations.js 后都会运行该脚本。",
     "authOverview": "当前的身份验证方式：通过 employeeNumber（员工编号）或 username（用户名）\n登录（User 模型中不存在 email 字段），密码使用 bcrypt 加密，会话 Cookie\n为 httpOnly 的 \"fft_session\"，以 JWT 签名（会话有效期 8 小时）。\ngetSessionUser 在每次请求时都会重新查询数据库中真实的 User 记录——\n从不信任令牌中声称的角色/状态，只信任 userId。\n\n计划中的迁移（详见凭据迁移清单）：替换为基于 Nextcloud 的真正 SSO 单点登录\n（OIDC）。调用 requireAuth/requireRole/requireModuleAccess 的 25 个文件\n在此次迁移中不会发生变化——变化的只是 api/auth/login.js 与\napi/auth/session.js 中填充 req.user 的方式。",
     "dataDictionary_User_purpose": "系统访问账户（登录用）——与 Employee 完全分离。",
     "dataDictionary_Employee_purpose": "真实的现场人员目录，由 LAYOUT FFT.xlsx 的导入数据填充。",
@@ -44,9 +50,17 @@
     "dataDictionary_RoleModulePermission_purpose": "某个 ROL（角色）对某个模块的权限（动态可配置，可在“用户”模块中编辑）。",
     "dataDictionary_UserModulePermission_purpose": "某个用户对某个模块的个人例外设置。ALLOW/DENY 优先于角色的默认权限。",
     "dataDictionary_RoleModuleAccess_purpose": "遗留表——实际上已被 RoleModulePermission 取代，仅作为历史备份保留，\n目前未在使用。",
+    "dataDictionary_DowntimeRecord_purpose": "延误登记——每条真实停机事件一行（仅追加写入，不可编辑）。",
+    "dataDictionary_EquipmentItem_purpose": "设备管控登记——每次真实设备状态观察记录一行（仅追加写入）。",
+    "dataDictionary_EquipmentAudit_purpose": "\"设备巡查\"表头——每次完整检查清单一行（按区域/工位）。",
+    "dataDictionary_EquipmentAuditAnswer_purpose": "EquipmentAudit 中每个已检查设备类型对应一行。",
     "apiMap_auth": "身份验证——详见 AUTH_OVERVIEW（身份验证概览）",
     "apiMap_personnel": "最核心的一组接口：签到（checkin）、调动（move）、释放（release）、\n名册（roster）、区域历史（area-history）、批准/拒绝调动\n（approve/reject-move）、员工（employees）、隐藏/恢复基线\n（suppress/restore-baseline）",
     "apiMap_users": "用户账户的增删改查（CRUD）+ 重置密码 + 个人权限设置\n（requireModuleAccess(\"/usuarios\")）",
+    "apiMap_demoras": "延误登记的 GET/POST（DowntimeRecord）——由 requireModuleAccess(\"/demoras\") 保护",
+    "apiMap_controlEquipo": "设备管控登记的 GET/POST（EquipmentItem）——由 requireModuleAccess(\"/control-equipo\") 保护",
+    "apiMap_equipmentAudits": "\"设备巡查\"的 GET/POST（EquipmentAudit/EquipmentAuditAnswer）——POST 由\"/auditoria\"保护，GET 由\"/evaluaciones\"保护（与 FiveSAudit/ProcessAudit 相同标准）",
+    "apiMap_dashboardPlantIssues": "仪表盘\"工厂问题\"小组件的今日汇总数据（延误 + 设备管控）",
     "apiMap_workAreaWorkstations": "由管理员进行的岗位配置（新建/编辑/删除/重新排序）",
     "apiMap_rolePermissions": "按角色划分的权限",
     "apiMap_permissionModuleUsers": "查看哪些用户拥有某个模块的访问权限",

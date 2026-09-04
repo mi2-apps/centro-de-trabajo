@@ -2,7 +2,7 @@
 // Reference, sección 14d, HARD RULE). Contenido separado de la
 // presentación (DeveloperManualPage.jsx) para que la migración a
 // Tailwind (fase futura) solo toque el renderer, nunca este contenido.
-// Fuente de verdad: server-lib/db/schema.ts -- si el schema cambia, este
+// Fuente de verdad: server-lib/db/schema.js -- si el schema cambia, este
 // archivo debe actualizarse en el mismo PR (no hay generación automática
 // todavía).
 //
@@ -234,6 +234,55 @@ export const DATA_DICTIONARY = [
       ['modules', 'String[]', ''],
     ],
   },
+  {
+    model: 'DowntimeRecord',
+    purposeKey: 'developerManualData.dataDictionary_DowntimeRecord_purpose',
+    fields: [
+      ['areaId / stationName', 'String / String?', 'catálogo de código (WORK_CENTERS), no FK'],
+      [
+        'reasonKey',
+        'String',
+        'una de las 14 causas de src/data/demoras/catalog.js (DOWNTIME_REASONS)',
+      ],
+      ['durationMinutes', 'Int', ''],
+      ['createdByUserId', 'String (FK User)', ''],
+    ],
+  },
+  {
+    model: 'EquipmentItem',
+    purposeKey: 'developerManualData.dataDictionary_EquipmentItem_purpose',
+    fields: [
+      [
+        'typeKey',
+        'String',
+        'uno de los 9 tipos de src/data/controlEquipo/catalog.js (EQUIPMENT_TYPES)',
+      ],
+      ['areaId / stationName', 'String / String?', 'catálogo de código, no FK'],
+      ['code', 'String?', 'identificador físico opcional (etiqueta/serie)'],
+      ['status', 'EquipmentStatus', 'OPERATIVO | DANADO | EN_REPARACION | BAJA'],
+      ['createdByUserId', 'String (FK User)', ''],
+    ],
+  },
+  {
+    model: 'EquipmentAudit',
+    purposeKey: 'developerManualData.dataDictionary_EquipmentAudit_purpose',
+    fields: [
+      ['areaId / stationName', 'String / String?', ''],
+      ['auditDate', 'DateTime @db.Date', ''],
+      ['totalScore', 'Int', 'suma cruda 0-18 (9 criterios x 2 pts máx), nunca normalizado'],
+      ['createdByUserId', 'String (FK User)', ''],
+    ],
+  },
+  {
+    model: 'EquipmentAuditAnswer',
+    purposeKey: 'developerManualData.dataDictionary_EquipmentAuditAnswer_purpose',
+    fields: [
+      ['auditId', 'String (FK EquipmentAudit)', ''],
+      ['typeKey', 'String', 'uno de EQUIPMENT_TYPES.key'],
+      ['answer', 'EquipmentAuditAnswerType', 'CUMPLE | CUMPLE_PARCIAL | NO_CUMPLE'],
+      ['score', 'Int', 'puntos crudos de este criterio (0/1/2)'],
+    ],
+  },
 ]
 
 export const API_MAP = [
@@ -247,5 +296,9 @@ export const API_MAP = [
     'developerManualData.apiMap_permissionModuleUsers',
   ],
   ['/api/dashboard/trends', 'developerManualData.apiMap_dashboardTrends'],
+  ['/api/dashboard/plant-issues', 'developerManualData.apiMap_dashboardPlantIssues'],
   ['/api/modules', 'developerManualData.apiMap_modules'],
+  ['/api/demoras', 'developerManualData.apiMap_demoras'],
+  ['/api/control-equipo', 'developerManualData.apiMap_controlEquipo'],
+  ['/api/equipment-audits', 'developerManualData.apiMap_equipmentAudits'],
 ]

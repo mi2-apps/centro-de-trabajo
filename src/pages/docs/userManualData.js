@@ -69,6 +69,42 @@ export const MODULES = [
     statusLabelKey: 'statusDisponible',
     bodyKey: 'evaluacionesBody',
   },
+  {
+    nameKey: 'demoras',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
+    bodyKey: 'demorasBody',
+  },
+  {
+    nameKey: 'controlEquipo',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
+    bodyKey: 'controlEquipoBody',
+  },
+  {
+    nameKey: 'organigrama',
+    status: 'proximamente',
+    statusLabelKey: 'statusProximamente',
+    bodyKey: 'organigramaBody',
+  },
+  {
+    nameKey: 'planeacion',
+    status: 'proximamente',
+    statusLabelKey: 'statusProximamente',
+    bodyKey: 'planeacionBody',
+  },
+  {
+    nameKey: 'rechazoInterno',
+    status: 'proximamente',
+    statusLabelKey: 'statusProximamente',
+    bodyKey: 'rechazoInternoBody',
+  },
+  {
+    nameKey: 'ppmInterno',
+    status: 'proximamente',
+    statusLabelKey: 'statusProximamente',
+    bodyKey: 'ppmInternoBody',
+  },
 ]
 
 export const FAQ = [
