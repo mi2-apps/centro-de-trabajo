@@ -95,6 +95,14 @@ para poder desplegar en el servidor privado (Coolify). Ver
   personal y Asistencia se quedan sin cambios en M · Personal. La regla
   exacta y las palabras clave de "organigrama"/variantes en el
   clasificador automático apuntan ahora a Visión General.
+- **Evaluaciones se mueve a M · Personal.** Pasa de Q · Calidad a M ·
+  Personal, en el hueco que dejó Organigrama al moverse a Visión General.
+- Dos módulos nuevos en Q · Calidad — Rechazo Interno y PPM's Interno —
+  marcados "En desarrollo", solo navegación por ahora (mismo patrón que
+  Demoras/Planeación/Organigrama). Serán registros/catálogo de retrabajo
+  reflejados a futuro en los KPI's de Calidad (PPM's INTERNOS,
+  RETRABAJOS); esa integración con los KPI's reales es trabajo aparte, no
+  incluido en esta entrega.
 - **Logo real por tema (light/dark).** `BrandLogo.jsx` usa dos assets
   oficiales reales por variante (`centro-control-full.png`/
   `-full-dark.png`, `centro-control-icon.png`/`-icon-dark.png`),

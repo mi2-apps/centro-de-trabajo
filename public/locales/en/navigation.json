@@ -24,5 +24,7 @@
   "groupOtros": "Other",
   "demoras": "Delays",
   "planeacion": "Planning",
-  "organigrama": "Org Chart"
+  "organigrama": "Org Chart",
+  "rechazoInterno": "Internal Rejection",
+  "ppmInterno": "Internal PPM's"
 }

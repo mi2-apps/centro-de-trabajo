@@ -1,5 +1,6 @@
 import {
   Activity,
+  Ban,
   BarChart3,
   BookOpen,
   CalendarCheck,
@@ -7,6 +8,7 @@ import {
   ClipboardCheck,
   Code2,
   Factory,
+  Gauge,
   HelpCircle,
   History,
   Hourglass,
@@ -45,6 +47,8 @@ const ICONS = {
   Hourglass: Hourglass,
   CalendarRange: CalendarRange,
   Network: Network,
+  Ban: Ban,
+  Gauge: Gauge,
 }
 
 export function getModuleIcon(iconKey) {

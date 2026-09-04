@@ -156,6 +156,22 @@ export default function App() {
                     </RequireModuleAccess>
                   }
                 />
+                <Route
+                  path="/rechazo-interno"
+                  element={
+                    <RequireModuleAccess>
+                      <ComingSoonPage title={t('rechazoInterno')} />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/ppm-interno"
+                  element={
+                    <RequireModuleAccess>
+                      <ComingSoonPage title={t('ppmInterno')} />
+                    </RequireModuleAccess>
+                  }
+                />
 
                 {/* Documentación (MI Stack Reference, secciones 14d/17a) -- accesible a
                   cualquier usuario autenticado, sin gate por módulo (no son una

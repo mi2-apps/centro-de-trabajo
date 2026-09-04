@@ -24,5 +24,7 @@
   "groupOtros": "其他",
   "demoras": "延误",
   "planeacion": "规划",
-  "organigrama": "组织架构图"
+  "organigrama": "组织架构图",
+  "rechazoInterno": "内部拒收",
+  "ppmInterno": "内部PPM"
 }

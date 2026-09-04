@@ -69,6 +69,14 @@ export const NAVIGATION_GROUPS = [
     order: 60,
     badgeClass: 'bg-red-500/[0.14] text-red-600',
   },
+  // 2026-09-04, aclaracion (a peticion explicita del usuario -- "en PQCDSM
+  // la M es Morale/People, es el lado humano, cambialo ya que es humano"):
+  // el significado real de esta letra en la metodologia es Morale/People,
+  // no solo "administracion de personal" -- la etiqueta visible sigue
+  // siendo "Personal" (asi la pidio el usuario explicitamente para esta
+  // seccion del sidebar), pero las palabras clave del clasificador (ver
+  // CLASSIFIER_KEYWORDS, bucket 'M' abajo) ya cubren el lado humano
+  // (moral/clima laboral/motivacion), no solo registros administrativos.
   {
     id: 'M',
     labelKey: 'groupPersonalPqcdsm',
@@ -235,6 +243,13 @@ const CLASSIFIER_KEYWORDS = [
       'people',
       'human',
       'rrhh',
+      'moral',
+      'morale',
+      'motivacion',
+      'clima-laboral',
+      'satisfaccion',
+      'bienestar',
+      'wellbeing',
     ],
   },
   {
@@ -403,12 +418,50 @@ export const MODULE_REGISTRY = [
     group: 'Q',
     order: 10,
   },
+  // 2026-09-04 (a peticion explicita del usuario -- "vas a crear dos nuevos
+  // modulos en calidad... Rechazo interno y PPM's interno, esos dos seran
+  // unos registros o catalogo del retrabajo donde se veran reflejados en
+  // los kpi's de calidad"): mismo patron minimo que Demoras/Planeacion/
+  // Organigrama -- SOLO navegacion por ahora (ComingSoonPage), sin logica
+  // de negocio ni tablas nuevas todavia. Conectar estos registros con los
+  // KPI's reales de Calidad (PPM's INTERNOS, RETRABAJOS) es trabajo aparte,
+  // no incluido aqui.
+  {
+    key: '/rechazo-interno',
+    name: 'Rechazo Interno',
+    description: 'Registro de piezas rechazadas internamente (en desarrollo)',
+    icon: 'Ban',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'rechazoInterno',
+    group: 'Q',
+    order: 20,
+  },
+  {
+    key: '/ppm-interno',
+    name: "PPM's Interno",
+    description:
+      "Catálogo de PPM's internos (piezas rechazadas por millón fabricado, en desarrollo)",
+    icon: 'Gauge',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'ppmInterno',
+    group: 'Q',
+    order: 30,
+  },
   // 2026-09-02 (a peticion explicita del usuario): modulo nuevo, SOLO
   // lectura -- lista las calificaciones ya guardadas de auditorias 5S
   // (ver AuditEvaluation, server-lib/db/schema.js). Mismo criterio de
   // permisos que el resto de modulos nuevos: ADMINISTRADOR lo ve
   // automatico, SUPERVISOR/LIDER necesitan habilitacion manual desde
   // "Gestion de permisos".
+  //
+  // 2026-09-04, correccion (a peticion explicita del usuario -- "mueve el
+  // modulo de evaluaciones a personal"): pasa de Q a M, orden:20 (el hueco
+  // que dejo Organigrama al moverse a Vision General, entre Registro de
+  // personal=10 y Asistencia=30).
   {
     key: '/evaluaciones',
     name: 'Evaluaciones',
@@ -418,7 +471,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'evaluaciones',
-    group: 'Q',
+    group: 'M',
     order: 20,
   },
   // 2026-09-02 (a peticion explicita del usuario, segunda parte del pedido de

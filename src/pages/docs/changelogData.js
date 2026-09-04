@@ -33,6 +33,7 @@ export const RELEASES = [
           'addedCalidadManual',
           'addedDemorasPlaneacion',
           'addedOrganigrama',
+          'addedRechazoPpmInterno',
         ],
       },
       {
@@ -45,6 +46,7 @@ export const RELEASES = [
           'changedSidebar',
           'changedPqcdsm',
           'changedOrganigramaVisionGeneral',
+          'changedEvaluacionesPersonal',
           'changedLogoThemed',
           'changedAsistenciaAreas',
           'changedLogo',
