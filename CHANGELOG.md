@@ -78,6 +78,9 @@ para poder desplegar en el servidor privado (Coolify). Ver
   tocar el JSX del sidebar.
 - "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
   ni WC Supervisor como tarjetas propias.
+- **Logo real.** El icono dibujado a mano (SVG) se reemplaza por la imagen
+  real que generó el usuario (`public/logo-icon.png`) en login, sidebar,
+  encabezado y favicon — una sola fuente de la imagen en toda la app.
 
 ### Fixed
 - **Modo oscuro.** `body` nunca definía un `color` base (solo

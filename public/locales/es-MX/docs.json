@@ -101,6 +101,7 @@
     "addedCalidadManual": "Manual de proceso real (SOP oficial de Calidad) embebido en \"Hoja de Proceso\" para el puesto de Calidad en todas las WC LINEA.",
     "addedDemorasPlaneacion": "Dos módulos nuevos en el menú -- Demoras y Planeación -- marcados \"En desarrollo\", solo navegación por ahora.",
     "fixedDarkMode": "Modo oscuro: textos que se veían negros/invisibles en varios módulos (donas del Dashboard, KPI's de Centro de Trabajo, resultados de Auditoría, etc.) ahora heredan el color correcto del tema; tooltips de gráficas que se veían con fondo blanco fijo también se corrigieron. Modo claro sin cambios.",
-    "fixedPlantTotalConsistency": "El total general de personal (Dashboard y tablero \"Área operando\") no coincidía con Asistencia/\"Resumen por área\" porque cada uno excluía un conjunto distinto de áreas de apoyo (Calidad/Gerente FFT/Supervisor/Entrenador). Se unifica en un solo criterio en toda la app: ninguna de esas 4 cuenta en el total general."
+    "fixedPlantTotalConsistency": "El total general de personal (Dashboard y tablero \"Área operando\") no coincidía con Asistencia/\"Resumen por área\" porque cada uno excluía un conjunto distinto de áreas de apoyo (Calidad/Gerente FFT/Supervisor/Entrenador). Se unifica en un solo criterio en toda la app: ninguna de esas 4 cuenta en el total general.",
+    "changedLogo": "Logo real: el icono dibujado a mano se reemplaza por la imagen que generó Roman, usada en login, sidebar, encabezado y favicon (pestaña del navegador) desde un solo archivo."
   }
 }

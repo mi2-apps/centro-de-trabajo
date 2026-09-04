@@ -43,6 +43,7 @@ export const RELEASES = [
           'changedAreaColors',
           'changedSidebar',
           'changedAsistenciaAreas',
+          'changedLogo',
         ],
       },
       {

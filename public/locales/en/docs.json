@@ -101,6 +101,7 @@
     "addedCalidadManual": "Real process manual (official Quality SOP) embedded in the \"Process Sheet\" for the Quality station across all WC LINEA.",
     "addedDemorasPlaneacion": "Two new menu modules -- Delays and Planning -- marked \"Under development\", navigation only for now.",
     "fixedDarkMode": "Dark mode: text that rendered black/invisible in several modules (Dashboard donuts, Centro de Trabajo KPIs, Audit results, etc.) now correctly inherits the theme color; chart tooltips that showed a fixed white background were also fixed. Light mode unchanged.",
-    "fixedPlantTotalConsistency": "The overall headcount total (Dashboard and the \"Operating Floor\" board) didn't match Attendance/\"Area Summary\" because each excluded a different set of support areas (Quality/FFT Manager/Supervisor/Trainer). Unified into a single rule app-wide: none of those 4 count toward the overall total."
+    "fixedPlantTotalConsistency": "The overall headcount total (Dashboard and the \"Operating Floor\" board) didn't match Attendance/\"Area Summary\" because each excluded a different set of support areas (Quality/FFT Manager/Supervisor/Trainer). Unified into a single rule app-wide: none of those 4 count toward the overall total.",
+    "changedLogo": "Real logo: the hand-drawn icon is replaced with the image Roman generated, used on login, sidebar, header, and favicon (browser tab) from a single file."
   }
 }

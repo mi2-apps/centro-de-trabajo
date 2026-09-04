@@ -1,4 +1,3 @@
-import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
@@ -16,74 +15,30 @@ import { cn } from '@/lib/utils'
    "FFT"/"WC Líneas de producción (FFT)" siguen siendo nombres
    operativos reales del catalogo -- ninguno de los dos se toca aqui.
 
-   El icono (BrandIcon) es un SVG vectorial propio, sin libreria ni
-   imagen externa: un marco cuadrado redondeado abierto del lado
-   derecho (una "C" abstracta) con 4 elementos dentro (dashboard/
-   graficas/flujo/personas) que comunican organizacion + control +
-   personal + areas + metricas, evitando cualquier parecido a un
-   engrane o fabrica generica (rediseño explicito respecto al Cog
-   anterior). Los colores del icono son FIJOS (azules #2563EB-#60A5FA
-   + navy #0B1F4D) en los dos modos -- nunca cambian con el tema,
-   siguiendo el pedido explicito del usuario ("conservar el icono
-   azul" en modo oscuro); solo el texto (wordmark) cambia de color
-   segun el tema, vía tokens ya existentes (text-foreground/
-   text-muted-foreground), igual que el resto de la app. */
+   2026-09-04 (a peticion explicita del usuario -- "no quiero que
+   escribas quiero que uses el logo, en todo: login, barra lateral, en
+   la pagina, y arriba en el buscador web"): el icono ya NO es un SVG
+   dibujado a mano -- es la imagen real que el usuario genero
+   (public/logo-icon.png, recortada 1:1 de
+   "ChatGPT Image 3 sept 2026, 23_41_01.png" en sus Downloads, el mismo
+   diseño de marco/dashboard/flujo de siempre pero con acabado
+   glossy/3D real). El PNG trae su propio fondo navy solido (parte del
+   diseño del icono, no transparente) -- se ve igual en claro/oscuro a
+   proposito, como cualquier app-icon real. Mismo archivo se usa como
+   favicon (index.html) -- unica fuente de verdad de la imagen en toda
+   la app, nunca una copia distinta por lugar. El texto (wordmark)
+   sigue siendo texto real via i18n, con los tokens de tema de
+   siempre -- eso no cambio. */
 
 function BrandIcon({ className, 'aria-hidden': ariaHidden = true, ...rest }) {
-  const gradientId = useId()
   return (
-    // biome-ignore lint/a11y/noSvgWithoutTitle: decorativo por defecto (aria-hidden), o etiquetado via aria-label cuando se usa como marca (variant="icon") -- un <title> interno seria redundante en ambos casos.
-    <svg
-      viewBox="0 0 100 100"
-      className={cn('shrink-0', className)}
+    <img
+      src="/logo-icon.png"
+      alt=""
+      className={cn('shrink-0 rounded-[22%]', className)}
       aria-hidden={ariaHidden}
-      focusable="false"
       {...rest}
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#60A5FA" />
-        </linearGradient>
-      </defs>
-      {/* Marco "C" -- cuadrado redondeado abierto del lado derecho */}
-      <path
-        d="M92,60 L92,72 A20,20 0 0 1 72,92 L28,92 A20,20 0 0 1 8,72 L8,28 A20,20 0 0 1 28,8 L72,8 A20,20 0 0 1 92,28 L92,40"
-        fill="none"
-        stroke={`url(#${gradientId})`}
-        strokeWidth="9"
-        strokeLinecap="round"
-      />
-      {/* Bloques tipo dashboard */}
-      <rect x="23" y="19" width="12" height="12" rx="3" fill="#60A5FA" />
-      <rect x="38" y="19" width="12" height="12" rx="3" fill="#93C5FD" />
-      <rect x="23" y="34" width="12" height="12" rx="3" fill="#0B1F4D" />
-      <rect x="38" y="34" width="12" height="12" rx="3" fill="#60A5FA" />
-      {/* Barras tipo grafica */}
-      <rect x="58" y="36" width="7.5" height="10" rx="2" fill="#93C5FD" />
-      <rect x="68.5" y="29" width="7.5" height="17" rx="2" fill="#3B82F6" />
-      <rect x="79" y="20" width="7.5" height="26" rx="2" fill="#0B1F4D" />
-      {/* Linea de flujo/control con nodos */}
-      <line
-        x1="25"
-        y1="55"
-        x2="75"
-        y2="55"
-        stroke="#93C5FD"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <circle cx="25" cy="55" r="5.5" fill="#3B82F6" />
-      <circle cx="50" cy="55" r="7" fill="#fff" stroke="#0B1F4D" strokeWidth="3.5" />
-      <circle cx="75" cy="55" r="5.5" fill="#3B82F6" />
-      {/* Personas (equipo/personal) */}
-      <circle cx="50" cy="70" r="6" fill="#0B1F4D" />
-      <path d="M39,90 q11,-14 22,0 z" fill="#0B1F4D" />
-      <circle cx="31" cy="76" r="4.5" fill="#60A5FA" />
-      <path d="M23.5,90 q7.5,-10 15,0 z" fill="#60A5FA" />
-      <circle cx="69" cy="76" r="4.5" fill="#60A5FA" />
-      <path d="M61.5,90 q7.5,-10 15,0 z" fill="#60A5FA" />
-    </svg>
+    />
   )
 }
 
