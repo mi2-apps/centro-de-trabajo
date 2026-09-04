@@ -8,10 +8,7 @@
   "search": "Buscar",
   "language": "Idioma",
   "brandLogo": {
-    "brandName": "Centro de Control",
-    "brandNameLine1": "Centro de",
-    "brandNameLine2": "Control",
-    "subtitle": "CONTROL OPERATIVO"
+    "brandName": "Centro de Control"
   },
   "comingSoonPage": {
     "title": "Trabajando en ello",

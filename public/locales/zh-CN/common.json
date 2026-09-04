@@ -8,10 +8,7 @@
   "search": "搜索",
   "language": "语言",
   "brandLogo": {
-    "brandName": "控制中心",
-    "brandNameLine1": "控制",
-    "brandNameLine2": "中心",
-    "subtitle": "运营控制"
+    "brandName": "控制中心"
   },
   "comingSoonPage": {
     "title": "开发中",

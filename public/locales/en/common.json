@@ -8,10 +8,7 @@
   "search": "Search",
   "language": "Language",
   "brandLogo": {
-    "brandName": "Control Center",
-    "brandNameLine1": "Control",
-    "brandNameLine2": "Center",
-    "subtitle": "OPERATIONS CONTROL"
+    "brandName": "Control Center"
   },
   "comingSoonPage": {
     "title": "Working on it",

@@ -3,129 +3,126 @@ import { cn } from '@/lib/utils'
 
 /* ─────────────────────────────────────────────
    Identidad visual general de la plataforma ("Centro de Control" /
-   "CONTROL OPERATIVO") -- FUENTE UNICA de branding, a peticion
-   explicita del usuario (cambio de marca, 2026-08-29). Reemplaza el
-   viejo icono+texto "Centro de Trabajo FFT" que vivia repetido en 4
-   lugares (AppLayout.jsx, Sidebar.jsx, LoginPage.jsx,
-   CentroTrabajoPage.jsx).
+   "CONTROL OPERATIVO") -- FUENTE UNICA de branding.
 
-   IMPORTANTE -- esto es SOLO la marca, no el modulo: "Centro de
-   Trabajo" sigue siendo el nombre real del modulo/ruta
-   /centro-trabajo (Sidebar.jsx NAV_ITEMS, CentroTrabajoPage.jsx), y
-   "FFT"/"WC Líneas de producción (FFT)" siguen siendo nombres
-   operativos reales del catalogo -- ninguno de los dos se toca aqui.
+   2026-09-04 (a peticion explicita del usuario, logo oficial definitivo --
+   "NO reconstruyas el logo utilizando icono+texto HTML... QUIERO UTILIZAR
+   LA IMAGEN COMPLETA DEL LOGO TAL CUAL COMO UN SOLO ASSET"): se eliminan
+   TODOS los bloques de icono+`<p>texto</p>` por variante que vivian aqui --
+   ahora solo hay 2 imagenes reales (public/branding/), nunca texto HTML
+   independiente para representar el branding:
 
-   2026-09-04 (a peticion explicita del usuario -- "no quiero que
-   escribas quiero que uses el logo, en todo: login, barra lateral, en
-   la pagina, y arriba en el buscador web"): el icono ya NO es un SVG
-   dibujado a mano -- es la imagen real que el usuario genero
-   (public/logo-icon.png, recortada 1:1 de
-   "ChatGPT Image 3 sept 2026, 23_41_01.png" en sus Downloads, el mismo
-   diseño de marco/dashboard/flujo de siempre pero con acabado
-   glossy/3D real). El PNG trae su propio fondo navy solido (parte del
-   diseño del icono, no transparente) -- se ve igual en claro/oscuro a
-   proposito, como cualquier app-icon real. Mismo archivo se usa como
-   favicon (index.html) -- unica fuente de verdad de la imagen en toda
-   la app, nunca una copia distinta por lugar. El texto (wordmark)
-   sigue siendo texto real via i18n, con los tokens de tema de
-   siempre -- eso no cambio. */
+   - centro-control-full.png -- lockup COMPLETO (icono + "Centro de
+     Control" + "CONTROL OPERATIVO"), recortado tal cual de la imagen
+     oficial que proporciono el usuario ("ChatGPT Image 4 sept 2026,
+     06_54_32.png", Downloads) -- el texto YA esta dibujado dentro de la
+     imagen, nunca se vuelve a escribir aparte. Se usa donde hay espacio
+     real: sidebar expandido, login/solicitud de acceso, header propio de
+     Centro de Trabajo.
+   - centro-control-icon.png -- SOLO el isotipo (circulo), recortado de la
+     MISMA imagen oficial (mismo archivo, mismos colores, nunca un dibujo
+     aparte). Se usa donde el espacio es angosto -- favicon (index.html) y
+     la barra superior global de 56px (AppLayout.jsx): ahi el lockup
+     completo se veria ilegible o forzaria a agrandar esa barra, un cambio
+     de layout que el usuario no pidio ("NO MODIFIQUES... dashboard" /
+     esto es solo branding).
 
-function BrandIcon({ className, 'aria-hidden': ariaHidden = true, ...rest }) {
+   Ambas imagenes tienen fondo BLANCO real (diseño del usuario: "mi logo
+   esta diseñado para fondo claro/blanco... NO le pongas fondo oscuro").
+   En modo oscuro se envuelven en una superficie clara FIJA (blanca, nunca
+   `dark:` invertida -- ver LogoSurface) para que no queden mal contra el
+   fondo oscuro de la app, en vez de reprocesar la imagen o forzarle un
+   fondo que no es el suyo (pedido explicito: "mantener el asset...  o una
+   superficie clara si el logo fue diseñado para fondo blanco"). En modo
+   claro esa superficie es invisible (fondo de la app ya es blanco/casi
+   blanco), por eso el estilo solo se aplica con el prefijo `dark:`.
+
+   `alt`/`aria-label` (i18n, brandLogo.brandName) siguen siendo texto real
+   -- es metadata de accesibilidad para lectores de pantalla, no
+   "representacion visual" del branding, asi que no rompe la regla del
+   usuario ("la prohibicion de escribir el logo como texto aplica
+   solamente a la representacion visual dentro de la aplicacion"). No
+   existe un "sidebar colapsado" (icon-rail persistente) en la arquitectura
+   actual del sidebar (Sidebar.jsx: overlay totalmente oculto o totalmente
+   visible, nunca un estado intermedio angosto) -- por eso variant="icon"
+   queda disponible en la API tal como el usuario pidio
+   (<BrandLogo variant="icon" />) para cuando ese estado exista, pero hoy
+   no tiene consumidor real; no se inventa una nueva funcionalidad de
+   sidebar aqui, esto es solo branding. */
+
+const FULL_LOGO_SRC = '/branding/centro-control-full.png'
+const ICON_LOGO_SRC = '/branding/centro-control-icon.png'
+
+// Ancho maximo del logo COMPLETO por contexto -- el alto sale solo del
+// aspect-ratio real de la imagen (w-full h-auto + object-contain, nunca
+// deformado). Calculado contra el espacio REAL disponible en cada
+// contenedor existente (sidebar: 290px de ancho - padding - boton de
+// expandir; login: tarjeta de max-w-[400px]; header: fila con mas
+// espacio), dentro del rango que pidio el usuario.
+const FULL_LOGO_MAX_WIDTH = {
+  sidebar: 220,
+  login: 320,
+  header: 260,
+}
+
+// Tamaño del icono aislado por contexto -- header-compact (barra global
+// angosta) se mantiene chico como antes; "icon" es el tamaño por defecto
+// para cualquier uso futuro.
+const ICON_SIZE_CLASS = {
+  'header-compact': 'h-7 w-7',
+  icon: 'h-8 w-8',
+}
+
+function LogoSurface({ className, children }) {
   return (
-    <img
-      src="/logo-icon.png"
-      alt=""
-      className={cn('shrink-0 rounded-[22%]', className)}
-      aria-hidden={ariaHidden}
-      {...rest}
-    />
+    <div
+      className={cn(
+        'inline-flex max-w-full items-center rounded-xl dark:bg-white dark:p-1.5 dark:shadow-sm',
+        className,
+      )}
+    >
+      {children}
+    </div>
   )
 }
 
 /* variant:
-   - "header": lockup completo (icono + titulo + subtitulo), una linea de
-     texto por fila -- usado en el header propio de CentroTrabajoPage.jsx.
-   - "header-compact": icono + titulo en una sola linea, sin subtitulo --
-     usado en la barra superior global de AppLayout.jsx (min-h-14, sin
-     espacio vertical para una segunda linea).
-   - "sidebar": icono + titulo en dos lineas ("Centro de"/"Control") +
-     subtitulo chico -- usado en SidebarHeader (Sidebar.jsx), pensado para
-     el ancho angosto de la sidebar.
-   - "login": lockup centrado y mas grande -- usado en LoginPage.jsx.
-   - "icon": solo el icono, sin texto -- para contextos futuros donde no
-     quepa ni la variante compacta. */
+   - "header": lockup completo -- usado en el header propio de
+     CentroTrabajoPage.jsx.
+   - "header-compact": SOLO icono (ver comentario grande arriba) -- usado
+     en la barra superior global de AppLayout.jsx.
+   - "sidebar": lockup completo -- usado en SidebarHeader (Sidebar.jsx),
+     sidebar siempre expandido cuando visible (nunca hay un rail colapsado
+     hoy, ver comentario grande arriba).
+   - "login": lockup completo, mas grande -- usado en LoginPage.jsx y
+     RequestAccessPage.jsx.
+   - "icon": SOLO icono -- sin consumidor real hoy, disponible para el
+     futuro tal como pidio el usuario. */
 export default function BrandLogo({ variant = 'header', className }) {
   const { t } = useTranslation('common')
+  const brandName = t('brandLogo.brandName')
 
-  if (variant === 'icon') {
+  if (variant === 'icon' || variant === 'header-compact') {
     return (
-      <BrandIcon
-        className={cn('h-8 w-8', className)}
-        aria-hidden={false}
-        role="img"
-        aria-label={t('brandLogo.brandName')}
-      />
+      <LogoSurface className={className}>
+        <img
+          src={ICON_LOGO_SRC}
+          alt={variant === 'icon' ? brandName : ''}
+          aria-hidden={variant === 'header-compact'}
+          className={cn('shrink-0 object-contain', ICON_SIZE_CLASS[variant])}
+        />
+      </LogoSurface>
     )
   }
 
-  if (variant === 'header-compact') {
-    return (
-      <div className={cn('flex min-w-0 items-center gap-2.5', className)}>
-        <BrandIcon className="h-6 w-6" />
-        <p className="truncate text-[15px] font-extrabold tracking-[-0.2px] text-foreground">
-          {t('brandLogo.brandName')}
-        </p>
-      </div>
-    )
-  }
-
-  if (variant === 'sidebar') {
-    return (
-      <div className={cn('flex min-w-0 items-center gap-2.5', className)}>
-        <BrandIcon className="h-9 w-9" />
-        <div className="min-w-0 flex-1 leading-[1.15]">
-          <p className="truncate text-[13px] font-extrabold leading-[1.2] text-foreground">
-            {t('brandLogo.brandNameLine1')}
-          </p>
-          <p className="truncate text-[13px] font-extrabold leading-[1.2] text-foreground">
-            {t('brandLogo.brandNameLine2')}
-          </p>
-          <p className="mt-0.5 truncate text-[9px] font-bold tracking-[0.8px] text-muted-foreground">
-            {t('brandLogo.subtitle')}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (variant === 'login') {
-    return (
-      <div className={cn('flex flex-col items-center gap-2', className)}>
-        <BrandIcon className="h-12 w-12" />
-        <div className="text-center">
-          <p className="text-[19px] font-extrabold leading-tight text-foreground">
-            {t('brandLogo.brandName')}
-          </p>
-          <p className="mt-0.5 text-[10.5px] font-bold tracking-[1.2px] text-muted-foreground">
-            {t('brandLogo.subtitle')}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // "header" (default)
   return (
-    <div className={cn('flex min-w-0 items-center gap-2.5', className)}>
-      <BrandIcon className="h-[30px] w-[30px]" />
-      <div className="min-w-0">
-        <p className="truncate text-[1.15rem] font-extrabold leading-tight tracking-[-0.4px] text-foreground sm:text-[1.4rem]">
-          {t('brandLogo.brandName')}
-        </p>
-        <p className="mt-0.5 truncate text-[11px] font-bold tracking-[1.2px] text-muted-foreground">
-          {t('brandLogo.subtitle')}
-        </p>
-      </div>
-    </div>
+    <LogoSurface className={className}>
+      <img
+        src={FULL_LOGO_SRC}
+        alt={brandName}
+        className="h-auto w-full object-contain"
+        style={{ maxWidth: FULL_LOGO_MAX_WIDTH[variant] ?? 260 }}
+      />
+    </LogoSurface>
   )
 }
