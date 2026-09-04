@@ -261,6 +261,13 @@ function RoleDistributionCard({ people }) {
               </Pie>
               <RTooltip
                 formatter={(v, n) => [t('operationalAreaDetail.personCountLabel', { count: v }), n]}
+                contentStyle={{
+                  borderRadius: 12,
+                  fontSize: 12,
+                  background: 'hsl(var(--popover))',
+                  color: 'hsl(var(--popover-foreground))',
+                  border: '1px solid hsl(var(--border))',
+                }}
               />
             </PieChart>
           </ResponsiveContainer>

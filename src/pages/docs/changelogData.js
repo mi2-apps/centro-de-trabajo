@@ -46,6 +46,10 @@ export const RELEASES = [
         ],
       },
       {
+        labelKey: 'sectionFixed',
+        itemKeys: ['fixedDarkMode'],
+      },
+      {
         labelKey: 'sectionPending',
         itemKeys: ['pendingSso'],
       },

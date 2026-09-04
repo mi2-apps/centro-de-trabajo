@@ -79,6 +79,20 @@ para poder desplegar en el servidor privado (Coolify). Ver
 - "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
   ni WC Supervisor como tarjetas propias.
 
+### Fixed
+- **Modo oscuro.** `body` nunca definía un `color` base (solo
+  `font-family`), así que cualquier texto sin clase de color explícita
+  (`text-2xl font-extrabold` sin `text-foreground`, ~40 casos reales
+  encontrados en donas del Dashboard, KPI's de Centro de Trabajo,
+  resultados de Auditoría, etc.) heredaba el negro por defecto del
+  navegador — invisible sobre fondo oscuro, aunque se veía bien por
+  accidente en modo claro. Se agrega `color: hsl(var(--foreground))` a
+  `body` (`src/index.css`) para que todo texto sin color propio herede el
+  token correcto de cada tema automáticamente. Además, 3 tooltips de
+  gráficas (Recharts) sin estilo propio mostraban su fondo blanco fijo por
+  defecto en modo oscuro — se les agregó `contentStyle` con los mismos
+  tokens de popover que ya usa el resto de la app. Modo claro sin cambios.
+
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - SSO real de Nextcloud (OIDC), reemplaza el login propio.
 

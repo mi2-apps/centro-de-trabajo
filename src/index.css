@@ -55,5 +55,17 @@
 
   body {
     font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    /* 2026-09-04 (a peticion explicita del usuario, "el modo oscuro afecta las
+       letras... no se pierda informacion"): body nunca definia un `color` base,
+       solo `font-family` -- cualquier texto sin clase de color Tailwind explicita
+       (ej. "text-2xl font-extrabold" sin "text-foreground") heredaba el negro por
+       defecto del navegador. Eso "funcionaba" por accidente en modo claro (negro
+       sobre fondo claro) pero volvia el texto invisible en modo oscuro (negro
+       sobre fondo oscuro). Con `color` real aqui, CUALQUIER texto sin color
+       explicito (los ~40 casos encontrados en la auditoria, y cualquiera que se
+       nos haya escapado) hereda el token correcto de cada tema automaticamente,
+       sin tocar un solo componente. Modo claro no cambia (--foreground de :root
+       es visualmente equivalente al negro por defecto que ya se veia). */
+    color: hsl(var(--foreground));
   }
 }

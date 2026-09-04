@@ -1214,7 +1214,13 @@ function EstadoGeneralCard({ estado }) {
                   </Pie>
                   <RechartsTooltip
                     formatter={(value, name) => [value, name]}
-                    contentStyle={{ borderRadius: 12, fontSize: 12 }}
+                    contentStyle={{
+                      borderRadius: 12,
+                      fontSize: 12,
+                      background: 'hsl(var(--popover))',
+                      color: 'hsl(var(--popover-foreground))',
+                      border: '1px solid hsl(var(--border))',
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>

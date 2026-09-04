@@ -70,7 +70,8 @@
     "intro": "Real change history for the project (same content as CHANGELOG.md in the repository).",
     "sectionAdded": "Added",
     "sectionChanged": "Changed",
-    "sectionPending": "Pending (blocked on external credentials)"
+    "sectionPending": "Pending (blocked on external credentials)",
+    "sectionFixed": "Fixed"
   },
   "changelogData": {
     "unreleasedTitle": "MI Stack Reference migration",
@@ -98,6 +99,7 @@
     "changedSidebar": "The sidebar is reorganized into categories (Overview, Daily Operation, Personnel, Analysis & Control, Administration, Resources, System), generated dynamically from the module registry instead of a fixed list.",
     "changedAsistenciaAreas": "\"Personnel by Area\" in Attendance no longer shows Quality, FFT Manager, or Supervisor as their own cards.",
     "addedCalidadManual": "Real process manual (official Quality SOP) embedded in the \"Process Sheet\" for the Quality station across all WC LINEA.",
-    "addedDemorasPlaneacion": "Two new menu modules -- Delays and Planning -- marked \"Under development\", navigation only for now."
+    "addedDemorasPlaneacion": "Two new menu modules -- Delays and Planning -- marked \"Under development\", navigation only for now.",
+    "fixedDarkMode": "Dark mode: text that rendered black/invisible in several modules (Dashboard donuts, Centro de Trabajo KPIs, Audit results, etc.) now correctly inherits the theme color; chart tooltips that showed a fixed white background were also fixed. Light mode unchanged."
   }
 }

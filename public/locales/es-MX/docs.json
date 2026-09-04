@@ -70,7 +70,8 @@
     "intro": "Historial de cambios reales del proyecto (mismo contenido que CHANGELOG.md en el repositorio).",
     "sectionAdded": "Agregado",
     "sectionChanged": "Cambiado",
-    "sectionPending": "Pendiente (bloqueado en credenciales externas)"
+    "sectionPending": "Pendiente (bloqueado en credenciales externas)",
+    "sectionFixed": "Corregido"
   },
   "changelogData": {
     "unreleasedTitle": "Migración a MI Stack Reference",
@@ -98,6 +99,7 @@
     "changedSidebar": "El menú lateral se reorganiza en categorías (Visión general, Operación diaria, Personal, Análisis y control, Administración, Recursos, Sistema), generadas dinámicamente desde el registro de módulos en vez de una lista fija.",
     "changedAsistenciaAreas": "\"Personal por área\" en Asistencia ya no muestra Calidad, WC Gerente de FFT ni WC Supervisor como tarjetas propias.",
     "addedCalidadManual": "Manual de proceso real (SOP oficial de Calidad) embebido en \"Hoja de Proceso\" para el puesto de Calidad en todas las WC LINEA.",
-    "addedDemorasPlaneacion": "Dos módulos nuevos en el menú -- Demoras y Planeación -- marcados \"En desarrollo\", solo navegación por ahora."
+    "addedDemorasPlaneacion": "Dos módulos nuevos en el menú -- Demoras y Planeación -- marcados \"En desarrollo\", solo navegación por ahora.",
+    "fixedDarkMode": "Modo oscuro: textos que se veían negros/invisibles en varios módulos (donas del Dashboard, KPI's de Centro de Trabajo, resultados de Auditoría, etc.) ahora heredan el color correcto del tema; tooltips de gráficas que se veían con fondo blanco fijo también se corrigieron. Modo claro sin cambios."
   }
 }
