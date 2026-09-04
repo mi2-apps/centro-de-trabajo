@@ -24,6 +24,14 @@ import equipmentAuditsIndexHandler from '../api/equipment-audits/index.js'
 import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
 import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
+import horaPorHoraCausesIndexHandler from '../api/hora-por-hora/causes/index.js'
+import horaPorHoraCauseByIdHandler from '../api/hora-por-hora/causes/[id].js'
+import horaPorHoraEntryByIdHandler from '../api/hora-por-hora/entries/[id].js'
+import horaPorHoraEntryIncidentsHandler from '../api/hora-por-hora/entries/[id]/incidents.js'
+import horaPorHoraIncidentByIdHandler from '../api/hora-por-hora/incidents/[id].js'
+import horaPorHoraSessionsHistoryHandler from '../api/hora-por-hora/sessions/history.js'
+import horaPorHoraSessionByIdHandler from '../api/hora-por-hora/sessions/[id].js'
+import horaPorHoraSessionsIndexHandler from '../api/hora-por-hora/sessions/index.js'
 import modulesIndexHandler from '../api/modules/index.js'
 import moduleEffectiveUsersHandler from '../api/permissions/modules/[moduleKey]/users.js'
 import personnelApproveMoveHandler from '../api/personnel/approve-move.js'
@@ -130,6 +138,21 @@ export function mountApiRoutes(app) {
 
   app.get('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
   app.post('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
+
+  app.get('/api/hora-por-hora/sessions/history', wrapAsync(horaPorHoraSessionsHistoryHandler))
+  app.get('/api/hora-por-hora/sessions', wrapAsync(horaPorHoraSessionsIndexHandler))
+  app.post('/api/hora-por-hora/sessions', wrapAsync(horaPorHoraSessionsIndexHandler))
+  app.get('/api/hora-por-hora/sessions/:id', withDynamicParams(horaPorHoraSessionByIdHandler))
+  app.patch('/api/hora-por-hora/sessions/:id', withDynamicParams(horaPorHoraSessionByIdHandler))
+  app.patch('/api/hora-por-hora/entries/:id', withDynamicParams(horaPorHoraEntryByIdHandler))
+  app.post(
+    '/api/hora-por-hora/entries/:id/incidents',
+    withDynamicParams(horaPorHoraEntryIncidentsHandler),
+  )
+  app.delete('/api/hora-por-hora/incidents/:id', withDynamicParams(horaPorHoraIncidentByIdHandler))
+  app.get('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
+  app.post('/api/hora-por-hora/causes', wrapAsync(horaPorHoraCausesIndexHandler))
+  app.patch('/api/hora-por-hora/causes/:id', withDynamicParams(horaPorHoraCauseByIdHandler))
 
   app.get('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))

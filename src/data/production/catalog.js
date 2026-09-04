@@ -41,7 +41,7 @@
 // stationId/role persistido, ver buildWorkstations) y NUNCA se traduce.
 // Solo las funciones/getters que exponen texto para MOSTRAR (nunca para
 // comparar/guardar) resuelven vía i18n.t() en el momento de la llamada.
-import i18n from '../../i18n'
+import i18n from '../../i18n.js'
 
 export const SHIFT_OPTIONS = ['Matutino', 'Vespertino', 'Nocturno']
 

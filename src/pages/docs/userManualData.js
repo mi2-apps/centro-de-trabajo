@@ -82,6 +82,12 @@ export const MODULES = [
     bodyKey: 'controlEquipoBody',
   },
   {
+    nameKey: 'horaPorHora',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
+    bodyKey: 'horaPorHoraBody',
+  },
+  {
     nameKey: 'organigrama',
     status: 'proximamente',
     statusLabelKey: 'statusProximamente',

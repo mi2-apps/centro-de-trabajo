@@ -16,6 +16,7 @@ import ChangelogPage from './pages/docs/ChangelogPage'
 import DeveloperManualPage from './pages/docs/DeveloperManualPage'
 import UserManualPage from './pages/docs/UserManualPage'
 import EvaluacionesPage from './pages/evaluaciones/EvaluacionesPage'
+import HoraPorHoraPage from './pages/hora-por-hora/HoraPorHoraPage'
 import KpisPage from './pages/kpis/KpisPage'
 import ProduccionFftPage from './pages/produccion-fft/ProduccionFftPage'
 import RegistroPersonalPage from './pages/registro-personal/RegistroPersonalPage'
@@ -155,6 +156,14 @@ export default function App() {
                   element={
                     <RequireModuleAccess>
                       <ControlEquipoPage />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/hora-por-hora"
+                  element={
+                    <RequireModuleAccess>
+                      <HoraPorHoraPage />
                     </RequireModuleAccess>
                   }
                 />

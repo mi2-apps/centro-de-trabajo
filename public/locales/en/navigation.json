@@ -27,5 +27,6 @@
   "organigrama": "Org Chart",
   "rechazoInterno": "Internal Rejection",
   "ppmInterno": "Internal PPM's",
-  "controlEquipo": "Equipment Control"
+  "controlEquipo": "Equipment Control",
+  "horaPorHora": "Hourly Production"
 }

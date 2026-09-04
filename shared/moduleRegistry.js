@@ -612,6 +612,22 @@ export const MODULE_REGISTRY = [
     group: 'visionGeneral',
     order: 20,
   },
+  // 2026-09-04 (a peticion explicita del usuario -- "quiero convertir a digital nuestro formato
+  // fisico de produccion 'Hora por Hora'"): registro real de produccion estandar/real/gap/
+  // cumplimiento por hora + incidencias, ver server-lib/hourlyProduction.js y
+  // src/data/horaPorHora/.
+  {
+    key: '/hora-por-hora',
+    name: 'Hora por Hora',
+    description: 'Seguimiento de producción estándar vs. real por hora, turno e incidencias',
+    icon: 'Timer',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'horaPorHora',
+    group: 'P',
+    order: 60,
+  },
 ]
 
 export function listAllModules() {

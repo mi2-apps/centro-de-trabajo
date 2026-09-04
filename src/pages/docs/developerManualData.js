@@ -283,6 +283,58 @@ export const DATA_DICTIONARY = [
       ['score', 'Int', 'puntos crudos de este criterio (0/1/2)'],
     ],
   },
+  {
+    model: 'HourlyProductionSession',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionSession_purpose',
+    fields: [
+      [
+        'date / shift / areaId',
+        'Date / String / String',
+        'unique index -- 1 sesión por combinación',
+      ],
+      ['standardRate', 'Int', 'pzs/h configurado al crear la sesión'],
+      ['status', 'HourlySessionStatus', 'ABIERTO | FINALIZADO'],
+      ['createdByUserId / updatedByUserId', 'String (FK User) / String? (FK User)', ''],
+    ],
+  },
+  {
+    model: 'HourlyProductionEntry',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionEntry_purpose',
+    fields: [
+      ['sessionId', 'String (FK HourlyProductionSession)', 'unique con startTime'],
+      ['startTime / endTime', 'String / String', '"HH:MM", generadas por buildShiftBlocks()'],
+      [
+        'standardQty',
+        'Int',
+        'snapshot del standardRate de la sesión al crear la hora -- nunca se recalcula si el rate cambia después',
+      ],
+      ['actualQty', 'Int?', 'null = sin captura'],
+    ],
+  },
+  {
+    model: 'HourlyProductionDowntimeCause',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionDowntimeCause_purpose',
+    fields: [
+      ['name / code', 'String / String', 'code se autogenera (slug) y es único'],
+      ['active', 'Boolean', 'soft-delete -- nunca se borra físicamente una causa con histórico'],
+      ['sortOrder', 'Int', 'orden manual (flechas arriba/abajo en el admin)'],
+    ],
+  },
+  {
+    model: 'HourlyProductionIncident',
+    purposeKey: 'developerManualData.dataDictionary_HourlyProductionIncident_purpose',
+    fields: [
+      ['entryId', 'String (FK HourlyProductionEntry)', ''],
+      ['causeId', 'String (FK HourlyProductionDowntimeCause)', ''],
+      [
+        'measurementType',
+        'HourlyMeasurementType',
+        'MINUTES | PIECES -- nunca se mezclan en un total',
+      ],
+      ['value', 'Int', ''],
+      ['customDescription', 'String?', 'requerido cuando causeId es la causa "Otra"'],
+    ],
+  },
 ]
 
 export const API_MAP = [
@@ -301,4 +353,5 @@ export const API_MAP = [
   ['/api/demoras', 'developerManualData.apiMap_demoras'],
   ['/api/control-equipo', 'developerManualData.apiMap_controlEquipo'],
   ['/api/equipment-audits', 'developerManualData.apiMap_equipmentAudits'],
+  ['/api/hora-por-hora/*', 'developerManualData.apiMap_horaPorHora'],
 ]

@@ -27,5 +27,6 @@
   "organigrama": "组织架构图",
   "rechazoInterno": "内部拒收",
   "ppmInterno": "内部PPM",
-  "controlEquipo": "设备管控"
+  "controlEquipo": "设备管控",
+  "horaPorHora": "每小时产量"
 }

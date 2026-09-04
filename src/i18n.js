@@ -56,6 +56,7 @@ i18n
       'produccionFft',
       'demoras',
       'controlEquipo',
+      'horaPorHora',
     ],
     defaultNS: 'common',
     detection: {

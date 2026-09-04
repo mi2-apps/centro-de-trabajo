@@ -38,6 +38,7 @@ export const RELEASES = [
           'addedControlEquipo',
           'addedLevantamientoEquipo',
           'addedPlantIssuesWidget',
+          'addedHoraPorHora',
         ],
       },
       {
@@ -60,7 +61,12 @@ export const RELEASES = [
       },
       {
         labelKey: 'sectionFixed',
-        itemKeys: ['fixedDarkMode', 'fixedPlantTotalConsistency'],
+        itemKeys: [
+          'fixedDarkMode',
+          'fixedPlantTotalConsistency',
+          'fixedHoraPorHoraDropdown',
+          'fixedHoraPorHoraDateTimezone',
+        ],
       },
       {
         labelKey: 'sectionPending',

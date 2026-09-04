@@ -96,6 +96,27 @@ para poder desplegar en el servidor privado (Coolify). Ver
   material/accesorios/herramientas, y equipo con problema reportado.
   "Línea saturada" no se incluye — no existe todavía una métrica real de
   capacidad/utilización en el sistema, no se inventa.
+- **Módulo nuevo Hora por Hora.** Digitaliza el formato físico de
+  producción "Hora por Hora": estándar vs. real por bloque de una hora
+  (turno reutilizado de `OFFICIAL_SHIFTS`, incluyendo turnos que cruzan
+  medianoche), GAP y cumplimiento calculados siempre por el sistema, estado
+  por hora (Sin captura/En proceso/Bajo objetivo/Cumplido/Superado) con
+  resaltado sutil de la hora activa. Registro de incidencias por hora desde
+  un catálogo real editable (`HourlyProductionDowntimeCause` — crear,
+  renombrar, activar/desactivar y reordenar sin tocar código, admin-only),
+  con tipo de afectación Piezas/Minutos que nunca se mezclan en un mismo
+  total. KPIs y gráfica de acumulado muestran progreso hasta la hora en
+  curso (nunca el turno completo mientras aún faltan horas, para no mostrar
+  un gap engañoso); "Resumen del turno" y el Excel sí muestran el turno
+  completo. Pareto de causas, histórico de turnos con detalle hora por hora
+  de solo lectura, exportación a Excel (4 hojas: Resumen/Hora por
+  Hora/Incidencias/Pareto), y "Finalizar turno"/"Reabrir turno" con
+  confirmación (nunca automático). El rate estándar se congela por hora al
+  momento de capturar — cambiarlo después nunca altera el histórico. Tablas
+  nuevas `HourlyProductionSession`/`HourlyProductionEntry`/
+  `HourlyProductionDowntimeCause`/`HourlyProductionIncident` (migración
+  `drizzle/0010_add_hourly_production.sql`) + endpoints bajo
+  `/api/hora-por-hora/*`.
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.
@@ -188,6 +209,31 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS` (`src/data/production/catalog.js`,
   única fuente de verdad): Calidad/Gerente FFT/Supervisor/Entrenador nunca
   cuentan en el total general de personal, en ninguna vista.
+- **Menú "•••" de Hora por Hora no abría (renderizaba fuera de pantalla).**
+  El disparador usaba el componente compartido `Button` dentro de
+  `DropdownMenuTrigger asChild` — pero `Button` (`src/components/ui/
+  button.jsx`) no está envuelto en `React.forwardRef`, así que Radix nunca
+  recibía una referencia real al elemento y su cálculo de posición (Popper)
+  se quedaba en el valor placeholder de "sin medir" (el menú se abría, pero
+  204px arriba del viewport). Los otros 5 usos de `DropdownMenuTrigger
+  asChild` en el repo ya envuelven un `<button>` nativo en vez de `Button`
+  — se alinea Hora por Hora al mismo patrón en vez de tocar `Button`
+  globalmente (cambio no relacionado y de mayor alcance).
+- **Hora activa nunca se detectaba y KPIs mostraban el turno completo desde
+  la primera hora.** `buildShiftBlocks()` (`src/data/horaPorHora/
+  shiftBlocks.js`) recibía `session.date` tal como lo manda el API — un ISO
+  string ("2026-09-04T00:00:00.000Z") — y lo reconstruía con `new
+  Date(`${dateLike}T00:00:00`)`, produciendo una fecha inválida; el
+  histórico (`HourlyHistoryView.jsx`) y el Excel tenían el mismo problema
+  vía `dayjs(session.date)`, mostrando el día anterior en zonas horarias
+  detrás de UTC. Se corrige leyendo la fecha de calendario directo del
+  string (nunca reinterpretándola con `new Date()`/`dayjs()` sin recortar).
+  Adicionalmente, los 4 KPIs principales usaban `computeShiftSummary()`
+  (turno completo) en vez de la función ya existente
+  `computeCumulativeTotals()` (hasta la hora en curso) — quedó sin conectar
+  en la primera versión; ahora los KPIs sí cortan en la hora activa y
+  "Resumen del turno"/Excel siguen mostrando el turno completo, como se
+  pidió.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - SSO real de Nextcloud (OIDC), reemplaza el login propio.

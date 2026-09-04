@@ -16,6 +16,7 @@ import {
   Map as MapIcon,
   Network,
   Star,
+  Timer,
   UserPlus,
   Users,
   Wrench,
@@ -51,6 +52,7 @@ const ICONS = {
   Ban: Ban,
   Gauge: Gauge,
   Wrench: Wrench,
+  Timer: Timer,
 }
 
 export function getModuleIcon(iconKey) {
