@@ -57,6 +57,13 @@
       "when": 1788528800000,
       "tag": "0007_process_audit_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788635000000,
+      "tag": "0008_add_downtime_record",
+      "breakpoints": true
     }
   ]
 }

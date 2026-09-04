@@ -64,6 +64,18 @@ para poder desplegar en el servidor privado (Coolify). Ver
 - Módulo nuevo Organigrama (`/organigrama`, M · Personal) — solo navegación
   por ahora, marcado "En desarrollo" (mismo patrón mínimo que Demoras/
   Planeación).
+- **Demoras — registro real de tiempo muerto.** Deja de ser "En desarrollo":
+  catálogo real de 14 causas (Espera, Falla de sistemas/Internet, Falla en
+  máquina, Falta de materiales/accesorios/cushion/protector/bolsas/
+  herramientas, Defectos, Calificaciones distintas, Duplicado, Modelo, ver
+  `src/data/demoras/catalog.js`), formulario de registro (área/línea →
+  estación → causa → duración → turno → nota) e historial con badge
+  "Reportable" para demoras de 4 minutos o más. Tabla nueva `DowntimeRecord`
+  (migración `drizzle/0008_add_downtime_record.sql`) + `GET`/`POST
+  /api/demoras`. Fuera de alcance (confirmado explícitamente): no existe un
+  bloqueo técnico de "no clasificar la siguiente TV" — esa acción vive en
+  SmartControl/BinManager, sistema externo de solo lectura desde este repo;
+  la regla queda como política de proceso del supervisor.
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.
@@ -113,6 +125,9 @@ para poder desplegar en el servidor privado (Coolify). Ver
   con que ya se recortó el icono actual de la imagen oficial. El parche
   anterior que pintaba de blanco toda la franja del header del sidebar en
   modo oscuro ya no hace falta -- se retira.
+- Se quita el logo de marca general del header propio de Centro de Trabajo
+  -- el sidebar ya lo trae siempre disponible, mostrarlo también ahí era
+  redundante. El módulo sigue llamándose "Centro de Trabajo", sin cambios.
 - "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
   ni WC Supervisor como tarjetas propias.
 - **Logo real definitivo.** Se usa la imagen oficial COMPLETA (icono +

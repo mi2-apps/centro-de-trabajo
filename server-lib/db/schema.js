@@ -1043,3 +1043,47 @@ export const processAuditAnswer = pgTable(
       .onDelete('cascade'),
   ],
 )
+
+// Modulo Demoras (2026-09-04, a peticion explicita del usuario -- "Calcular
+// tiempo muerto por [14 causas]... esto debe de hacer Registro de demora").
+// 1 fila por evento de demora real -- reasonKey referencia el catalogo de
+// causas de src/data/demoras/catalog.js (DOWNTIME_REASONS), UNICA fuente de
+// verdad de las causas validas (mismo criterio que FiveSAudit/criteria.js:
+// el catalogo es codigo, no una tabla, no necesita FK). areaId/stationName
+// mismo criterio que FiveSAudit/ProcessAudit -- catalogo de codigo
+// (WORK_CENTERS), no FK a una tabla de areas.
+export const downtimeRecord = pgTable(
+  'DowntimeRecord',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    areaId: text().notNull(),
+    stationName: text(),
+    reasonKey: text().notNull(),
+    durationMinutes: integer().notNull(),
+    shift: text(),
+    notes: text(),
+    createdByUserId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('DowntimeRecord_areaId_createdAt_idx').using(
+      'btree',
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.createdAt.asc().nullsLast().op('timestamp_ops'),
+    ),
+    index('DowntimeRecord_reasonKey_idx').using(
+      'btree',
+      table.reasonKey.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [user.id],
+      name: 'DowntimeRecord_createdByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+)

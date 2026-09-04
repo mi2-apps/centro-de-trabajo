@@ -54,6 +54,7 @@ i18n
       'evaluaciones',
       'asistencia',
       'produccionFft',
+      'demoras',
     ],
     defaultNS: 'common',
     detection: {

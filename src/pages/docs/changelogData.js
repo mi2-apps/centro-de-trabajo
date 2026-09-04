@@ -34,6 +34,7 @@ export const RELEASES = [
           'addedDemorasPlaneacion',
           'addedOrganigrama',
           'addedRechazoPpmInterno',
+          'addedDemorasRealFuncionalidad',
         ],
       },
       {
@@ -50,6 +51,7 @@ export const RELEASES = [
           'changedLogoThemed',
           'changedAsistenciaAreas',
           'changedLogo',
+          'changedCentroTrabajoLogo',
         ],
       },
       {

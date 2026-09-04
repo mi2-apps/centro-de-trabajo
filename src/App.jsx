@@ -10,6 +10,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RequestAccessPage from './pages/auth/RequestAccessPage'
 import CentroTrabajoPage from './pages/centro-trabajo/CentroTrabajoPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import DemorasPage from './pages/demoras/DemorasPage'
 import ChangelogPage from './pages/docs/ChangelogPage'
 import DeveloperManualPage from './pages/docs/DeveloperManualPage'
 import UserManualPage from './pages/docs/UserManualPage'
@@ -136,7 +137,7 @@ export default function App() {
                   path="/demoras"
                   element={
                     <RequireModuleAccess>
-                      <ComingSoonPage title={t('demoras')} />
+                      <DemorasPage />
                     </RequireModuleAccess>
                   }
                 />

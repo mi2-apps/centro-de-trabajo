@@ -1,0 +1,361 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  alertToneClass,
+  cardClass,
+  cardHeaderClass,
+  cardHeaderTitleClass,
+  cellTextClass,
+  cellTextSecondaryClass,
+  pageClass,
+  pageSubtitleClass,
+  pageTitleClass,
+} from '@/lib/pageStyles'
+import { cn } from '@/lib/utils'
+import {
+  DELAY_LOG_THRESHOLD_MINUTES,
+  DOWNTIME_REASONS,
+  requiresFormalLog,
+} from '../../data/demoras/catalog'
+import { getWorkstationsForLine } from '../../data/personnel/workstations'
+import {
+  CURRENT_SHIFT,
+  LINE_FAMILY_AREA_IDS,
+  SHIFT_OPTIONS,
+  WORK_CENTERS,
+  workCenterById,
+} from '../../data/production/catalog'
+import { EmptyState } from '../../ui'
+
+/* Modulo Demoras (2026-09-04, a peticion explicita del usuario): registro real de tiempo
+   muerto por causa. Mismo patron de seleccion de area que Auditoria (AUDIT_AREA_GROUPS en
+   AuditoriaPage.jsx) -- 5 grupos, "Lineas de produccion" pide una linea especifica antes de
+   llegar a Estacion, los otros 4 ya son una sola area real.
+
+   ALCANCE (confirmado explicitamente con el usuario tras encontrar que la clasificacion real de
+   TVs vive en SmartControl/BinManager, sistema externo de solo lectura desde este repo): esta
+   pantalla SOLO registra/lista demoras -- no existe un bloqueo tecnico de "no dejar clasificar la
+   siguiente TV", eso queda como politica de proceso del supervisor. */
+const AREA_GROUPS = [
+  { key: 'LINEAS', labelKey: 'areaGroupLines' },
+  { key: 'INSUMOS', labelKey: 'areaGroupInsumos', areaId: 'INSUMOS' },
+  { key: 'ACCESORIOS', labelKey: 'areaGroupAccesorios', areaId: 'ACCESORIOS' },
+  { key: 'MIDEA', labelKey: 'areaGroupMidea', areaId: 'HIGH_VALUE' },
+  { key: 'PALETIZADO', labelKey: 'areaGroupPaletizado', areaId: 'PALETIZADO' },
+]
+
+const emptyForm = {
+  groupKey: '',
+  lineId: '',
+  areaId: '',
+  stationName: '',
+  reasonKey: '',
+  durationMinutes: '',
+  shift: CURRENT_SHIFT,
+  notes: '',
+}
+
+export default function DemorasPage() {
+  const { t } = useTranslation('demoras')
+  const [form, setForm] = useState(emptyForm)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [records, setRecords] = useState([])
+  const [loadingRecords, setLoadingRecords] = useState(true)
+
+  const loadRecords = useCallback(async () => {
+    setLoadingRecords(true)
+    try {
+      const res = await fetch('/api/demoras', { credentials: 'include' })
+      const data = await res.json().catch(() => null)
+      setRecords(data?.records || [])
+    } finally {
+      setLoadingRecords(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadRecords()
+  }, [loadRecords])
+
+  const selectedArea = form.areaId ? workCenterById(form.areaId) : null
+  const stationOptions = form.areaId
+    ? Array.from(new Map(getWorkstationsForLine(form.areaId).map((w) => [w.name, w])).values())
+    : []
+
+  function handleGroupChange(groupKey) {
+    const group = AREA_GROUPS.find((g) => g.key === groupKey)
+    setForm((prev) => ({
+      ...prev,
+      groupKey,
+      lineId: '',
+      stationName: '',
+      areaId: group?.areaId || '',
+    }))
+  }
+
+  function handleLineChange(lineId) {
+    setForm((prev) => ({ ...prev, lineId, stationName: '', areaId: lineId }))
+  }
+
+  const canSubmit =
+    Boolean(form.areaId) && Boolean(form.reasonKey) && Number(form.durationMinutes) > 0
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!canSubmit || submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const res = await fetch('/api/demoras', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          areaId: form.areaId,
+          stationName: form.stationName || null,
+          reasonKey: form.reasonKey,
+          durationMinutes: Number(form.durationMinutes),
+          shift: form.shift || null,
+          notes: form.notes || null,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
+      setForm(emptyForm)
+      await loadRecords()
+    } catch (err) {
+      setSubmitError(err.message || t('saveErrorGeneric'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const durationValue = Number(form.durationMinutes)
+  const showsRequiresLogHint = durationValue > 0
+
+  return (
+    <div className={pageClass}>
+      <div className={cn(cardClass, 'mb-4')}>
+        <div className="border-b border-border bg-black/[.015] px-5 py-3.5 dark:bg-white/[.02]">
+          <p className={pageTitleClass}>{t('pageTitle')}</p>
+          <p className={pageSubtitleClass}>{t('pageSubtitle')}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
+        <form onSubmit={handleSubmit} className={cn(cardClass, 'h-fit p-5')}>
+          <p className={cn(cardHeaderTitleClass, 'mb-4')}>{t('formTitle')}</p>
+
+          <div className="space-y-3.5">
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldArea')}</Label>
+              <Select value={form.groupKey} onValueChange={handleGroupChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('fieldAreaPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AREA_GROUPS.map((g) => (
+                    <SelectItem key={g.key} value={g.key}>
+                      {t(g.labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {form.groupKey === 'LINEAS' && (
+              <div>
+                <Label className="mb-1.5 block text-xs">{t('fieldLine')}</Label>
+                <Select value={form.lineId} onValueChange={handleLineChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('fieldLinePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {workCenterById(w.id).name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {selectedArea && stationOptions.length > 0 && (
+              <div>
+                <Label className="mb-1.5 block text-xs">{t('fieldStation')}</Label>
+                <Select
+                  value={form.stationName}
+                  onValueChange={(v) => setForm((prev) => ({ ...prev, stationName: v }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('fieldStationPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stationOptions.map((s) => (
+                      <SelectItem key={s.name} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldReason')}</Label>
+              <Select
+                value={form.reasonKey}
+                onValueChange={(v) => setForm((prev) => ({ ...prev, reasonKey: v }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('fieldReasonPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOWNTIME_REASONS.map((r) => (
+                    <SelectItem key={r.key} value={r.key}>
+                      {t(`reasons.${r.key}`)}
+                      {r.tag ? ` (${t(`tag.${r.tag}`)})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldDuration')}</Label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={form.durationMinutes}
+                onChange={(e) => setForm((prev) => ({ ...prev, durationMinutes: e.target.value }))}
+                placeholder={t('fieldDurationPlaceholder')}
+              />
+              {showsRequiresLogHint && (
+                <p className={cn(cellTextSecondaryClass, 'mt-1')}>
+                  {requiresFormalLog(durationValue)
+                    ? t('durationRequiresLogHint', { minutes: DELAY_LOG_THRESHOLD_MINUTES })
+                    : t('durationToleranceHint', { minutes: DELAY_LOG_THRESHOLD_MINUTES })}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldShift')}</Label>
+              <Select
+                value={form.shift}
+                onValueChange={(v) => setForm((prev) => ({ ...prev, shift: v }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIFT_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldNotes')}</Label>
+              <Input
+                value={form.notes}
+                onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder={t('fieldNotesPlaceholder')}
+              />
+            </div>
+
+            {submitError && (
+              <Alert className={cn(alertToneClass('error'), 'text-sm')}>{submitError}</Alert>
+            )}
+
+            <Button type="submit" disabled={!canSubmit || submitting} className="w-full">
+              {submitting ? t('submitting') : t('submit')}
+            </Button>
+          </div>
+        </form>
+
+        <div className={cn(cardClass, 'p-0')}>
+          <div className={cardHeaderClass}>
+            <p className={cardHeaderTitleClass}>{t('historyTitle')}</p>
+          </div>
+          {loadingRecords ? (
+            <div className="px-5 py-8">
+              <EmptyState compact title={t('loading')} />
+            </div>
+          ) : records.length === 0 ? (
+            <div className="px-5 py-8">
+              <EmptyState compact title={t('historyEmpty')} />
+            </div>
+          ) : (
+            <div className="max-h-[560px] overflow-auto">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border">
+                    <Th>{t('colReason')}</Th>
+                    <Th>{t('colArea')}</Th>
+                    <Th>{t('colStation')}</Th>
+                    <Th>{t('colDuration')}</Th>
+                    <Th>{t('colShift')}</Th>
+                    <Th>{t('colCreatedBy')}</Th>
+                    <Th>{t('colCreatedAt')}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((r) => (
+                    <tr key={r.id} className="border-b border-border/60">
+                      <Td>
+                        <div className="flex items-center gap-1.5">
+                          <span className={cellTextClass}>{t(`reasons.${r.reasonKey}`)}</span>
+                          {requiresFormalLog(r.durationMinutes) && (
+                            <span className="rounded bg-red-500/[0.12] px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                              {t('badgeRequiresLog')}
+                            </span>
+                          )}
+                        </div>
+                      </Td>
+                      <Td>{workCenterById(r.areaId)?.name || r.areaId}</Td>
+                      <Td>{r.stationName || '—'}</Td>
+                      <Td>{t('minutesValue', { count: r.durationMinutes })}</Td>
+                      <Td>{r.shift || '—'}</Td>
+                      <Td>{r.createdByName || '—'}</Td>
+                      <Td>{new Date(r.createdAt).toLocaleString()}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Th({ children }) {
+  return (
+    <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+      {children}
+    </th>
+  )
+}
+
+function Td({ children }) {
+  return <td className={cn('px-3.5 py-2.5', cellTextClass)}>{children}</td>
+}

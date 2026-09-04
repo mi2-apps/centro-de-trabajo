@@ -17,6 +17,7 @@ import oidcStartHandler from '../api/auth/oidc/start.js'
 import oidcStatusHandler from '../api/auth/oidc/status.js'
 import sessionHandler from '../api/auth/session.js'
 import dashboardTrendsHandler from '../api/dashboard/trends.js'
+import demorasIndexHandler from '../api/demoras/index.js'
 import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
 import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
@@ -119,6 +120,9 @@ export function mountApiRoutes(app) {
   app.get('/api/production/sku-tracker', wrapAsync(productionSkuTrackerHandler))
 
   app.get('/api/dashboard/trends', wrapAsync(dashboardTrendsHandler))
+
+  app.get('/api/demoras', wrapAsync(demorasIndexHandler))
+  app.post('/api/demoras', wrapAsync(demorasIndexHandler))
 
   app.get('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))

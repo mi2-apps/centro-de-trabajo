@@ -2,7 +2,6 @@ import { Menu } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useOutletContext } from 'react-router-dom'
-import BrandLogo from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cardClass, pageClass } from '@/lib/pageStyles'
@@ -67,14 +66,13 @@ export default function CentroTrabajoPage() {
             </Button>
           )}
 
-          {/* Marca general de la plataforma (2026-08-29, cambio de branding a
-              peticion explicita del usuario): "Centro de Control" / "CONTROL
-              OPERATIVO" reemplaza el logo+titulo "Centro de Trabajo" que
-              vivia aqui -- ver src/components/BrandLogo.jsx, fuente unica del
-              branding. El MODULO sigue llamandose "Centro de Trabajo" (menu,
-              rutas, tabs de esta misma pagina) -- solo cambia la marca. */}
-          <BrandLogo variant="header" />
-
+          {/* 2026-09-04 (a peticion explicita del usuario, "quitame el logo del
+              modulo de centro de trabajo"): el logo de marca general ya no se
+              muestra en este header propio -- el sidebar (siempre disponible
+              al fijarlo/pasar el mouse) ya trae el logo completo, mostrarlo
+              tambien aqui era redundante. El MODULO sigue llamandose "Centro
+              de Trabajo" (menu, rutas, tabs de esta misma pagina), sin
+              cambios. */}
           <div className="min-w-[16px] flex-1" />
 
           <div className="flex flex-wrap items-center gap-1">

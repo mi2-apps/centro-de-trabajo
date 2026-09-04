@@ -553,7 +553,7 @@ export const MODULE_REGISTRY = [
   {
     key: '/demoras',
     name: 'Demoras',
-    description: 'Registro y análisis de demoras de línea (en desarrollo)',
+    description: 'Registro de demoras/tiempo muerto por causa, por área y estación',
     icon: 'Hourglass',
     active: true,
     permissionProtected: true,
