@@ -945,3 +945,101 @@ export const fiveSAuditAnswer = pgTable(
       .onDelete('cascade'),
   ],
 )
+
+// Auditoria de Proceso (2026-09-03, a peticion explicita del usuario -- primer checklist real
+// tomado de "AUDITORIA ETIQUETADOR- SEMANA 36.xlsx", 7 categorias / 28 criterios reales para el
+// puesto de Etiquetado, ver src/data/auditsProceso/criteria.js, unica fuente de verdad tanto para
+// el frontend como para este schema). A diferencia de FiveSAudit (siempre por AREA, nunca por
+// persona), esta auditoria SI evalua a una persona especifica en un puesto especifico -- role/
+// stationName nunca son null aqui (ver validacion en api/process-audits/index.js). Cada
+// categoryNScore es el % (0-100) de esa categoria segun el checklist REAL usado ese dia, tal cual
+// se calculo entonces (mismo criterio de "nunca recalcular" ya usado en FiveSAudit) -- hasta 7
+// columnas porque es el maximo real del unico checklist que existe hoy (Etiquetado); todas
+// nullable porque un futuro rol con menos categorias simplemente no las llena.
+export const processAuditAnswerType = pgEnum('ProcessAuditAnswerType', [
+  'CUMPLE_COMPLETO',
+  'CUMPLE_PARCIAL',
+  'CUMPLE_MINIMO',
+  'NO_CUMPLE',
+])
+export const processAudit = pgTable(
+  'ProcessAudit',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    areaId: text().notNull(),
+    role: text().notNull(), // que checklist se uso (src/data/auditsProceso/criteria.js), ej. 'Etiquetado'
+    stationName: text().notNull(), // Workstation.name real (ej. "Etiquetado 2")
+    employeeId: text(),
+    employeeNumber: text(),
+    employeeName: text(),
+    shift: text(),
+    auditDate: date({ mode: 'date' }).notNull(),
+    category1Score: integer(),
+    category2Score: integer(),
+    category3Score: integer(),
+    category4Score: integer(),
+    category5Score: integer(),
+    category6Score: integer(),
+    category7Score: integer(),
+    totalScore: integer().notNull(),
+    notes: text(),
+    createdByUserId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('ProcessAudit_areaId_auditDate_idx').using(
+      'btree',
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.auditDate.asc().nullsLast().op('date_ops'),
+    ),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [user.id],
+      name: 'ProcessAudit_createdByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.employeeId],
+      foreignColumns: [employee.id],
+      name: 'ProcessAudit_employeeId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+)
+// 1 fila por criterio real respondido -- mismo criterio que FiveSAuditAnswer ("nunca se
+// recalcula desde la config actual de criterios").
+export const processAuditAnswer = pgTable(
+  'ProcessAuditAnswer',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    auditId: text().notNull(),
+    category: integer().notNull(), // 1..7
+    criterionId: text().notNull(),
+    answer: processAuditAnswerType().notNull(),
+    score: integer().notNull(), // puntos crudos 0/3/5/10 de este criterio
+    observation: text(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('ProcessAuditAnswer_auditId_idx').using(
+      'btree',
+      table.auditId.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.auditId],
+      foreignColumns: [processAudit.id],
+      name: 'ProcessAuditAnswer_auditId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+)

@@ -256,9 +256,8 @@
     "missingPersonnelLabel": "缺员人数",
     "overallCoverageLabel": "总体覆盖率",
     "statusLegendTitle": "状态图例",
-    "statusComplete": "已满编（100%）",
-    "statusInProgress": "进行中（1%-99%）",
-    "statusNoStaff": "无人员（0%）"
+    "statusHasStaff": "有人员",
+    "statusEmpty": "空线（无人员）"
   },
   "lineStationConfigDrawer": {
     "nameRequired": "工位名称为必填项。",

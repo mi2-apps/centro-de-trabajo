@@ -29,5 +29,9 @@
   "colArea": "Work center",
   "colStation": "Workstation",
   "colDate": "Date",
-  "colScore": "Score"
+  "colScore": "Score",
+  "procesoTableTitle": "Process Audit — History",
+  "procesoTableSubtitle": "Real process audits, by person and station",
+  "procesoEmptyStateTitle": "No process audits yet",
+  "procesoEmptyStateDescription": "Once a Process Audit is completed, it will show up here."
 }

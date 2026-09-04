@@ -37,6 +37,8 @@ import personnelSetUnassignedReasonHandler from '../api/personnel/set-unassigned
 import personnelSuppressBaselineHandler from '../api/personnel/suppress-baseline.js'
 import personnelSwapHandler from '../api/personnel/swap.js'
 import personnelSyncSmartControlHandler from '../api/personnel/sync-smartcontrol.js'
+import processAuditByIdHandler from '../api/process-audits/[id].js'
+import processAuditsIndexHandler from '../api/process-audits/index.js'
 import productionFftSummaryHandler from '../api/production/fft-summary.js'
 import productionSkuTrackerHandler from '../api/production/sku-tracker.js'
 import productionTaktRealHandler from '../api/production/takt-real.js'
@@ -122,6 +124,10 @@ export function mountApiRoutes(app) {
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.get('/api/evaluaciones/evolution', wrapAsync(evaluacionesEvolutionHandler))
   app.get('/api/evaluaciones/:id', withDynamicParams(evaluacionByIdHandler))
+
+  app.get('/api/process-audits', wrapAsync(processAuditsIndexHandler))
+  app.post('/api/process-audits', wrapAsync(processAuditsIndexHandler))
+  app.get('/api/process-audits/:id', withDynamicParams(processAuditByIdHandler))
 
   app.get('/api/work-areas/:code/workstations', withDynamicParams(workAreaWorkstationsIndexHandler))
   app.post(

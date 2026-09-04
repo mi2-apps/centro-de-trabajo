@@ -29,5 +29,9 @@
   "monthSep": "Sep",
   "monthOct": "Oct",
   "monthNov": "Nov",
-  "monthDec": "Dic"
+  "monthDec": "Dic",
+  "procesoTableTitle": "Auditoría de Proceso — Historial",
+  "procesoTableSubtitle": "Auditorías de proceso reales, por persona y puesto",
+  "procesoEmptyStateTitle": "Sin auditorías de proceso todavía",
+  "procesoEmptyStateDescription": "Cuando se complete una Auditoría de Proceso aparecerá aquí."
 }

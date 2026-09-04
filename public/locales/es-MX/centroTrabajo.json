@@ -256,9 +256,8 @@
     "missingPersonnelLabel": "Personal faltante",
     "overallCoverageLabel": "Cobertura general",
     "statusLegendTitle": "Leyenda de estado",
-    "statusComplete": "Completa (100%)",
-    "statusInProgress": "En progreso (1-99%)",
-    "statusNoStaff": "Sin personal (0%)"
+    "statusHasStaff": "Con personal",
+    "statusEmpty": "Vacía (sin personal)"
   },
   "lineStationConfigDrawer": {
     "nameRequired": "El nombre de la estación es obligatorio.",

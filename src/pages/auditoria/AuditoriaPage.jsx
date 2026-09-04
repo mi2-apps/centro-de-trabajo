@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ClipboardCheck,
   Recycle,
-  Search,
   ShieldCheck,
   X,
 } from 'lucide-react'
@@ -43,8 +42,14 @@ import {
   FIVE_S_CRITERIA,
   FIVE_S_META,
 } from '../../data/audits5s/criteria'
+import {
+  categoriesForRole,
+  criteriaForRole,
+  criteriaForRoleCategory,
+  PROCESS_AUDIT_ANSWER_OPTIONS,
+} from '../../data/auditsProceso/criteria'
 import { formatEmployeeNumber } from '../../data/personnel/employeeDisplay'
-import { getCurrentAssignment, searchEmployees } from '../../data/personnel/repository'
+import { getLineWorkstationsWithOccupancy } from '../../data/personnel/repository'
 import { getWorkstationsForLine } from '../../data/personnel/workstations'
 import {
   CURRENT_SHIFT,
@@ -53,20 +58,32 @@ import {
   WORK_CENTERS,
   workCenterById,
 } from '../../data/production/catalog'
+import { useAuth } from '../../state/auth'
 import EmployeeAvatar from '../centro-trabajo/EmployeeAvatar'
 import FiveSResultDialog from './FiveSResultDialog'
+import ProcesoResultDialog from './ProcesoResultDialog'
 
 /* ─────────────────────────────────────────────
    Modulo Auditoria (2026-09-01, a peticion explicita del usuario) --
-   antes era una pagina "Proximamente" (ComingSoonPage). Primera version:
-   solo la interfaz/flujo visual, SIN persistir nada en base de datos
-   todavia (confirmado explicitamente por el usuario via pregunta directa
-   -- "interfaz primero, sin guardar datos", se agrega guardado real
-   despues). 3 tarjetas de entrada, cada una con su dia programado real
-   (martes=5S, miercoles=Auditoria, jueves=Seguridad, a peticion
-   explicita). Solo "5S Proceso" tiene flujo detallado (el usuario
-   describio S1..S5 explicitamente); "Auditoria" y "Seguridad" abren un
-   dialogo "Proximamente" -- nunca se inventa contenido no descrito. */
+   antes era una pagina "Proximamente" (ComingSoonPage). 3 tarjetas de
+   entrada, cada una con su dia programado real (martes=5S,
+   miercoles=Auditoria de Proceso, jueves=Seguridad, a peticion
+   explicita). "Seguridad" sigue abriendo un dialogo "Proximamente" --
+   nunca se inventa contenido no descrito.
+
+   2026-09-03 (a peticion explicita del usuario): "Auditoria de Proceso"
+   ya tiene flujo real -- primer checklist tomado tal cual de "AUDITORIA
+   ETIQUETADOR- SEMANA 36.xlsx" (28 criterios/7 categorias reales para el
+   puesto de Etiquetado, ver src/data/auditsProceso/criteria.js). A
+   diferencia de 5S (siempre por AREA), esta SI evalua a una persona real
+   en un puesto real -- Area de trabajo + Estacion + Turno, el empleado
+   se autocompleta desde quien ocupa ese puesto hoy (mismo patron que
+   ProcessSheetModal en LineProcessFlow.jsx). El mismo dia, 5S se
+   SIMPLIFICA de vuelta a "por area solamente" (sin Estacion/Empleado) --
+   ver comentario grande en FiveSDialog. Ambos dialogos ahora muestran un
+   campo "Auditor" de solo lectura (nombre real de la sesion, useAuth()
+   -- nunca editable ni mandado por el cliente al guardar, el servidor
+   siempre usa req.user.id). */
 
 const MODULES = [
   { key: 'AUDITORIA', Icon: ClipboardCheck, color: '#2563EB' },
@@ -110,11 +127,6 @@ const AUDIT_AREA_GROUPS = [
   { key: 'PALETIZADO', labelKey: 'auditAreaPaletizado', areaId: 'PALETIZADO' },
 ]
 
-function groupKeyForAreaId(areaId) {
-  if (LINE_FAMILY_AREA_IDS.has(areaId)) return 'LINEAS'
-  return AUDIT_AREA_GROUPS.find((g) => g.areaId === areaId)?.key || null
-}
-
 export default function AuditoriaPage() {
   const { t } = useTranslation('auditoria')
   const [openModule, setOpenModule] = useState(null)
@@ -123,10 +135,16 @@ export default function AuditoriaPage() {
   // RESULTADO"): vive AQUI (no dentro de FiveSDialog) para que se muestre despues de que
   // FiveSDialog ya se cerro -- 2 dialogs abiertos a la vez se ve mal y complica el foco/escape.
   const [fiveSResult, setFiveSResult] = useState(null)
+  const [procesoResult, setProcesoResult] = useState(null)
 
   function handleFiveSFinished(payload) {
     setOpenModule(null)
     setFiveSResult(payload)
+  }
+
+  function handleProcesoFinished(payload) {
+    setOpenModule(null)
+    setProcesoResult(payload)
   }
 
   return (
@@ -147,7 +165,10 @@ export default function AuditoriaPage() {
       {openModule === 'PROCESO_5S' && (
         <FiveSDialog onClose={() => setOpenModule(null)} onFinished={handleFiveSFinished} />
       )}
-      {(openModule === 'AUDITORIA' || openModule === 'SEGURIDAD') && (
+      {openModule === 'AUDITORIA' && (
+        <ProcesoDialog onClose={() => setOpenModule(null)} onFinished={handleProcesoFinished} />
+      )}
+      {openModule === 'SEGURIDAD' && (
         <ComingSoonDialog
           title={t(MODULE_I18N[openModule].titleKey)}
           onClose={() => setOpenModule(null)}
@@ -160,6 +181,13 @@ export default function AuditoriaPage() {
           previousEvaluation={fiveSResult.previousEvaluation}
           answers={fiveSResult.answers}
           onClose={() => setFiveSResult(null)}
+        />
+      )}
+      {procesoResult && (
+        <ProcesoResultDialog
+          audit={procesoResult.audit}
+          previousAudit={procesoResult.previousAudit}
+          onClose={() => setProcesoResult(null)}
         />
       )}
     </div>
@@ -224,14 +252,17 @@ function ComingSoonDialog({ title, onClose }) {
 
 /* Flujo "5S Proceso" -- rediseño completo (2026-09-03, a peticion explicita del usuario:
    "conviertelo en un sistema completo de evaluacion 5S", metodologia de "Presentacion 5S's.ppt").
-   La intro (buscar persona / elegir area y puesto / Comenzar auditoria) se CONSERVA tal cual --
-   solo se le agregan 2 campos reales que el usuario confirmo reintroducir explicitamente (ver
-   pregunta directa 2026-09-03, revierte la simplificacion "area-only" del 2026-09-02): Puesto
-   real (Workstation.name del catalogo de esa area/linea, ver src/data/personnel/workstations.js
-   -- opcional, solo aparece si la area tiene puestos reales) y Turno (SHIFT_OPTIONS). Elegir un
-   empleado por busqueda AHORA SI lo guarda, y ademas autocompleta puesto/turno desde su
-   asignacion real de hoy (getCurrentAssignment) -- "utiliza automaticamente la informacion
-   disponible", nunca inventa un dato que no tiene.
+
+   2026-09-03, SEGUNDA simplificacion del intro (mismo dia, a peticion explicita del usuario --
+   "en el apartado de las 5s igual [Auditor+Area+Turno] pero sin estacion, ahi es por area
+   solamente"): se quita Puesto/busqueda de empleado que se habian reintroducido unas horas antes
+   -- 5S vuelve a ser SIEMPRE por AREA (nunca por persona/puesto especifico, a diferencia de
+   Auditoria de Proceso que si evalua a alguien puntual, ver ProcesoDialog abajo). stationName/
+   employeeId de FiveSAudit se quedan tal cual en el schema (nullable, no requieren migracion) --
+   este flujo simplemente ya no los llena, siempre se guardan null para auditorias nuevas; el
+   historial de auditorias viejas con puesto/empleado sigue intacto. Se agrega un campo "Auditor"
+   de solo lectura (nombre real de la sesion, useAuth()) -- nunca editable, el servidor siempre usa
+   req.user.id, este campo es solo para que el auditor vea/confirme quien va a quedar registrado.
 
    step=0..4 recorre S1..S5 en orden fijo, un criterio-por-card (ver
    src/data/audits5s/criteria.js, 8 criterios reales por S) -- nunca una tabla de 40 preguntas de
@@ -245,6 +276,7 @@ function ComingSoonDialog({ title, onClose }) {
    cierra ni se resetea, para no perder el checklist ya lleno. */
 function FiveSDialog({ onClose, onFinished }) {
   const { t } = useTranslation('auditoria')
+  const { user } = useAuth()
   const [step, setStep] = useState(null)
   const [answers, setAnswers] = useState({})
   // selectedGroupKey/selectedLineId son SOLO de flujo de UI (ver
@@ -253,16 +285,9 @@ function FiveSDialog({ onClose, onFinished }) {
   const [selectedGroupKey, setSelectedGroupKey] = useState('')
   const [selectedLineId, setSelectedLineId] = useState('')
   const [selectedAreaId, setSelectedAreaId] = useState('')
-  const [selectedStationName, setSelectedStationName] = useState('')
   const [selectedShift, setSelectedShift] = useState(CURRENT_SHIFT)
-  const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  // Buscar por numero de empleado o nombre -- atajo real: resuelve area/puesto/turno/empleado de
-  // un solo golpe (reutiliza searchEmployees + getCurrentAssignment, mismo buscador de nombre/
-  // numero que ya usa EmployeeAssignSearchBar).
-  const [personSearch, setPersonSearch] = useState('')
-  const [personSearchError, setPersonSearchError] = useState('')
 
   const isIntro = step === null
   const stepIndex = typeof step === 'number' ? step : 0
@@ -272,41 +297,17 @@ function FiveSDialog({ onClose, onFinished }) {
 
   const selectedArea = selectedAreaId ? workCenterById(selectedAreaId) : null
   const canStartAudit = Boolean(selectedArea)
-  const stationOptions = selectedAreaId
-    ? [...new Set(getWorkstationsForLine(selectedAreaId).map((w) => w.name))]
-    : []
 
   function handleGroupChange(groupKey) {
     setSelectedGroupKey(groupKey)
     setSelectedLineId('')
-    setSelectedStationName('')
     const group = AUDIT_AREA_GROUPS.find((g) => g.key === groupKey)
     setSelectedAreaId(group?.areaId || '') // vacio para 'LINEAS' -- falta elegir la linea real
   }
 
   function handleLineChange(lineId) {
     setSelectedLineId(lineId)
-    setSelectedStationName('')
     setSelectedAreaId(lineId)
-  }
-
-  const personSearchResults = personSearch.trim() ? searchEmployees(personSearch, 8) : []
-
-  function handlePickFromSearch(employee) {
-    const assignment = getCurrentAssignment(employee.id)
-    if (!assignment) {
-      setPersonSearchError(t('personSearchNoAssignmentError', { name: employee.name }))
-      return
-    }
-    setPersonSearchError('')
-    const groupKey = groupKeyForAreaId(assignment.areaId)
-    setSelectedGroupKey(groupKey || '')
-    setSelectedLineId(groupKey === 'LINEAS' ? assignment.areaId : '')
-    setPersonSearch('')
-    setSelectedAreaId(assignment.areaId)
-    setSelectedStationName(assignment.stationId || '')
-    setSelectedShift(assignment.shift || CURRENT_SHIFT)
-    setSelectedEmployee(employee)
   }
 
   function handleAnswerChange(criterionId, answer) {
@@ -338,8 +339,8 @@ function FiveSDialog({ onClose, onFinished }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           areaId: selectedArea.id,
-          stationName: selectedStationName || null,
-          employeeId: selectedEmployee?.id || null,
+          stationName: null,
+          employeeId: null,
           shift: selectedShift || null,
           answers: answersPayload,
         }),
@@ -347,13 +348,12 @@ function FiveSDialog({ onClose, onFinished }) {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
 
-      // Auditoria anterior real de la MISMA area+puesto -- nunca mezcla entidades distintas
-      // (ver comentario grande en api/evaluaciones/evolution.js). Comparacion opcional: si esta
+      // Auditoria anterior real de la MISMA area -- nunca mezcla entidades distintas (ver
+      // comentario grande en api/evaluaciones/evolution.js). Comparacion opcional: si esta
       // consulta falla, el resultado se muestra igual, solo sin la fila de variacion.
       let previousEvaluation = null
       try {
         const histParams = new URLSearchParams({ areaId: selectedArea.id })
-        if (selectedStationName) histParams.set('stationName', selectedStationName)
         const histRes = await fetch(`/api/evaluaciones?${histParams.toString()}`, {
           credentials: 'include',
         })
@@ -389,12 +389,8 @@ function FiveSDialog({ onClose, onFinished }) {
     setSelectedGroupKey('')
     setSelectedLineId('')
     setSelectedAreaId('')
-    setSelectedStationName('')
     setSelectedShift(CURRENT_SHIFT)
-    setSelectedEmployee(null)
     setSubmitError('')
-    setPersonSearch('')
-    setPersonSearchError('')
     onClose()
   }
 
@@ -428,67 +424,7 @@ function FiveSDialog({ onClose, onFinished }) {
               </p>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="fives-person-search">{t('personSearchLabel')}</Label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-muted-foreground opacity-50" />
-                <Input
-                  id="fives-person-search"
-                  value={personSearch}
-                  onChange={(e) => {
-                    setPersonSearch(e.target.value)
-                    setPersonSearchError('')
-                  }}
-                  placeholder={t('personSearchPlaceholder')}
-                  className="pl-9"
-                />
-                {personSearchResults.length > 0 && (
-                  <div className="absolute z-20 mt-1 max-h-[240px] w-full overflow-y-auto rounded-[16px] border border-border bg-card shadow-lg">
-                    {personSearchResults.map((employee) => (
-                      <button
-                        key={employee.id}
-                        type="button"
-                        onClick={() => handlePickFromSearch(employee)}
-                        className="flex w-full items-center gap-3 border-b border-border p-2.5 text-left last:border-b-0 hover:bg-accent"
-                      >
-                        <EmployeeAvatar employee={employee} size={32} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-bold">{employee.name}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {formatEmployeeNumber(employee.employeeNumber)}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {personSearchError && (
-                <Alert className={cn(alertToneClass('warning'), 'mt-1')}>{personSearchError}</Alert>
-              )}
-              {selectedEmployee && (
-                <div className="flex items-center gap-2 rounded-xl border border-border bg-black/[.02] px-2.5 py-1.5 dark:bg-white/[.03]">
-                  <EmployeeAvatar employee={selectedEmployee} size={24} />
-                  <p className="min-w-0 flex-1 truncate text-[12px] font-bold">
-                    {formatEmployeeNumber(selectedEmployee.employeeNumber)} ·{' '}
-                    {selectedEmployee.name}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedEmployee(null)}
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
-              <div className="h-px flex-1 bg-border" />
-              {t('personSearchOrDivider')}
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            <AuditorField name={user?.name} />
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="fives-area">{t('workCenterLabel')}</Label>
@@ -517,28 +453,6 @@ function FiveSDialog({ onClose, onFinished }) {
                     {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
                       <SelectItem key={w.id} value={w.id}>
                         {workCenterById(w.id)?.name || w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {stationOptions.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="fives-station">{t('stationLabel')}</Label>
-                <Select
-                  value={selectedStationName || '__NONE__'}
-                  onValueChange={(v) => setSelectedStationName(v === '__NONE__' ? '' : v)}
-                >
-                  <SelectTrigger id="fives-station">
-                    <SelectValue placeholder={t('stationPlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__NONE__">{t('stationNoneOption')}</SelectItem>
-                    {stationOptions.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -710,6 +624,434 @@ function CriterionCard({ criterion, value, onAnswer, onObservation, t }) {
               )}
             >
               {t(`answer.${option}`)}
+            </button>
+          )
+        })}
+      </div>
+      <Input
+        value={value?.observation || ''}
+        onChange={(e) => onObservation(e.target.value)}
+        placeholder={t('observationPlaceholder')}
+        className="mt-2 h-8 text-[12px]"
+      />
+    </div>
+  )
+}
+
+// Campo "Auditor" de solo lectura -- nombre real de la sesion (useAuth()), compartido por
+// FiveSDialog y ProcesoDialog (2026-09-03, a peticion explicita del usuario). Nunca editable ni
+// mandado por el cliente al guardar -- el servidor siempre usa req.user.id, esto es solo para que
+// el auditor vea/confirme quien va a quedar registrado.
+function AuditorField({ name }) {
+  const { t } = useTranslation('auditoria')
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{t('auditorLabel')}</Label>
+      <div className="rounded-xl border border-border bg-black/[.02] px-3 py-2 text-[13px] font-bold dark:bg-white/[.03]">
+        {name || '—'}
+      </div>
+    </div>
+  )
+}
+
+/* Flujo "Auditoria de Proceso" (2026-09-03, a peticion explicita del usuario -- primer checklist
+   real tomado tal cual de "AUDITORIA ETIQUETADOR- SEMANA 36.xlsx", ver
+   src/data/auditsProceso/criteria.js). A diferencia de 5S (siempre por AREA), esta SI evalua a una
+   persona real en un puesto real: intro pide Auditor (solo lectura)/Area de trabajo/Estacion/
+   Turno -- el EMPLEADO nunca se busca a mano, se autocompleta con quien ocupa esa estacion hoy
+   (getLineWorkstationsWithOccupancy, mismo patron que el "ocupante" de ProcessSheetModal en
+   LineProcessFlow.jsx). Si el puesto elegido no tiene checklist real todavia (cualquier rol que no
+   sea Etiquetado hoy) o no hay nadie asignado ahi ahora mismo, "Comenzar auditoria" queda
+   deshabilitado con el motivo real -- nunca se inventa un checklist generico ni se audita a nadie
+   que el sistema no pueda identificar.
+
+   step recorre las categorias reales del checklist de ese ROLE en orden fijo (7 para Etiquetado),
+   un criterio-por-card con la MISMA escala 4 del Excel original (Cumple completamente/Cumple
+   parcialmente/Cumple con el minimo/No cumple). Al terminar la ultima categoria: POST a
+   /api/process-audits con las respuestas reales -- el servidor calcula TODO (% por categoria +
+   total, nunca un numero que mande el cliente) -- luego se busca la auditoria anterior real de la
+   MISMA area+estacion para la comparacion, y se entrega todo a onFinished() para que
+   AuditoriaPage abra ProcesoResultDialog. Si el POST falla se queda en el mismo paso con el error
+   visible, nunca se cierra ni se resetea, para no perder el checklist ya lleno. */
+function ProcesoDialog({ onClose, onFinished }) {
+  const { t } = useTranslation('auditoria')
+  const { user } = useAuth()
+  const [step, setStep] = useState(null)
+  const [answers, setAnswers] = useState({})
+  const [selectedGroupKey, setSelectedGroupKey] = useState('')
+  const [selectedLineId, setSelectedLineId] = useState('')
+  const [selectedAreaId, setSelectedAreaId] = useState('')
+  const [selectedStationName, setSelectedStationName] = useState('')
+  const [selectedShift, setSelectedShift] = useState(CURRENT_SHIFT)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  const isIntro = step === null
+  const selectedArea = selectedAreaId ? workCenterById(selectedAreaId) : null
+
+  const stationOptions = selectedAreaId
+    ? Array.from(
+        new Map(
+          getWorkstationsForLine(selectedAreaId).map((w) => [
+            w.name,
+            { name: w.name, role: w.role },
+          ]),
+        ).values(),
+      )
+    : []
+  const selectedStation = stationOptions.find((s) => s.name === selectedStationName) || null
+  const selectedRole = selectedStation?.role || null
+  const categories = selectedRole ? categoriesForRole(selectedRole) : []
+  const hasChecklist = categories.length > 0
+
+  const occupantEmployee = selectedAreaId
+    ? getLineWorkstationsWithOccupancy(selectedAreaId).find((w) => w.name === selectedStationName)
+        ?.occupants?.[0]?.employee || null
+    : null
+
+  const canStartAudit =
+    Boolean(selectedArea) && Boolean(selectedStation) && hasChecklist && Boolean(occupantEmployee)
+
+  const stepIndex = typeof step === 'number' ? step : 0
+  const stepCategory = categories[stepIndex]
+  const stepCriteria =
+    selectedRole && stepCategory ? criteriaForRoleCategory(selectedRole, stepCategory.id) : []
+  const pendingCount = stepCriteria.filter((c) => !answers[c.id]?.answer).length
+
+  function handleGroupChange(groupKey) {
+    setSelectedGroupKey(groupKey)
+    setSelectedLineId('')
+    setSelectedStationName('')
+    const group = AUDIT_AREA_GROUPS.find((g) => g.key === groupKey)
+    setSelectedAreaId(group?.areaId || '')
+  }
+
+  function handleLineChange(lineId) {
+    setSelectedLineId(lineId)
+    setSelectedStationName('')
+    setSelectedAreaId(lineId)
+  }
+
+  function handleAnswerChange(criterionId, answer) {
+    setAnswers((prev) => ({ ...prev, [criterionId]: { ...prev[criterionId], answer } }))
+  }
+
+  function handleObservationChange(criterionId, observation) {
+    setAnswers((prev) => ({ ...prev, [criterionId]: { ...prev[criterionId], observation } }))
+  }
+
+  async function handleNext() {
+    if (submitting) return
+    if (pendingCount > 0) return
+    if (stepIndex < categories.length - 1) {
+      setStep(stepIndex + 1)
+      return
+    }
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const allCriteria = criteriaForRole(selectedRole)
+      const answersPayload = allCriteria.map((c) => ({
+        criterionId: c.id,
+        answer: answers[c.id]?.answer,
+        observation: answers[c.id]?.observation || undefined,
+      }))
+      const res = await fetch('/api/process-audits', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          areaId: selectedArea.id,
+          role: selectedRole,
+          stationName: selectedStationName,
+          employeeId: occupantEmployee.id,
+          shift: selectedShift || null,
+          answers: answersPayload,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
+
+      // Auditoria anterior real de la MISMA area+estacion -- nunca mezcla entidades distintas.
+      // Comparacion opcional: si esta consulta falla, el resultado se muestra igual, solo sin la
+      // fila de variacion.
+      let previousAudit = null
+      try {
+        const histParams = new URLSearchParams({
+          areaId: selectedArea.id,
+          stationName: selectedStationName,
+        })
+        const histRes = await fetch(`/api/process-audits?${histParams.toString()}`, {
+          credentials: 'include',
+        })
+        const histData = await histRes.json().catch(() => null)
+        const list = histData?.audits || []
+        previousAudit = list.find((a) => a.id !== data.audit.id) || null
+      } catch {
+        previousAudit = null
+      }
+
+      onFinished({ audit: data.audit, previousAudit })
+      handleClose()
+    } catch (e) {
+      setSubmitError(e.message || t('saveErrorGeneric'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleClose() {
+    setStep(null)
+    setAnswers({})
+    setSelectedGroupKey('')
+    setSelectedLineId('')
+    setSelectedAreaId('')
+    setSelectedStationName('')
+    setSelectedShift(CURRENT_SHIFT)
+    setSubmitError('')
+    onClose()
+  }
+
+  return (
+    <Dialog open onOpenChange={(next) => !next && handleClose()}>
+      <DialogContent
+        className={
+          isIntro ? 'max-w-[560px]' : 'flex max-h-[88vh] max-w-[760px] flex-col overflow-y-auto'
+        }
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {isIntro ? t('procesoIntroTitle') : t('procesoAuditInProgressTitle')}
+          </DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </DialogClose>
+        </DialogHeader>
+
+        {isIntro && (
+          <div className="flex flex-col gap-4 px-6 pb-6">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <ClipboardCheck className="h-10 w-10 text-[#2563EB]" />
+              <p className="text-[13.5px] font-bold text-muted-foreground">
+                {t('procesoIntroDescription')}
+              </p>
+            </div>
+
+            <AuditorField name={user?.name} />
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="proceso-area">{t('workCenterLabel')}</Label>
+              <Select value={selectedGroupKey} onValueChange={handleGroupChange}>
+                <SelectTrigger id="proceso-area">
+                  <SelectValue placeholder={t('workCenterPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUDIT_AREA_GROUPS.map((g) => (
+                    <SelectItem key={g.key} value={g.key}>
+                      {t(g.labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedGroupKey === 'LINEAS' && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="proceso-line">{t('lineLabel')}</Label>
+                <Select value={selectedLineId} onValueChange={handleLineChange}>
+                  <SelectTrigger id="proceso-line">
+                    <SelectValue placeholder={t('linePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {workCenterById(w.id)?.name || w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {selectedAreaId && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="proceso-station">{t('stationLabel')}</Label>
+                {stationOptions.length > 0 ? (
+                  <Select value={selectedStationName} onValueChange={setSelectedStationName}>
+                    <SelectTrigger id="proceso-station">
+                      <SelectValue placeholder={t('stationPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stationOptions.map((s) => (
+                        <SelectItem key={s.name} value={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Alert className={alertToneClass('warning')}>{t('procesoNoStationsError')}</Alert>
+                )}
+              </div>
+            )}
+
+            {selectedStation && !hasChecklist && (
+              <Alert className={alertToneClass('warning')}>
+                {t('procesoNoChecklistError', { role: selectedRole })}
+              </Alert>
+            )}
+
+            {selectedStation && hasChecklist && (
+              <div className="flex flex-col gap-1.5">
+                <Label>{t('fieldEmpleado')}</Label>
+                {occupantEmployee ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-black/[.02] px-2.5 py-1.5 dark:bg-white/[.03]">
+                    <EmployeeAvatar employee={occupantEmployee} size={24} />
+                    <p className="min-w-0 flex-1 truncate text-[12px] font-bold">
+                      {formatEmployeeNumber(occupantEmployee.employeeNumber)} ·{' '}
+                      {occupantEmployee.name}
+                    </p>
+                  </div>
+                ) : (
+                  <Alert className={alertToneClass('warning')}>{t('procesoNoOccupantError')}</Alert>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="proceso-shift">{t('shiftLabel')}</Label>
+              <Select value={selectedShift} onValueChange={setSelectedShift}>
+                <SelectTrigger id="proceso-shift">
+                  <SelectValue placeholder={t('shiftPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIFT_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button onClick={() => setStep(0)} disabled={!canStartAudit} className="font-bold">
+              {t('startAuditButton')}
+            </Button>
+          </div>
+        )}
+
+        {!isIntro && (
+          <div className="flex min-h-0 flex-1 flex-col px-6 pb-2">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
+              {t('procesoCategoryIndicator', { current: stepIndex + 1, total: categories.length })}
+            </p>
+            <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-[#2563EB] transition-all duration-200"
+                style={{ width: `${((stepIndex + 1) / categories.length) * 100}%` }}
+              />
+            </div>
+
+            <div className="mb-4 rounded-[20px] border border-[#2563EB]/20 bg-[#2563EB]/[0.05] px-6 py-5">
+              <p className="text-[16px] font-extrabold">{t(stepCategory.titleKey)}</p>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pb-2 pr-1">
+              {stepCriteria.map((criterion) => (
+                <ProcesoCriterionCard
+                  key={criterion.id}
+                  criterion={criterion}
+                  value={answers[criterion.id]}
+                  onAnswer={(a) => handleAnswerChange(criterion.id, a)}
+                  onObservation={(o) => handleObservationChange(criterion.id, o)}
+                  t={t}
+                />
+              ))}
+            </div>
+
+            {pendingCount > 0 && (
+              <Alert className={cn(alertToneClass('warning'), 'mt-3')}>
+                {t('pendingCriteriaMessage', { count: pendingCount })}
+              </Alert>
+            )}
+            {submitError && (
+              <Alert className={cn(alertToneClass('error'), 'mt-3')}>{submitError}</Alert>
+            )}
+
+            <div className="flex justify-between gap-2 py-4">
+              {stepIndex > 0 ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep(stepIndex - 1)}
+                  disabled={submitting}
+                  className="font-bold"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  {t('previousButton')}
+                </Button>
+              ) : (
+                <div />
+              )}
+              <Button
+                onClick={handleNext}
+                disabled={submitting || pendingCount > 0}
+                className="font-bold"
+              >
+                {stepIndex >= categories.length - 1
+                  ? submitting
+                    ? t('savingButton')
+                    : t('finishButton')
+                  : t('nextButton')}
+                {stepIndex < categories.length - 1 && <ChevronRight className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Card de un criterio individual de Auditoria de Proceso -- 4 opciones (la MISMA escala del Excel
+// original: Cumple completamente(10)/Cumple parcialmente(5)/Cumple con el minimo(3)/No cumple(0),
+// ver PROCESS_AUDIT_ANSWER_POINTS) + observacion opcional, mismo patron visual que CriterionCard
+// (5S) pero con 4 pildoras en vez de 3.
+const PROCESO_ANSWER_TONE = {
+  CUMPLE_COMPLETO: {
+    border: 'border-[#10B981]',
+    bg: 'bg-[#10B981]/[0.12]',
+    text: 'text-[#10B981]',
+  },
+  CUMPLE_PARCIAL: { border: 'border-[#3B82F6]', bg: 'bg-[#3B82F6]/[0.12]', text: 'text-[#3B82F6]' },
+  CUMPLE_MINIMO: { border: 'border-[#F59E0B]', bg: 'bg-[#F59E0B]/[0.12]', text: 'text-[#F59E0B]' },
+  NO_CUMPLE: { border: 'border-[#EF4444]', bg: 'bg-[#EF4444]/[0.12]', text: 'text-[#EF4444]' },
+}
+function ProcesoCriterionCard({ criterion, value, onAnswer, onObservation, t }) {
+  return (
+    <div className="rounded-2xl border border-border p-3.5">
+      <p className="text-[12.5px] font-bold">{t(criterion.questionKey)}</p>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {PROCESS_AUDIT_ANSWER_OPTIONS.map((option) => {
+          const tone = PROCESO_ANSWER_TONE[option]
+          const selected = value?.answer === option
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onAnswer(option)}
+              className={cn(
+                'rounded-full border px-3 py-1 text-[11.5px] font-bold transition-colors duration-150',
+                selected
+                  ? cn(tone.border, tone.bg, tone.text)
+                  : 'border-border text-muted-foreground hover:bg-accent',
+              )}
+            >
+              {t(`procesoAnswer.${option}`)}
             </button>
           )
         })}

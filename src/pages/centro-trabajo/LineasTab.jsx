@@ -43,12 +43,18 @@ import { useEmployeeDropTarget } from '../../ui/dnd'
    getWorkstationsForLine() (workstations.js, distintas por línea --
    nunca se hardcodea "5 estaciones" para todas).
 
-   Estado visual de 3 niveles (100% verde / 1-99% naranja / 0% rojo) es
-   EXCLUSIVO de esta vista, a petición explícita del usuario ("esto es
-   únicamente estado visual, no confundir con reglas de producción")
-   -- no se tocó STATUS_META/statusFor de OperatingFloorPlan.jsx (4
-   estados, otros colores), cada vista mantiene su propia semántica
-   visual sin mezclarse.
+   Estado visual de 2 niveles -- amarillo si la línea está vacía (0
+   personas), verde si tiene gente, sin importar si ya llegó al ideal
+   (2026-09-03, a petición explícita del usuario: "si una WC LINEA esta
+   vacia que este en color amarillo la card ya si hay gente en verde").
+   Reemplaza la version anterior de 3 niveles (100% verde / 1-99%
+   naranja / 0% rojo) -- el badge "Completa"/"Faltan N" (arriba a la
+   derecha de cada card) es un indicador aparte, sin tocar, que sigue
+   comparando contra el ideal. Es EXCLUSIVO de esta vista, a petición
+   explícita del usuario ("esto es únicamente estado visual, no
+   confundir con reglas de producción") -- no se tocó STATUS_META/
+   statusFor de OperatingFloorPlan.jsx (4 estados, otros colores), cada
+   vista mantiene su propia semántica visual sin mezclarse.
 
    Fase 6c (Centro de Trabajo): portado de MUI a Tailwind. Los 5 colores
    hex originales (#10B981/#F59E0B/#EF4444/#3B82F6/#A855F7) coinciden
@@ -61,21 +67,17 @@ import { useEmployeeDropTarget } from '../../ui/dnd'
 // resuelve via t() solo donde se muestra (SummaryPanel, unico lugar que
 // renderiza la leyenda), ver STATUS_LABEL_KEYS mas abajo.
 const VISUAL_STATUS = {
-  COMPLETA: { dot: 'bg-emerald-500', text: 'text-emerald-500' },
-  EN_PROGRESO: { dot: 'bg-amber-500', text: 'text-amber-500' },
-  SIN_PERSONAL: { dot: 'bg-red-500', text: 'text-red-500' },
+  CON_PERSONAL: { dot: 'bg-emerald-500', text: 'text-emerald-500' },
+  VACIA: { dot: 'bg-amber-500', text: 'text-amber-500' },
 }
 
 const STATUS_LABEL_KEYS = {
-  COMPLETA: 'lineasTab.statusComplete',
-  EN_PROGRESO: 'lineasTab.statusInProgress',
-  SIN_PERSONAL: 'lineasTab.statusNoStaff',
+  CON_PERSONAL: 'lineasTab.statusHasStaff',
+  VACIA: 'lineasTab.statusEmpty',
 }
 
-function visualStatusFor(pct) {
-  if (pct >= 100) return 'COMPLETA'
-  if (pct > 0) return 'EN_PROGRESO'
-  return 'SIN_PERSONAL'
+function visualStatusFor(real) {
+  return real > 0 ? 'CON_PERSONAL' : 'VACIA'
 }
 
 function normalize(text) {
@@ -228,7 +230,7 @@ export default function LineasTab({ onOpenLine }) {
 function LineaCard({ row, onOpenLine }) {
   const { t } = useTranslation('centroTrabajo')
   const { linea, real, ideal, pct, missing, complete, stationsCount } = row
-  const statusKey = visualStatusFor(pct)
+  const statusKey = visualStatusFor(real)
   const status = VISUAL_STATUS[statusKey]
   const { isOver, dropProps } = useEmployeeDropTarget(linea.id)
 
@@ -315,7 +317,7 @@ function LineasListView({ rows, onOpenLine }) {
         <TableBody>
           {rows.map((row) => {
             const { linea, real, ideal, pct, missing, complete, stationsCount } = row
-            const status = VISUAL_STATUS[visualStatusFor(pct)]
+            const status = VISUAL_STATUS[visualStatusFor(real)]
             return (
               <TableRow
                 key={linea.id}

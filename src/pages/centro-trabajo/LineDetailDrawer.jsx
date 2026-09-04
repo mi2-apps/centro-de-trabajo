@@ -662,7 +662,12 @@ export default function LineDetailDrawer({
               Card propia con mas espacio, SIEMPRE visible en las 11 lineas (isStationBased cubre
               exactamente LINEA1..10 + PROYECTO), haya o no haya personal/piezas reales todavia. */}
           {isStationBased && (
-            <TaktTimeCard t={t} taktTime={taktTime} realTakt={realTakt} shiftLabel={currentOfficialShift.label} />
+            <TaktTimeCard
+              t={t}
+              taktTime={taktTime}
+              realTakt={realTakt}
+              shiftLabel={currentOfficialShift.label}
+            />
           )}
 
           {actionError && (

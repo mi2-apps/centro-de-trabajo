@@ -35,6 +35,7 @@ import {
 import { cn } from '@/lib/utils'
 import { workCenterById } from '../../data/production/catalog'
 import FiveSResultDialog from '../../pages/auditoria/FiveSResultDialog'
+import ProcesoResultDialog from '../../pages/auditoria/ProcesoResultDialog'
 import { EmptyState } from '../../ui'
 
 /* Modulo Evaluaciones -- historial real de Auditoria 5S (2026-09-03, a peticion explicita del
@@ -52,7 +53,14 @@ import { EmptyState } from '../../ui'
    "Evolucion 5S" (2026-09-03, idea tomada de la presentacion 5S original, Ene..Dic): selector de
    Area (+ Puesto si esa area tiene auditorias con puesto) sobre los datos YA CARGADOS -- nunca
    mezcla areas/puestos distintos en la misma tendencia (a peticion explicita) -- consulta real
-   /api/evaluaciones/evolution, nunca datos quemados. */
+   /api/evaluaciones/evolution, nunca datos quemados.
+
+   2026-09-03 (mismo dia, a peticion explicita del usuario): se agrega una segunda tabla, historial
+   real de "Auditoria de Proceso" (ProcessAudit/ProcessAuditAnswer, ver
+   src/data/auditsProceso/criteria.js) -- SOLO LECTURA igual que la de 5S, click en una fila -> GET
+   /api/process-audits/:id -> ProcesoResultDialog. Sin "Evolucion" para este tipo todavia (no se
+   pidio esta vez) -- solo tabla + reabrir resultado, para no perder el checklist lleno despues de
+   cerrar la pantalla de resultado. */
 
 const CATEGORIES = ['s1', 's2', 's3', 's4', 's5']
 const MONTH_KEYS = [
@@ -89,6 +97,11 @@ export default function EvaluacionesPage() {
   const [evoMonths, setEvoMonths] = useState(null)
   const [evoError, setEvoError] = useState('')
 
+  const [processAudits, setProcessAudits] = useState(null) // null = cargando todavia
+  const [processError, setProcessError] = useState('')
+  const [procesoDetail, setProcesoDetail] = useState(null) // {audit, previousAudit}
+  const [procesoDetailError, setProcesoDetailError] = useState('')
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -99,6 +112,24 @@ export default function EvaluacionesPage() {
         if (!cancelled) setEvaluations(data.evaluations || [])
       } catch (e) {
         if (!cancelled) setError(e.message || t('loadErrorGeneric'))
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [t])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch('/api/process-audits', { credentials: 'include' })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error((data && data.error) || t('loadErrorGeneric'))
+        if (!cancelled) setProcessAudits(data.audits || [])
+      } catch (e) {
+        if (!cancelled) setProcessError(e.message || t('loadErrorGeneric'))
       }
     }
     load()
@@ -178,6 +209,31 @@ export default function EvaluacionesPage() {
       })
     } catch (e) {
       setDetailError(e.message || t('loadErrorGeneric'))
+    }
+  }
+
+  async function openProcesoDetail(audit) {
+    setProcesoDetailError('')
+    try {
+      const res = await fetch(`/api/process-audits/${audit.id}`, { credentials: 'include' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error((data && data.error) || t('loadErrorGeneric'))
+
+      let previousAudit = null
+      if (processAudits) {
+        const sameEntity = processAudits
+          .filter((a) => a.areaId === audit.areaId && a.stationName === audit.stationName)
+          .sort((a, b) => new Date(b.auditDate) - new Date(a.auditDate))
+        const idx = sameEntity.findIndex((a) => a.id === audit.id)
+        previousAudit = idx >= 0 ? sameEntity[idx + 1] || null : null
+      }
+
+      setProcesoDetail({
+        audit: { ...data.audit, auditorName: audit.auditorName },
+        previousAudit,
+      })
+    } catch (e) {
+      setProcesoDetailError(e.message || t('loadErrorGeneric'))
     }
   }
 
@@ -345,12 +401,97 @@ export default function EvaluacionesPage() {
         </div>
       )}
 
+      <div className={cn(cardClass, 'mb-4')}>
+        <div className={cardHeaderClass}>
+          <div className="min-w-0 flex-1">
+            <p className={cardHeaderTitleClass}>{t('procesoTableTitle')}</p>
+            <p className={cardHeaderSubtitleClass}>{t('procesoTableSubtitle')}</p>
+          </div>
+        </div>
+
+        {processError && (
+          <Alert className={cn(alertToneClass('error'), 'm-4')}>{processError}</Alert>
+        )}
+        {procesoDetailError && (
+          <Alert className={cn(alertToneClass('error'), 'm-4')}>{procesoDetailError}</Alert>
+        )}
+
+        {processAudits === null && !processError && (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            {t('loadingMessage')}
+          </p>
+        )}
+
+        {processAudits && processAudits.length === 0 && (
+          <EmptyState
+            title={t('procesoEmptyStateTitle')}
+            description={t('procesoEmptyStateDescription')}
+          />
+        )}
+
+        {processAudits && processAudits.length > 0 && (
+          <div className="max-h-[75vh] overflow-auto">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-card">
+                <TableRow className={tableHeaderRowClass}>
+                  <TableHead>{t('colDate')}</TableHead>
+                  <TableHead>{t('colArea')}</TableHead>
+                  <TableHead>{t('colStation')}</TableHead>
+                  <TableHead>{t('colEmployee')}</TableHead>
+                  <TableHead>{t('colAuditor')}</TableHead>
+                  <TableHead className="text-right">{t('colScore')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {processAudits.map((audit, idx) => (
+                  <TableRow
+                    key={audit.id}
+                    className={cn(tableRowClass(idx), 'cursor-pointer')}
+                    onClick={() => openProcesoDetail(audit)}
+                  >
+                    <TableCell className={cellTextSecondaryClass}>
+                      {dayjs(audit.auditDate).format('DD/MM/YYYY')}
+                    </TableCell>
+                    <TableCell className={cn(cellTextClass, 'font-bold')}>
+                      {workCenterById(audit.areaId)?.name || audit.areaId}
+                    </TableCell>
+                    <TableCell className={cellTextSecondaryClass}>
+                      {audit.stationName || '—'}
+                    </TableCell>
+                    <TableCell className={cellTextSecondaryClass}>
+                      {audit.employeeName
+                        ? `${audit.employeeNumber || '—'} · ${audit.employeeName}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className={cellTextSecondaryClass}>
+                      {audit.auditorName || '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span
+                        className={metricChipClass(scoreTone(audit.totalScore))}
+                      >{`${audit.totalScore}%`}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
       {detail && (
         <FiveSResultDialog
           evaluation={detail.evaluation}
           previousEvaluation={detail.previousEvaluation}
           answers={detail.answers}
           onClose={() => setDetail(null)}
+        />
+      )}
+      {procesoDetail && (
+        <ProcesoResultDialog
+          audit={procesoDetail.audit}
+          previousAudit={procesoDetail.previousAudit}
+          onClose={() => setProcesoDetail(null)}
         />
       )}
     </div>

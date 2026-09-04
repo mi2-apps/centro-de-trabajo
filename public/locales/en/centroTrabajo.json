@@ -256,9 +256,8 @@
     "missingPersonnelLabel": "Missing Personnel",
     "overallCoverageLabel": "Overall Coverage",
     "statusLegendTitle": "Status Legend",
-    "statusComplete": "Complete (100%)",
-    "statusInProgress": "In progress (1-99%)",
-    "statusNoStaff": "No staff (0%)"
+    "statusHasStaff": "Staffed",
+    "statusEmpty": "Empty (no staff)"
   },
   "lineStationConfigDrawer": {
     "nameRequired": "The station name is required.",

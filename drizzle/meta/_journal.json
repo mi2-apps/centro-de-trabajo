@@ -50,6 +50,13 @@
       "when": 1788442400000,
       "tag": "0006_fiveS_audit_full_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788528800000,
+      "tag": "0007_process_audit_checklist",
+      "breakpoints": true
     }
   ]
 }

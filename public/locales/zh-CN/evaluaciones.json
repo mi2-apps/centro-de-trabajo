@@ -29,5 +29,9 @@
   "colArea": "工作中心",
   "colStation": "工位",
   "colDate": "日期",
-  "colScore": "评分"
+  "colScore": "评分",
+  "procesoTableTitle": "流程审核 — 历史记录",
+  "procesoTableSubtitle": "按人员和工位记录的真实流程审核",
+  "procesoEmptyStateTitle": "暂无流程审核记录",
+  "procesoEmptyStateDescription": "完成一次流程审核后将在此显示。"
 }

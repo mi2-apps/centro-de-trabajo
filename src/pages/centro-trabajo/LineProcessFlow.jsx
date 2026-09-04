@@ -21,6 +21,7 @@ import {
 } from '@/lib/pageStyles'
 import { cn, hexToRgba } from '@/lib/utils'
 import { formatEmployeeNumber } from '../../data/personnel/employeeDisplay'
+import { processManualForRole } from '../../data/production/processManuals'
 import DraggablePersonChip from '../../ui/DraggablePersonChip'
 import { useEmployeeDropTargetStation } from '../../ui/dnd'
 import EmployeeAssignSearchBar from './EmployeeAssignSearchBar'
@@ -244,10 +245,11 @@ function ProcessSheetModal({ node, areaId, onClose, onViewHistory }) {
 
   const isFirstStep = step === 0
   const occupant = node.ws.occupants?.[0]
+  const manualPath = isFirstStep ? processManualForRole(node.label) : null
 
   return (
     <Dialog open={Boolean(node)} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-[560px]">
+      <DialogContent className={cn('max-w-[560px]', manualPath && 'max-w-[880px]')}>
         <DialogHeader>
           <DialogTitle>
             {isFirstStep
@@ -298,18 +300,28 @@ function ProcessSheetModal({ node, areaId, onClose, onViewHistory }) {
           <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.4px] text-muted-foreground">
             {t('lineDetailDrawer.processFlowStepIndicator', { current: step + 1, total: 2 })}
           </p>
-          <div className="flex flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed border-border bg-black/[.02] px-6 py-10 text-center dark:bg-white/[.03]">
-            {isFirstStep ? (
-              <FileText className="h-10 w-10 text-muted-foreground/50" />
-            ) : (
-              <MapIcon className="h-10 w-10 text-muted-foreground/50" />
-            )}
-            <p className="text-[13.5px] font-bold text-muted-foreground">
-              {isFirstStep
-                ? t('lineDetailDrawer.processFlowStep1Placeholder')
-                : t('lineDetailDrawer.processFlowStep2Placeholder')}
-            </p>
-          </div>
+          {manualPath ? (
+            <div className="overflow-hidden rounded-[20px] border border-border bg-muted/20">
+              <iframe
+                src={manualPath}
+                title={`${t('lineDetailDrawer.processFlowStep1Title')} — ${node.label}`}
+                className="h-[65vh] w-full"
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed border-border bg-black/[.02] px-6 py-10 text-center dark:bg-white/[.03]">
+              {isFirstStep ? (
+                <FileText className="h-10 w-10 text-muted-foreground/50" />
+              ) : (
+                <MapIcon className="h-10 w-10 text-muted-foreground/50" />
+              )}
+              <p className="text-[13.5px] font-bold text-muted-foreground">
+                {isFirstStep
+                  ? t('lineDetailDrawer.processFlowStep1Placeholder')
+                  : t('lineDetailDrawer.processFlowStep2Placeholder')}
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex justify-between gap-2 px-6 pb-5">
           {isFirstStep ? (
