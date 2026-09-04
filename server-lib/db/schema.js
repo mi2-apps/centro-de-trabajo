@@ -1087,3 +1087,120 @@ export const downtimeRecord = pgTable(
       .onDelete('restrict'),
   ],
 )
+
+// Modulo Control de Equipo (2026-09-04, a peticion explicita del usuario -- catalogo real de
+// equipo fisico, ver src/data/controlEquipo/catalog.js EQUIPMENT_TYPES/EQUIPMENT_STATUSES).
+// 1 fila por observacion/evento de estado de un equipo real -- mismo patron "registro
+// append-only" que DowntimeRecord (nunca un maestro editable de inventario). El checklist
+// formal periodico ("Levantamiento de equipos") vive aparte, ver equipmentAudit abajo.
+export const equipmentStatus = pgEnum('EquipmentStatus', [
+  'OPERATIVO',
+  'DANADO',
+  'EN_REPARACION',
+  'BAJA',
+])
+export const equipmentItem = pgTable(
+  'EquipmentItem',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    typeKey: text().notNull(),
+    areaId: text().notNull(),
+    stationName: text(),
+    code: text(), // identificador fisico opcional (etiqueta/serie), ej. "Impresora 3"
+    status: equipmentStatus().notNull(),
+    notes: text(),
+    createdByUserId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('EquipmentItem_areaId_createdAt_idx').using(
+      'btree',
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.createdAt.asc().nullsLast().op('timestamp_ops'),
+    ),
+    index('EquipmentItem_typeKey_idx').using(
+      'btree',
+      table.typeKey.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [user.id],
+      name: 'EquipmentItem_createdByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+)
+
+// "Levantamiento de equipos" -- 3er tipo de auditoria dentro del modulo Auditoria (a peticion
+// explicita del usuario: "en el modulo de auditoria se debe hacer el check list"). Mismo patron
+// cabecera+respuestas que FiveSAudit/FiveSAuditAnswer -- 1 fila por auditoria completa (por
+// area/estacion) + 1 fila por tipo de equipo real revisado (ver
+// src/data/auditsEquipo/criteria.js, EQUIPMENT_TYPES es la unica fuente de los items revisables).
+export const equipmentAuditAnswerType = pgEnum('EquipmentAuditAnswerType', [
+  'CUMPLE',
+  'CUMPLE_PARCIAL',
+  'NO_CUMPLE',
+])
+export const equipmentAudit = pgTable(
+  'EquipmentAudit',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    areaId: text().notNull(),
+    stationName: text(),
+    auditDate: date({ mode: 'date' }).notNull(),
+    totalScore: integer().notNull(),
+    notes: text(),
+    createdByUserId: text().notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('EquipmentAudit_areaId_auditDate_idx').using(
+      'btree',
+      table.areaId.asc().nullsLast().op('text_ops'),
+      table.auditDate.asc().nullsLast().op('date_ops'),
+    ),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [user.id],
+      name: 'EquipmentAudit_createdByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+)
+export const equipmentAuditAnswer = pgTable(
+  'EquipmentAuditAnswer',
+  {
+    id: text()
+      .primaryKey()
+      .notNull()
+      .$defaultFn(() => cuid()),
+    auditId: text().notNull(),
+    typeKey: text().notNull(), // uno de EQUIPMENT_TYPES.key
+    answer: equipmentAuditAnswerType().notNull(),
+    score: integer().notNull(),
+    observation: text(),
+    createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index('EquipmentAuditAnswer_auditId_idx').using(
+      'btree',
+      table.auditId.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.auditId],
+      foreignColumns: [equipmentAudit.id],
+      name: 'EquipmentAuditAnswer_auditId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+)

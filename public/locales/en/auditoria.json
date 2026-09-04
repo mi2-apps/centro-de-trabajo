@@ -211,5 +211,14 @@
   "actionCapacitacion": "Training",
   "actionRetroalimentacion": "Feedback",
   "actionMejorar": "Improve",
-  "actionMantener": "Maintain"
+  "actionMantener": "Maintain",
+  "equipoCardTitle": "Equipment Walkthrough",
+  "equipoCardDescription": "Real checklist of physical equipment by area and station.",
+  "equipoCardDay": "On demand",
+  "equipoIntroTitle": "Equipment Walkthrough",
+  "equipoIntroDescription": "Check each type of physical equipment in the area and its real condition.",
+  "equipoEstadoQuestion": "Is it present and in good condition?",
+  "equipoResultTitle": "Equipment Walkthrough Result",
+  "equipoResultArea": "Area",
+  "equipoResultScoreHint": "Total walkthrough score (2 points per equipment in good condition)."
 }

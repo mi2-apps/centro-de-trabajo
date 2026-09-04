@@ -55,6 +55,7 @@ i18n
       'asistencia',
       'produccionFft',
       'demoras',
+      'controlEquipo',
     ],
     defaultNS: 'common',
     detection: {

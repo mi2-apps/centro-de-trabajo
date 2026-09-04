@@ -35,6 +35,9 @@ export const RELEASES = [
           'addedOrganigrama',
           'addedRechazoPpmInterno',
           'addedDemorasRealFuncionalidad',
+          'addedControlEquipo',
+          'addedLevantamientoEquipo',
+          'addedPlantIssuesWidget',
         ],
       },
       {
@@ -52,6 +55,7 @@ export const RELEASES = [
           'changedAsistenciaAreas',
           'changedLogo',
           'changedCentroTrabajoLogo',
+          'changedDemorasLiderView',
         ],
       },
       {

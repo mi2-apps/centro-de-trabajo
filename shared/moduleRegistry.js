@@ -574,6 +574,21 @@ export const MODULE_REGISTRY = [
     group: 'P',
     order: 40,
   },
+  // 2026-09-04 (a peticion explicita del usuario -- "vas hacer otro modulo Control de equipo"):
+  // registro real de estado de equipo fisico (impresoras, pistolas de calor/cushion, tablets,
+  // radios, escaner, cinta cafe, flejadora, patin -- ver src/data/controlEquipo/catalog.js).
+  {
+    key: '/control-equipo',
+    name: 'Control de Equipo',
+    description: 'Registro de estado de equipo físico por área y estación',
+    icon: 'Wrench',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'controlEquipo',
+    group: 'P',
+    order: 50,
+  },
   // 2026-09-04, PQCDSM (a peticion explicita del usuario -- "el objetivo
   // principal es: registrar correctamente el modulo, navegacion, permiso
   // correspondiente segun arquitectura... sin inventar funcionalidad

@@ -32,6 +32,20 @@
     "emptyTitle": "Sin hallazgos por ahora",
     "emptyDescription": "No hay condiciones destacables con los datos actuales."
   },
+  "plantIssuesCard": {
+    "title": "Problemas en planta (hoy)",
+    "loading": "Cargando...",
+    "emptyTitle": "Sin problemas reportados hoy",
+    "emptyDescription": "No hay demoras ni problemas de equipo registrados el día de hoy.",
+    "downtimeLabel": "Tiempo muerto",
+    "downtimeValue": "{{count}} demoras · {{minutes}} min",
+    "reportableDetail": "{{count}} reportables (4+ min)",
+    "materialLabel": "Problemas de material",
+    "materialValue": "{{count}} demoras por material",
+    "equipmentLabel": "Equipo con problema",
+    "equipmentValue": "{{count}} equipos reportados",
+    "noneDetail": "Sin registros"
+  },
   "dashboardPage": {
     "pageTitle": "Dashboard",
     "pageSubtitle": "Resumen general del centro de trabajo",

@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Recycle,
   ShieldCheck,
+  Wrench,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -42,6 +43,11 @@ import {
   FIVE_S_CRITERIA,
   FIVE_S_META,
 } from '../../data/audits5s/criteria'
+import {
+  EQUIPMENT_AUDIT_ANSWER_POINTS,
+  EQUIPMENT_AUDIT_CRITERIA,
+  EQUIPMENT_AUDIT_MAX_SCORE,
+} from '../../data/auditsEquipo/criteria'
 import {
   categoriesForRole,
   criteriaForRole,
@@ -88,6 +94,7 @@ import ProcesoResultDialog from './ProcesoResultDialog'
 const MODULES = [
   { key: 'AUDITORIA', Icon: ClipboardCheck, color: '#2563EB' },
   { key: 'PROCESO_5S', Icon: Recycle, color: '#10B981' },
+  { key: 'EQUIPO', Icon: Wrench, color: '#8B5CF6' },
   { key: 'SEGURIDAD', Icon: ShieldCheck, color: '#EF4444' },
 ]
 
@@ -101,6 +108,13 @@ const MODULE_I18N = {
     titleKey: 'process5sCardTitle',
     descKey: 'process5sCardDescription',
     dayKey: 'process5sCardDay',
+  },
+  // 2026-09-04 (a peticion explicita del usuario -- "en el modulo de auditoria se debe hacer el
+  // check list [de Control de equipo]"): "Levantamiento de equipos", 3er tipo de auditoria.
+  EQUIPO: {
+    titleKey: 'equipoCardTitle',
+    descKey: 'equipoCardDescription',
+    dayKey: 'equipoCardDay',
   },
   SEGURIDAD: {
     titleKey: 'seguridadCardTitle',
@@ -136,6 +150,7 @@ export default function AuditoriaPage() {
   // FiveSDialog ya se cerro -- 2 dialogs abiertos a la vez se ve mal y complica el foco/escape.
   const [fiveSResult, setFiveSResult] = useState(null)
   const [procesoResult, setProcesoResult] = useState(null)
+  const [equipoResult, setEquipoResult] = useState(null)
 
   function handleFiveSFinished(payload) {
     setOpenModule(null)
@@ -147,6 +162,11 @@ export default function AuditoriaPage() {
     setProcesoResult(payload)
   }
 
+  function handleEquipoFinished(payload) {
+    setOpenModule(null)
+    setEquipoResult(payload)
+  }
+
   return (
     <div className={pageClass}>
       <div className={cn(cardClass, 'mb-4')}>
@@ -156,7 +176,7 @@ export default function AuditoriaPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {MODULES.map((m) => (
           <AuditModuleCard key={m.key} module={m} onOpen={() => setOpenModule(m.key)} />
         ))}
@@ -167,6 +187,9 @@ export default function AuditoriaPage() {
       )}
       {openModule === 'AUDITORIA' && (
         <ProcesoDialog onClose={() => setOpenModule(null)} onFinished={handleProcesoFinished} />
+      )}
+      {openModule === 'EQUIPO' && (
+        <EquipoDialog onClose={() => setOpenModule(null)} onFinished={handleEquipoFinished} />
       )}
       {openModule === 'SEGURIDAD' && (
         <ComingSoonDialog
@@ -182,6 +205,9 @@ export default function AuditoriaPage() {
           answers={fiveSResult.answers}
           onClose={() => setFiveSResult(null)}
         />
+      )}
+      {equipoResult && (
+        <EquipoResultDialog audit={equipoResult.audit} onClose={() => setEquipoResult(null)} />
       )}
       {procesoResult && (
         <ProcesoResultDialog
@@ -553,6 +579,268 @@ function FiveSDialog({ onClose, onFinished }) {
             </div>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// "Levantamiento de equipos" (2026-09-04, a peticion explicita del usuario). A diferencia de
+// FiveSDialog (5 categorias con stepper), aqui hay UNA sola categoria plana de 9 criterios
+// (EQUIPMENT_AUDIT_CRITERIA, un criterio por tipo de equipo real) -- se muestran todos en una
+// sola pantalla, sin stepper. Mismo Area+Estacion que Demoras/Control de Equipo (AUDIT_AREA_GROUPS
+// reutilizado, la Estacion es opcional aqui igual que en FiveSAudit).
+function EquipoDialog({ onClose, onFinished }) {
+  const { t } = useTranslation('auditoria')
+  const { user } = useAuth()
+  const [started, setStarted] = useState(false)
+  const [answers, setAnswers] = useState({})
+  const [selectedGroupKey, setSelectedGroupKey] = useState('')
+  const [selectedLineId, setSelectedLineId] = useState('')
+  const [selectedAreaId, setSelectedAreaId] = useState('')
+  const [selectedStationName, setSelectedStationName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  const selectedArea = selectedAreaId ? workCenterById(selectedAreaId) : null
+  const canStartAudit = Boolean(selectedArea)
+  const pendingCount = EQUIPMENT_AUDIT_CRITERIA.filter((c) => !answers[c.id]?.answer).length
+
+  const stationOptions = selectedAreaId
+    ? Array.from(new Map(getWorkstationsForLine(selectedAreaId).map((w) => [w.name, w])).values())
+    : []
+
+  function handleGroupChange(groupKey) {
+    setSelectedGroupKey(groupKey)
+    setSelectedLineId('')
+    setSelectedStationName('')
+    const group = AUDIT_AREA_GROUPS.find((g) => g.key === groupKey)
+    setSelectedAreaId(group?.areaId || '')
+  }
+
+  function handleLineChange(lineId) {
+    setSelectedLineId(lineId)
+    setSelectedStationName('')
+    setSelectedAreaId(lineId)
+  }
+
+  function handleAnswerChange(criterionId, answer) {
+    setAnswers((prev) => ({ ...prev, [criterionId]: { ...prev[criterionId], answer } }))
+  }
+
+  function handleObservationChange(criterionId, observation) {
+    setAnswers((prev) => ({ ...prev, [criterionId]: { ...prev[criterionId], observation } }))
+  }
+
+  async function handleFinish() {
+    if (submitting || pendingCount > 0) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const answersPayload = EQUIPMENT_AUDIT_CRITERIA.map((c) => ({
+        criterionId: c.id,
+        answer: answers[c.id]?.answer,
+        observation: answers[c.id]?.observation || undefined,
+      }))
+      const res = await fetch('/api/equipment-audits', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          areaId: selectedArea.id,
+          stationName: selectedStationName || null,
+          answers: answersPayload,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
+      onFinished({ audit: data.audit })
+      handleClose()
+    } catch (e) {
+      setSubmitError(e.message || t('saveErrorGeneric'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleClose() {
+    setStarted(false)
+    setAnswers({})
+    setSelectedGroupKey('')
+    setSelectedLineId('')
+    setSelectedAreaId('')
+    setSelectedStationName('')
+    setSubmitError('')
+    onClose()
+  }
+
+  return (
+    <Dialog open onOpenChange={(next) => !next && handleClose()}>
+      <DialogContent
+        className={
+          !started ? 'max-w-[560px]' : 'flex max-h-[88vh] max-w-[760px] flex-col overflow-y-auto'
+        }
+      >
+        <DialogHeader>
+          <DialogTitle>{!started ? t('equipoIntroTitle') : t('auditInProgressTitle')}</DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </DialogClose>
+        </DialogHeader>
+
+        {!started && (
+          <div className="flex flex-col gap-4 px-6 pb-6">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <Wrench className="h-10 w-10 text-[#8B5CF6]" />
+              <p className="text-[13.5px] font-bold text-muted-foreground">
+                {t('equipoIntroDescription')}
+              </p>
+            </div>
+
+            <AuditorField name={user?.name} />
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="equipo-area">{t('workCenterLabel')}</Label>
+              <Select value={selectedGroupKey} onValueChange={handleGroupChange}>
+                <SelectTrigger id="equipo-area">
+                  <SelectValue placeholder={t('workCenterPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUDIT_AREA_GROUPS.map((g) => (
+                    <SelectItem key={g.key} value={g.key}>
+                      {t(g.labelKey)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedGroupKey === 'LINEAS' && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="equipo-line">{t('lineLabel')}</Label>
+                <Select value={selectedLineId} onValueChange={handleLineChange}>
+                  <SelectTrigger id="equipo-line">
+                    <SelectValue placeholder={t('linePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WORK_CENTERS.filter((w) => LINE_FAMILY_AREA_IDS.has(w.id)).map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {workCenterById(w.id)?.name || w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {selectedAreaId && stationOptions.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="equipo-station">{t('stationLabel')}</Label>
+                <Select value={selectedStationName} onValueChange={setSelectedStationName}>
+                  <SelectTrigger id="equipo-station">
+                    <SelectValue placeholder={t('stationPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stationOptions.map((s) => (
+                      <SelectItem key={s.name} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button
+              onClick={() => setStarted(true)}
+              disabled={!canStartAudit}
+              className="font-bold"
+            >
+              {t('startAuditButton')}
+            </Button>
+          </div>
+        )}
+
+        {started && (
+          <div className="flex min-h-0 flex-1 flex-col px-6 pb-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pb-2 pr-1 pt-2">
+              {EQUIPMENT_AUDIT_CRITERIA.map((criterion) => (
+                <CriterionCard
+                  key={criterion.id}
+                  criterion={criterion}
+                  value={answers[criterion.id]}
+                  onAnswer={(a) => handleAnswerChange(criterion.id, a)}
+                  onObservation={(o) => handleObservationChange(criterion.id, o)}
+                  t={t}
+                />
+              ))}
+            </div>
+
+            {pendingCount > 0 && (
+              <Alert className={cn(alertToneClass('warning'), 'mt-3')}>
+                {t('pendingCriteriaMessage', { count: pendingCount })}
+              </Alert>
+            )}
+            {submitError && (
+              <Alert className={cn(alertToneClass('error'), 'mt-3')}>{submitError}</Alert>
+            )}
+
+            <div className="flex justify-end gap-2 py-4">
+              <Button
+                onClick={handleFinish}
+                disabled={submitting || pendingCount > 0}
+                className="font-bold"
+              >
+                {submitting ? t('savingButton') : t('finishButton')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Resultado de "Levantamiento de equipos" -- version simple (sin radar chart, a diferencia de
+// FiveSResultDialog/ProcesoResultDialog) ya que es una sola categoria plana, no varias a
+// comparar visualmente.
+function EquipoResultDialog({ audit, onClose }) {
+  const { t } = useTranslation('auditoria')
+  return (
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>{t('equipoResultTitle')}</DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </DialogClose>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-3 px-6 pb-6">
+          <Wrench className="h-10 w-10 text-[#8B5CF6]" />
+          <p className="text-[13px] text-muted-foreground">
+            {t('equipoResultArea')}: <strong>{workCenterById(audit.areaId)?.name}</strong>
+            {audit.stationName ? ` · ${audit.stationName}` : ''}
+          </p>
+          <p className="text-[42px] font-extrabold leading-none">
+            {audit.totalScore}
+            <span className="text-[18px] font-bold text-muted-foreground">
+              /{EQUIPMENT_AUDIT_MAX_SCORE}
+            </span>
+          </p>
+          <p className="text-[12px] text-muted-foreground">{t('equipoResultScoreHint')}</p>
+          <Button onClick={onClose} className="mt-2 w-full font-bold">
+            {t('closeButton')}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )

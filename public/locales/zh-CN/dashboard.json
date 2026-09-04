@@ -32,6 +32,20 @@
     "emptyTitle": "暂无发现",
     "emptyDescription": "根据当前数据，没有需要关注的异常情况。"
   },
+  "plantIssuesCard": {
+    "title": "工厂问题（今日）",
+    "loading": "加载中...",
+    "emptyTitle": "今日暂无问题报告",
+    "emptyDescription": "今天没有登记延误或设备问题。",
+    "downtimeLabel": "停机时间",
+    "downtimeValue": "{{count}} 次延误 · {{minutes}} 分钟",
+    "reportableDetail": "{{count}} 次需上报（4分钟以上）",
+    "materialLabel": "物料问题",
+    "materialValue": "{{count}} 次物料相关延误",
+    "equipmentLabel": "设备问题",
+    "equipmentValue": "{{count}} 台设备已报告",
+    "noneDetail": "无记录"
+  },
   "dashboardPage": {
     "pageTitle": "仪表盘",
     "pageSubtitle": "工作中心总体概览",

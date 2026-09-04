@@ -16,8 +16,11 @@ import oidcRequestAccessHandler from '../api/auth/oidc/request-access.js'
 import oidcStartHandler from '../api/auth/oidc/start.js'
 import oidcStatusHandler from '../api/auth/oidc/status.js'
 import sessionHandler from '../api/auth/session.js'
+import controlEquipoIndexHandler from '../api/control-equipo/index.js'
+import dashboardPlantIssuesHandler from '../api/dashboard/plant-issues.js'
 import dashboardTrendsHandler from '../api/dashboard/trends.js'
 import demorasIndexHandler from '../api/demoras/index.js'
+import equipmentAuditsIndexHandler from '../api/equipment-audits/index.js'
 import evaluacionByIdHandler from '../api/evaluaciones/[id].js'
 import evaluacionesEvolutionHandler from '../api/evaluaciones/evolution.js'
 import evaluacionesIndexHandler from '../api/evaluaciones/index.js'
@@ -120,9 +123,13 @@ export function mountApiRoutes(app) {
   app.get('/api/production/sku-tracker', wrapAsync(productionSkuTrackerHandler))
 
   app.get('/api/dashboard/trends', wrapAsync(dashboardTrendsHandler))
+  app.get('/api/dashboard/plant-issues', wrapAsync(dashboardPlantIssuesHandler))
 
   app.get('/api/demoras', wrapAsync(demorasIndexHandler))
   app.post('/api/demoras', wrapAsync(demorasIndexHandler))
+
+  app.get('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
+  app.post('/api/control-equipo', wrapAsync(controlEquipoIndexHandler))
 
   app.get('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
   app.post('/api/evaluaciones', wrapAsync(evaluacionesIndexHandler))
@@ -132,6 +139,9 @@ export function mountApiRoutes(app) {
   app.get('/api/process-audits', wrapAsync(processAuditsIndexHandler))
   app.post('/api/process-audits', wrapAsync(processAuditsIndexHandler))
   app.get('/api/process-audits/:id', withDynamicParams(processAuditByIdHandler))
+
+  app.get('/api/equipment-audits', wrapAsync(equipmentAuditsIndexHandler))
+  app.post('/api/equipment-audits', wrapAsync(equipmentAuditsIndexHandler))
 
   app.get('/api/work-areas/:code/workstations', withDynamicParams(workAreaWorkstationsIndexHandler))
   app.post(

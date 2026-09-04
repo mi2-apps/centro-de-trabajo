@@ -20,6 +20,7 @@ import DashboardExportButton from './DashboardExportButton'
 import DashboardQuickSummaryStrip from './DashboardQuickSummaryStrip'
 import FftIndicatorsCard from './FftIndicatorsCard'
 import FindingsCard from './FindingsCard'
+import PlantIssuesCard from './PlantIssuesCard'
 import RecentActivityCard from './RecentActivityCard'
 
 /* ─────────────────────────────────────────────
@@ -173,6 +174,12 @@ export default function DashboardPage() {
 
       {/* Resumen rápido del centro de trabajo -- franja compacta final */}
       <DashboardQuickSummaryStrip metrics={metrics} />
+
+      {/* "Problemas en planta" -- lo mas al fondo del Dashboard, a peticion explicita del usuario
+          (2026-09-04): resume Demoras/Control de Equipo, los modulos operativos ya conectados. */}
+      <div className="mt-4">
+        <PlantIssuesCard />
+      </div>
 
       {/* Ultima actualizacion -- discreto, nunca una card grande */}
       <div className="mt-3 flex items-center justify-end gap-1 opacity-65">

@@ -9,6 +9,7 @@ import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RequestAccessPage from './pages/auth/RequestAccessPage'
 import CentroTrabajoPage from './pages/centro-trabajo/CentroTrabajoPage'
+import ControlEquipoPage from './pages/control-equipo/ControlEquipoPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import DemorasPage from './pages/demoras/DemorasPage'
 import ChangelogPage from './pages/docs/ChangelogPage'
@@ -146,6 +147,14 @@ export default function App() {
                   element={
                     <RequireModuleAccess>
                       <ComingSoonPage title={t('planeacion')} />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/control-equipo"
+                  element={
+                    <RequireModuleAccess>
+                      <ControlEquipoPage />
                     </RequireModuleAccess>
                   }
                 />

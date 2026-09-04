@@ -211,5 +211,14 @@
   "actionCapacitacion": "培训",
   "actionRetroalimentacion": "反馈",
   "actionMejorar": "待改进",
-  "actionMantener": "保持"
+  "actionMantener": "保持",
+  "equipoCardTitle": "设备巡查",
+  "equipoCardDescription": "按区域和工位对物理设备进行真实检查清单。",
+  "equipoCardDay": "按需进行",
+  "equipoIntroTitle": "设备巡查",
+  "equipoIntroDescription": "检查该区域每种物理设备及其真实状态。",
+  "equipoEstadoQuestion": "是否在场且状态良好？",
+  "equipoResultTitle": "设备巡查结果",
+  "equipoResultArea": "区域",
+  "equipoResultScoreHint": "巡查总分（每台状态良好的设备计2分）。"
 }

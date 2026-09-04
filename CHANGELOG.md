@@ -76,6 +76,26 @@ para poder desplegar en el servidor privado (Coolify). Ver
   bloqueo técnico de "no clasificar la siguiente TV" — esa acción vive en
   SmartControl/BinManager, sistema externo de solo lectura desde este repo;
   la regla queda como política de proceso del supervisor.
+- **Módulo nuevo Control de Equipo.** Registro real de estado de equipo
+  físico (impresoras, pistolas de calor/cushion, tablets, radios, escáner,
+  máquina de cinta café, flejadora, patín — ver
+  `src/data/controlEquipo/catalog.js`), formulario (tipo → área/línea →
+  estación → identificador → estado → nota) e historial con badge de
+  estado (Operativo/Dañado/En reparación/De baja). Tabla nueva
+  `EquipmentItem` (migración `drizzle/0009_add_equipment_tables.sql`) +
+  `GET`/`POST /api/control-equipo`.
+- **"Levantamiento de Equipo" en Auditoría.** Tercer tipo de auditoría
+  (junto a 5'S y Auditoría de Proceso): checklist real de los 9 tipos de
+  equipo físico de Control de Equipo, respondido Cumple/Cumple
+  parcial/No cumple por equipo, con resultado inmediato (puntaje sobre
+  18). Tablas nuevas `EquipmentAudit`/`EquipmentAuditAnswer` + `GET`/`POST
+  /api/equipment-audits`.
+- **Widget "Problemas en planta" en el Dashboard.** Al fondo del Dashboard,
+  resume en vivo los datos de hoy de Demoras y Control de Equipo — tiempo
+  muerto total, demoras reportables (4+ min), demoras por falta de
+  material/accesorios/herramientas, y equipo con problema reportado.
+  "Línea saturada" no se incluye — no existe todavía una métrica real de
+  capacidad/utilización en el sistema, no se inventa.
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.
@@ -115,6 +135,9 @@ para poder desplegar en el servidor privado (Coolify). Ver
   reflejados a futuro en los KPI's de Calidad (PPM's INTERNOS,
   RETRABAJOS); esa integración con los KPI's reales es trabajo aparte, no
   incluido en esta entrega.
+- **Demoras — vista por rol.** El rol LIDER ahora solo ve el formulario
+  "Registrar demora", sin el historial de "Registros recientes" (ni se
+  pide al servidor para ese rol). ADMINISTRADOR/SUPERVISOR sin cambios.
 - **Logo real por tema (light/dark).** `BrandLogo.jsx` usa dos assets
   oficiales reales por variante (`centro-control-full.png`/
   `-full-dark.png`, `centro-control-icon.png`/`-icon-dark.png`),

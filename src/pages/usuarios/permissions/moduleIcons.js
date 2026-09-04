@@ -18,6 +18,7 @@ import {
   Star,
   UserPlus,
   Users,
+  Wrench,
 } from 'lucide-react'
 
 // Mapea el string `icon` de MODULE_REGISTRY (shared/moduleRegistry.js) al
@@ -49,6 +50,7 @@ const ICONS = {
   Network: Network,
   Ban: Ban,
   Gauge: Gauge,
+  Wrench: Wrench,
 }
 
 export function getModuleIcon(iconKey) {

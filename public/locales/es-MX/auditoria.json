@@ -211,5 +211,14 @@
   "actionCapacitacion": "Capacitación",
   "actionRetroalimentacion": "Retroalimentación",
   "actionMejorar": "Mejorar",
-  "actionMantener": "Mantener"
+  "actionMantener": "Mantener",
+  "equipoCardTitle": "Levantamiento de Equipo",
+  "equipoCardDescription": "Checklist real de equipo físico por área y estación.",
+  "equipoCardDay": "Bajo demanda",
+  "equipoIntroTitle": "Levantamiento de Equipo",
+  "equipoIntroDescription": "Revisa cada tipo de equipo físico del área y su estado real.",
+  "equipoEstadoQuestion": "¿Está presente y en buen estado?",
+  "equipoResultTitle": "Resultado de Levantamiento de Equipo",
+  "equipoResultArea": "Área",
+  "equipoResultScoreHint": "Puntaje total del levantamiento (2 puntos por equipo en buen estado)."
 }

@@ -32,6 +32,20 @@
     "emptyTitle": "No findings right now",
     "emptyDescription": "There are no notable conditions in the current data."
   },
+  "plantIssuesCard": {
+    "title": "Plant issues (today)",
+    "loading": "Loading...",
+    "emptyTitle": "No issues reported today",
+    "emptyDescription": "No delays or equipment issues have been logged today.",
+    "downtimeLabel": "Downtime",
+    "downtimeValue": "{{count}} delays · {{minutes}} min",
+    "reportableDetail": "{{count}} reportable (4+ min)",
+    "materialLabel": "Material issues",
+    "materialValue": "{{count}} material-related delays",
+    "equipmentLabel": "Equipment issues",
+    "equipmentValue": "{{count}} equipment reported",
+    "noneDetail": "No records"
+  },
   "dashboardPage": {
     "pageTitle": "Dashboard",
     "pageSubtitle": "General overview of the work center",

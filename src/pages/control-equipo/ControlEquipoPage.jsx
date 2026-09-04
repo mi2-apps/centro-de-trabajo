@@ -17,37 +17,22 @@ import {
   cardHeaderClass,
   cardHeaderTitleClass,
   cellTextClass,
-  cellTextSecondaryClass,
   pageClass,
   pageSubtitleClass,
   pageTitleClass,
 } from '@/lib/pageStyles'
 import { cn } from '@/lib/utils'
-import {
-  DELAY_LOG_THRESHOLD_MINUTES,
-  DOWNTIME_REASONS,
-  requiresFormalLog,
-} from '../../data/demoras/catalog'
+import { EQUIPMENT_STATUSES, EQUIPMENT_TYPES } from '../../data/controlEquipo/catalog'
 import { getWorkstationsForLine } from '../../data/personnel/workstations'
-import {
-  CURRENT_SHIFT,
-  LINE_FAMILY_AREA_IDS,
-  SHIFT_OPTIONS,
-  WORK_CENTERS,
-  workCenterById,
-} from '../../data/production/catalog'
-import { useAuth } from '../../state/auth'
+import { LINE_FAMILY_AREA_IDS, WORK_CENTERS, workCenterById } from '../../data/production/catalog'
 import { EmptyState } from '../../ui'
 
-/* Modulo Demoras (2026-09-04, a peticion explicita del usuario): registro real de tiempo
-   muerto por causa. Mismo patron de seleccion de area que Auditoria (AUDIT_AREA_GROUPS en
-   AuditoriaPage.jsx) -- 5 grupos, "Lineas de produccion" pide una linea especifica antes de
-   llegar a Estacion, los otros 4 ya son una sola area real.
-
-   ALCANCE (confirmado explicitamente con el usuario tras encontrar que la clasificacion real de
-   TVs vive en SmartControl/BinManager, sistema externo de solo lectura desde este repo): esta
-   pantalla SOLO registra/lista demoras -- no existe un bloqueo tecnico de "no dejar clasificar la
-   siguiente TV", eso queda como politica de proceso del supervisor. */
+/* Modulo Control de Equipo (2026-09-04, a peticion explicita del usuario): registro real de
+   estado de equipo fisico, mismo patron de seleccion de area/estacion que Demoras/Auditoria
+   (AREA_GROUPS -- 5 grupos, "Lineas de produccion" pide una linea especifica antes de llegar a
+   Estacion). Cada registro es una OBSERVACION de estado (append-only, ver
+   src/data/controlEquipo/catalog.js) -- el checklist formal periodico "Levantamiento de
+   equipos" vive dentro del modulo Auditoria como su propio tipo de auditoria. */
 const AREA_GROUPS = [
   { key: 'LINEAS', labelKey: 'areaGroupLines' },
   { key: 'INSUMOS', labelKey: 'areaGroupInsumos', areaId: 'INSUMOS' },
@@ -56,45 +41,46 @@ const AREA_GROUPS = [
   { key: 'PALETIZADO', labelKey: 'areaGroupPaletizado', areaId: 'PALETIZADO' },
 ]
 
+const STATUS_BADGE_CLASS = {
+  OPERATIVO: 'bg-emerald-500/[0.12] text-emerald-600',
+  DANADO: 'bg-red-500/[0.12] text-red-600',
+  EN_REPARACION: 'bg-amber-500/[0.12] text-amber-600',
+  BAJA: 'bg-gray-500/[0.12] text-gray-600',
+}
+
 const emptyForm = {
   groupKey: '',
   lineId: '',
   areaId: '',
   stationName: '',
-  reasonKey: '',
-  durationMinutes: '',
-  shift: CURRENT_SHIFT,
+  typeKey: '',
+  code: '',
+  status: 'OPERATIVO',
   notes: '',
 }
 
-export default function DemorasPage() {
-  const { t } = useTranslation('demoras')
-  const { user } = useAuth()
-  // 2026-09-04 (a peticion explicita del usuario, viendo la pantalla en vivo -- "a los de rol de
-  // lider solo les debe de salir ese cuadro y ya"): LIDER solo ve el formulario de registro, sin
-  // el historial de "Registros recientes" -- ni siquiera se pide la lista al servidor para ese
-  // rol. ADMINISTRADOR/SUPERVISOR sin cambios (ven ambos).
-  const showHistory = user?.role !== 'LIDER'
+export default function ControlEquipoPage() {
+  const { t } = useTranslation('controlEquipo')
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [records, setRecords] = useState([])
-  const [loadingRecords, setLoadingRecords] = useState(true)
+  const [items, setItems] = useState([])
+  const [loadingItems, setLoadingItems] = useState(true)
 
-  const loadRecords = useCallback(async () => {
-    setLoadingRecords(true)
+  const loadItems = useCallback(async () => {
+    setLoadingItems(true)
     try {
-      const res = await fetch('/api/demoras', { credentials: 'include' })
+      const res = await fetch('/api/control-equipo', { credentials: 'include' })
       const data = await res.json().catch(() => null)
-      setRecords(data?.records || [])
+      setItems(data?.items || [])
     } finally {
-      setLoadingRecords(false)
+      setLoadingItems(false)
     }
   }, [])
 
   useEffect(() => {
-    if (showHistory) loadRecords()
-  }, [showHistory, loadRecords])
+    loadItems()
+  }, [loadItems])
 
   const selectedArea = form.areaId ? workCenterById(form.areaId) : null
   const stationOptions = form.areaId
@@ -116,8 +102,7 @@ export default function DemorasPage() {
     setForm((prev) => ({ ...prev, lineId, stationName: '', areaId: lineId }))
   }
 
-  const canSubmit =
-    Boolean(form.areaId) && Boolean(form.reasonKey) && Number(form.durationMinutes) > 0
+  const canSubmit = Boolean(form.areaId) && Boolean(form.typeKey) && Boolean(form.status)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -125,32 +110,29 @@ export default function DemorasPage() {
     setSubmitting(true)
     setSubmitError('')
     try {
-      const res = await fetch('/api/demoras', {
+      const res = await fetch('/api/control-equipo', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          typeKey: form.typeKey,
           areaId: form.areaId,
           stationName: form.stationName || null,
-          reasonKey: form.reasonKey,
-          durationMinutes: Number(form.durationMinutes),
-          shift: form.shift || null,
+          code: form.code || null,
+          status: form.status,
           notes: form.notes || null,
         }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))
       setForm(emptyForm)
-      await loadRecords()
+      await loadItems()
     } catch (err) {
       setSubmitError(err.message || t('saveErrorGeneric'))
     } finally {
       setSubmitting(false)
     }
   }
-
-  const durationValue = Number(form.durationMinutes)
-  const showsRequiresLogHint = durationValue > 0
 
   return (
     <div className={pageClass}>
@@ -161,16 +143,30 @@ export default function DemorasPage() {
         </div>
       </div>
 
-      <div
-        className={cn(
-          'grid grid-cols-1 gap-4',
-          showHistory ? 'lg:grid-cols-[380px_1fr]' : 'max-w-[380px]',
-        )}
-      >
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
         <form onSubmit={handleSubmit} className={cn(cardClass, 'h-fit p-5')}>
           <p className={cn(cardHeaderTitleClass, 'mb-4')}>{t('formTitle')}</p>
 
           <div className="space-y-3.5">
+            <div>
+              <Label className="mb-1.5 block text-xs">{t('fieldType')}</Label>
+              <Select
+                value={form.typeKey}
+                onValueChange={(v) => setForm((prev) => ({ ...prev, typeKey: v }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('fieldTypePlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {EQUIPMENT_TYPES.map((eq) => (
+                    <SelectItem key={eq.key} value={eq.key}>
+                      {t(`types.${eq.key}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label className="mb-1.5 block text-xs">{t('fieldArea')}</Label>
               <Select value={form.groupKey} onValueChange={handleGroupChange}>
@@ -227,57 +223,27 @@ export default function DemorasPage() {
             )}
 
             <div>
-              <Label className="mb-1.5 block text-xs">{t('fieldReason')}</Label>
-              <Select
-                value={form.reasonKey}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, reasonKey: v }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t('fieldReasonPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {DOWNTIME_REASONS.map((r) => (
-                    <SelectItem key={r.key} value={r.key}>
-                      {t(`reasons.${r.key}`)}
-                      {r.tag ? ` (${t(`tag.${r.tag}`)})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block text-xs">{t('fieldDuration')}</Label>
+              <Label className="mb-1.5 block text-xs">{t('fieldCode')}</Label>
               <Input
-                type="number"
-                min="1"
-                step="1"
-                value={form.durationMinutes}
-                onChange={(e) => setForm((prev) => ({ ...prev, durationMinutes: e.target.value }))}
-                placeholder={t('fieldDurationPlaceholder')}
+                value={form.code}
+                onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+                placeholder={t('fieldCodePlaceholder')}
               />
-              {showsRequiresLogHint && (
-                <p className={cn(cellTextSecondaryClass, 'mt-1')}>
-                  {requiresFormalLog(durationValue)
-                    ? t('durationRequiresLogHint', { minutes: DELAY_LOG_THRESHOLD_MINUTES })
-                    : t('durationToleranceHint', { minutes: DELAY_LOG_THRESHOLD_MINUTES })}
-                </p>
-              )}
             </div>
 
             <div>
-              <Label className="mb-1.5 block text-xs">{t('fieldShift')}</Label>
+              <Label className="mb-1.5 block text-xs">{t('fieldStatus')}</Label>
               <Select
-                value={form.shift}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, shift: v }))}
+                value={form.status}
+                onValueChange={(v) => setForm((prev) => ({ ...prev, status: v }))}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SHIFT_OPTIONS.map((s) => (
+                  {EQUIPMENT_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s}
+                      {t(`status.${s}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -303,60 +269,58 @@ export default function DemorasPage() {
           </div>
         </form>
 
-        {showHistory && (
-          <div className={cn(cardClass, 'p-0')}>
-            <div className={cardHeaderClass}>
-              <p className={cardHeaderTitleClass}>{t('historyTitle')}</p>
-            </div>
-            {loadingRecords ? (
-              <div className="px-5 py-8">
-                <EmptyState compact title={t('loading')} />
-              </div>
-            ) : records.length === 0 ? (
-              <div className="px-5 py-8">
-                <EmptyState compact title={t('historyEmpty')} />
-              </div>
-            ) : (
-              <div className="max-h-[560px] overflow-auto">
-                <table className="w-full border-collapse">
-                  <thead className="sticky top-0 z-10 bg-card">
-                    <tr className="border-b border-border">
-                      <Th>{t('colReason')}</Th>
-                      <Th>{t('colArea')}</Th>
-                      <Th>{t('colStation')}</Th>
-                      <Th>{t('colDuration')}</Th>
-                      <Th>{t('colShift')}</Th>
-                      <Th>{t('colCreatedBy')}</Th>
-                      <Th>{t('colCreatedAt')}</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((r) => (
-                      <tr key={r.id} className="border-b border-border/60">
-                        <Td>
-                          <div className="flex items-center gap-1.5">
-                            <span className={cellTextClass}>{t(`reasons.${r.reasonKey}`)}</span>
-                            {requiresFormalLog(r.durationMinutes) && (
-                              <span className="rounded bg-red-500/[0.12] px-1.5 py-0.5 text-[10px] font-bold text-red-600">
-                                {t('badgeRequiresLog')}
-                              </span>
-                            )}
-                          </div>
-                        </Td>
-                        <Td>{workCenterById(r.areaId)?.name || r.areaId}</Td>
-                        <Td>{r.stationName || '—'}</Td>
-                        <Td>{t('minutesValue', { count: r.durationMinutes })}</Td>
-                        <Td>{r.shift || '—'}</Td>
-                        <Td>{r.createdByName || '—'}</Td>
-                        <Td>{new Date(r.createdAt).toLocaleString()}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        <div className={cn(cardClass, 'p-0')}>
+          <div className={cardHeaderClass}>
+            <p className={cardHeaderTitleClass}>{t('historyTitle')}</p>
           </div>
-        )}
+          {loadingItems ? (
+            <div className="px-5 py-8">
+              <EmptyState compact title={t('loading')} />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="px-5 py-8">
+              <EmptyState compact title={t('historyEmpty')} />
+            </div>
+          ) : (
+            <div className="max-h-[560px] overflow-auto">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border">
+                    <Th>{t('colType')}</Th>
+                    <Th>{t('colArea')}</Th>
+                    <Th>{t('colStation')}</Th>
+                    <Th>{t('colCode')}</Th>
+                    <Th>{t('colStatus')}</Th>
+                    <Th>{t('colCreatedBy')}</Th>
+                    <Th>{t('colCreatedAt')}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((i) => (
+                    <tr key={i.id} className="border-b border-border/60">
+                      <Td>{t(`types.${i.typeKey}`)}</Td>
+                      <Td>{workCenterById(i.areaId)?.name || i.areaId}</Td>
+                      <Td>{i.stationName || '—'}</Td>
+                      <Td>{i.code || '—'}</Td>
+                      <Td>
+                        <span
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-[10px] font-bold',
+                            STATUS_BADGE_CLASS[i.status],
+                          )}
+                        >
+                          {t(`status.${i.status}`)}
+                        </span>
+                      </Td>
+                      <Td>{i.createdByName || '—'}</Td>
+                      <Td>{new Date(i.createdAt).toLocaleString()}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
