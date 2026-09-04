@@ -559,7 +559,13 @@ export default function PersonalDeHoyTab({ onGoToAreas, onGoToSinAsignar }) {
           30%. Las 3 tablas grandes de siempre (Registro de hoy completo, Directorio completo,
           Movimientos completos) NO desaparecen -- viven exactamente igual (mismos componentes,
           mismos datos) dentro de un Dialog accesible desde "Ver..." en cada card nueva. */}
-      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+      {/* Compactacion 2026-09-04 (a peticion explicita del usuario, "puro ajuste de UI/CSS/layout" --
+          las 3 cards de esta fila llegaban casi hasta el fondo de la pantalla): proporciones
+          30/34/36 aproximadas via grid-cols con fr, y una altura fija en desktop/laptop (~430px,
+          ver lg:h-[430px] en cada card) para que items-stretch ya no infle las 3 a lo que pida el
+          contenido mas alto -- en movil/tablet sigue siendo grid-cols-1, sin altura fija, crece
+          segun contenido. Ningun dato/endpoint/handler cambia, solo el layout. */}
+      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[30fr_34fr_36fr]">
         <EstadoGeneralCard estado={estadoGeneral} />
         <QuickDirectoryCard
           tab={quickDirectoryTab}
@@ -1180,16 +1186,16 @@ function EstadoGeneralCard({ estado }) {
   const inicioJornada = dayjs(`2000-01-01T${DEFAULT_LINE_ENTRY_TIME}`).format('hh:mm A')
 
   return (
-    <div className={cn(cardClass, 'flex flex-col')}>
+    <div className={cn(cardClass, 'flex flex-col lg:h-[430px] lg:min-h-[400px] lg:max-h-[460px]')}>
       <div className={cardHeaderClass}>
         <div>
           <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.estadoGeneralTitle')}</p>
           <p className={cardHeaderSubtitleClass}>{t('personalDeHoyTab.estadoGeneralSubtitle')}</p>
         </div>
       </div>
-      <div className="flex flex-1 flex-col gap-4 p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3.5">
         <div className="flex flex-1 flex-row items-center gap-3">
-          <div className="relative h-[150px] w-[150px] shrink-0">
+          <div className="relative h-[122px] w-[122px] shrink-0">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -1216,13 +1222,13 @@ function EstadoGeneralCard({ estado }) {
               <div className="grid h-full w-full place-items-center rounded-full border-[10px] border-black/[.04] dark:border-white/[.06]" />
             )}
             <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <p className="text-2xl font-extrabold leading-none">{estado.total}</p>
-              <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+              <p className="text-xl font-extrabold leading-none">{estado.total}</p>
+              <p className="mt-1 text-[9.5px] font-semibold text-muted-foreground">
                 {t('personalDeHoyTab.totalRegistradoLabel')}
               </p>
             </div>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             {rows.map((r) => {
               const pct = estado.total > 0 ? (r.value / estado.total) * 100 : 0
               return (
@@ -1244,7 +1250,7 @@ function EstadoGeneralCard({ estado }) {
           </div>
         </div>
         <div className="flex divide-x divide-border rounded-xl bg-black/[.02] dark:bg-white/[.03]">
-          <div className="flex flex-1 items-center gap-2 px-3 py-2.5">
+          <div className="flex flex-1 items-center gap-2 px-3 py-2">
             <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold text-muted-foreground">
@@ -1253,7 +1259,7 @@ function EstadoGeneralCard({ estado }) {
               <p className="text-[12.5px] font-bold">{inicioJornada}</p>
             </div>
           </div>
-          <div className="flex flex-1 items-center gap-2 px-3 py-2.5">
+          <div className="flex flex-1 items-center gap-2 px-3 py-2">
             <Flag className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold text-muted-foreground">
@@ -1285,7 +1291,7 @@ function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }
         ? 'quickDirectoryEmptySinAsignar'
         : 'quickDirectoryEmptyArea'
   return (
-    <div className={cn(cardClass, 'flex flex-col')}>
+    <div className={cn(cardClass, 'flex flex-col lg:h-[430px] lg:min-h-[400px] lg:max-h-[460px]')}>
       <div className={cardHeaderClass}>
         <div>
           <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.directorioRapidoTitle')}</p>
@@ -1294,7 +1300,7 @@ function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }
           </p>
         </div>
       </div>
-      <div className="px-4 pt-3">
+      <div className="px-3.5 pb-1 pt-2.5">
         <Tabs value={tab} onValueChange={onTabChange}>
           <TabsList>
             <TabsTrigger value="AREA">{t('personalDeHoyTab.tabPorArea')}</TabsTrigger>
@@ -1303,9 +1309,12 @@ function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }
           </TabsList>
         </Tabs>
       </div>
-      <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      {/* Mini cards en grid de 2 columnas (2026-09-04, a peticion explicita del usuario -- "NO
+          quiero una lista vertical enorme") en vez de la lista de 1 columna anterior; MISMOS datos
+          y misma logica de click, solo el layout cambia. */}
+      <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-2 overflow-y-auto p-3 sm:grid-cols-2">
         {visibleGroups.length === 0 || visibleGroups.every((g) => g.members.length === 0) ? (
-          <p className={emptyTextClass}>{t(`personalDeHoyTab.${emptyKey}`)}</p>
+          <p className={cn(emptyTextClass, 'sm:col-span-2')}>{t(`personalDeHoyTab.${emptyKey}`)}</p>
         ) : (
           visibleGroups
             .filter((g) => g.members.length > 0)
@@ -1317,33 +1326,33 @@ function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }
                   type="button"
                   key={g.areaId || '__SIN_AREA__'}
                   onClick={() => onRowClick(g.members[0]?.employee || null)}
-                  className="flex items-center justify-between gap-3 rounded-xl p-2.5 text-left hover:bg-accent"
+                  className="flex min-h-[78px] items-center justify-between gap-2 rounded-xl border border-border p-2.5 text-left hover:bg-accent"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-bold">{g.label}</p>
-                    <p className="text-[11px] font-semibold text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-bold">{g.label}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground">
                       {t('personalDeHoyTab.personasCountLabel', { count: g.members.length })}
                     </p>
-                    <div className="mt-1.5 flex items-center">
+                    <div className="mt-1 flex items-center">
                       {shown.map((m, idx) => (
                         <span
                           key={m.id}
-                          className="-ml-1.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-card bg-muted text-[9px] font-bold text-muted-foreground first:ml-0"
+                          className="-ml-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-card bg-muted text-[8px] font-bold text-muted-foreground first:ml-0"
                           style={{ zIndex: shown.length - idx }}
                         >
                           {initials(m.employee?.name)}
                         </span>
                       ))}
                       {extra > 0 && (
-                        <span className="-ml-1.5 text-[10.5px] font-bold text-muted-foreground">
+                        <span className="-ml-1 text-[9.5px] font-bold text-muted-foreground">
                           +{extra}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-xl font-extrabold leading-none">{g.members.length}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+                    <p className="text-lg font-extrabold leading-none">{g.members.length}</p>
+                    <p className="mt-0.5 text-[9px] font-semibold text-muted-foreground">
                       {t('personalDeHoyTab.presentesColLabel')}
                     </p>
                   </div>
@@ -1352,7 +1361,7 @@ function QuickDirectoryCard({ tab, onTabChange, groups, onVerTodas, onRowClick }
             })
         )}
       </div>
-      <div className="border-t border-border p-3 text-right">
+      <div className="border-t border-border px-3 py-2 text-right">
         <Button variant="ghost" size="sm" onClick={onVerTodas} className="font-bold">
           {t('personalDeHoyTab.verTodasAreasButton')}
           <ChevronRight className="h-4 w-4" />
@@ -1413,7 +1422,7 @@ function AlertsCard({
     },
   ]
   return (
-    <div className={cn(cardClass, 'flex flex-col')}>
+    <div className={cn(cardClass, 'flex flex-col lg:h-[430px] lg:min-h-[400px] lg:max-h-[460px]')}>
       <div className={cardHeaderClass}>
         <div>
           <p className={cardHeaderTitleClass}>{t('personalDeHoyTab.alertasYPendientesTitle')}</p>
@@ -1422,20 +1431,20 @@ function AlertsCard({
           </p>
         </div>
       </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
         {rows.map((row) => (
           <button
             type="button"
             key={row.key}
             onClick={row.onClick}
             disabled={!row.onClick}
-            className="flex items-center gap-2.5 rounded-xl p-2.5 text-left hover:bg-accent disabled:cursor-default disabled:opacity-60"
+            className="flex items-center gap-2.5 rounded-xl p-2 text-left hover:bg-accent disabled:cursor-default disabled:opacity-60"
           >
             <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
               style={{ backgroundColor: hexToRgba(row.color, 0.14), color: row.color }}
             >
-              <row.icon className="h-[16px] w-[16px]" />
+              <row.icon className="h-[15px] w-[15px]" />
             </span>
             <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-muted-foreground">
               {row.label}
@@ -1447,7 +1456,7 @@ function AlertsCard({
           </button>
         ))}
       </div>
-      <div className="border-t border-border p-3 text-right">
+      <div className="border-t border-border px-3 py-2 text-right">
         <Button variant="ghost" size="sm" onClick={onVerTodas} className="font-bold">
           {t('personalDeHoyTab.verTodasAlertasButton')}
           <ChevronRight className="h-4 w-4" />
