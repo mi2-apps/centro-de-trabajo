@@ -19,67 +19,233 @@
 // restantes son configurables por igual desde Gestion de permisos.
 export const ADMIN_ROLE = 'ADMINISTRADOR'
 
-// Categorias de navegacion del sidebar (2026-09-04, a peticion explicita del
-// usuario -- "sistema inteligente de agrupacion", ver Sidebar.jsx/
-// navigationConfig.js). Viven AQUI (junto a los modulos que agrupan) porque
-// son metadata del mismo dominio -- id/label/order, igual que cada modulo.
-// Un grupo nuevo no registrado aqui NO rompe nada: buildNavigationSections()
-// en navigationConfig.js genera su label a partir del id (ver ese archivo)
-// y lo ordena al final (antes de "otros"), esto solo sirve para fijar el
-// orden/label EXACTO de los 7 grupos que el usuario definio explicitamente.
+// Categorias de navegacion del sidebar -- metodologia PQCDSM (2026-09-04, a
+// peticion explicita del usuario: "quiero utilizar PQCDSM como estructura
+// principal de clasificacion de los modulos OPERATIVOS de planta"). Viven
+// AQUI (junto a los modulos que agrupan) porque son metadata del mismo
+// dominio -- id/label/order, igual que cada modulo. Reemplaza el esquema
+// anterior de 7 categorias genericas (operacionDiaria/analisisControl/
+// personal fusionado) por las 6 familias reales de PQCDSM + las 3 secciones
+// de SOPORTE que el usuario pidio mantener FUERA de PQCDSM (Administracion/
+// Recursos/Sistema nunca reciben badge de letra, son puramente
+// administrativas/de referencia, no de operacion de planta).
+//
+// `id` de las 6 familias PQCDSM es literalmente la LETRA (P/Q/C/D/S/M) --
+// evita duplicar un campo `letter` aparte, `badgeClass` es el color
+// discreto pedido (fondo tenue + texto, nunca un color solido grande).
+// Un grupo nuevo no registrado aqui NO rompe nada: groupModules() en
+// navigationConfig.js genera su label a partir del id y lo ordena antes de
+// "otros" (REGLA #2 del usuario, "nuevas familias" -- ej. si mañana se
+// agrega group:"mantenimiento", la seccion MANTENIMIENTO se crea sola).
 export const NAVIGATION_GROUPS = [
   { id: 'visionGeneral', labelKey: 'groupVisionGeneral', order: 10 },
-  { id: 'operacionDiaria', labelKey: 'groupOperacionDiaria', order: 20 },
-  { id: 'personal', labelKey: 'groupPersonal', order: 30 },
-  { id: 'analisisControl', labelKey: 'groupAnalisisControl', order: 40 },
-  { id: 'administracion', labelKey: 'groupAdministracion', order: 50 },
-  { id: 'recursos', labelKey: 'groupRecursos', order: 60 },
-  { id: 'sistema', labelKey: 'groupSistema', order: 70 },
+  {
+    id: 'P',
+    labelKey: 'groupProductividad',
+    order: 20,
+    badgeClass: 'bg-blue-500/[0.14] text-blue-600',
+  },
+  {
+    id: 'Q',
+    labelKey: 'groupCalidad',
+    order: 30,
+    badgeClass: 'bg-emerald-500/[0.14] text-emerald-600',
+  },
+  {
+    id: 'C',
+    labelKey: 'groupCostos',
+    order: 40,
+    badgeClass: 'bg-amber-500/[0.14] text-amber-600',
+  },
+  {
+    id: 'D',
+    labelKey: 'groupEntrega',
+    order: 50,
+    badgeClass: 'bg-violet-500/[0.14] text-violet-600',
+  },
+  {
+    id: 'S',
+    labelKey: 'groupSeguridad',
+    order: 60,
+    badgeClass: 'bg-red-500/[0.14] text-red-600',
+  },
+  {
+    id: 'M',
+    labelKey: 'groupPersonalPqcdsm',
+    order: 70,
+    badgeClass: 'bg-teal-500/[0.14] text-teal-600',
+  },
+  { id: 'administracion', labelKey: 'groupAdministracion', order: 80 },
+  { id: 'recursos', labelKey: 'groupRecursos', order: 90 },
+  { id: 'sistema', labelKey: 'groupSistema', order: 100 },
   // Unico grupo SIN labelKey real -- "otros" es deliberadamente el ultimo
   // recurso (ver inferNavigationGroup abajo), su label sale de
   // groupOtros en navigation.json como cualquier otro grupo conocido.
   { id: 'otros', labelKey: 'groupOtros', order: 9999 },
 ]
 
+function stripAccents(text) {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
 // Clasificador determinista de categoria (REGLA #3 del usuario -- "NO quiero
 // utilizar IA externa para esto... debe ser una clasificacion determinista y
 // mantenible"): SOLO se usa como respaldo cuando un modulo no trae `group`
-// explicito. Compara palabras clave (sin acentos, minusculas) contra
-// name+key+description del modulo; el primer grupo cuyas palabras claven
-// coincidan gana -- orden de prioridad fijo, nunca aleatorio. "otros" es el
-// ultimo recurso si nada coincide.
+// explicito. Prioridad exacta (ver inferNavigationGroup abajo): group
+// explicito (fuera de esta funcion) > reglas EXACTAS de id/route
+// (EXACT_ID_ROUTE_RULES) > palabras clave por id/route > palabras clave por
+// nombre > palabras clave por nombre+descripcion completos > "otros" -- asi
+// un modulo como "Scrap" (nombre) con una descripcion que menciona
+// "produccion" cae en Q por su nombre exacto, nunca en P por una palabra
+// generica de la descripcion. Las palabras clave se normalizan (sin
+// acentos, minusculas) una sola vez aqui -- no hace falta listar la forma
+// con y sin acento del mismo termino, ambas coinciden igual.
+//
+// 2026-09-04 (a peticion explicita del usuario, "REGLA DE ORGANIGRAMA"):
+// antes de la busqueda generica por palabras clave se revisa una tabla
+// chica de coincidencias EXACTAS de id/route para casos donde el usuario
+// quiere una garantia dura sin depender de que el nombre visible contenga
+// la palabra clave correcta -- funciona aunque la ruta cambie ligeramente
+// en el futuro (organigrama/org-chart/organization-chart/
+// estructura-organizacional siguen firmes a M, sin importar el nombre).
+const EXACT_ID_ROUTE_RULES = [
+  {
+    group: 'M',
+    patterns: ['organigrama', 'org-chart', 'organization-chart', 'estructura-organizacional'],
+  },
+]
+
 const CLASSIFIER_KEYWORDS = [
   {
-    group: 'personal',
-    keywords: ['personal', 'empleado', 'asistencia', 'horario', 'nomina', 'capacitacion'],
-  },
-  {
-    group: 'operacionDiaria',
+    group: 'P',
     keywords: [
       'produccion',
+      'productividad',
       'linea',
       'centro-trabajo',
       'centro de trabajo',
-      'operacion',
-      'pallet',
+      'workcenter',
       'fft',
+      'demora',
+      'demoras',
+      'paro',
+      'paros',
+      'eficiencia',
+      'oee',
+      'planeacion',
+      'capacidad',
+      'throughput',
+      'operacion',
     ],
   },
   {
-    group: 'analisisControl',
-    keywords: ['kpi', 'auditoria', 'evaluacion', 'reporte', 'calidad', 'analisis'],
+    group: 'Q',
+    keywords: [
+      'quality',
+      'calidad',
+      'auditoria',
+      'evaluacion',
+      '5s',
+      "5's",
+      'defecto',
+      'scrap',
+      'retrabajo',
+      'fpy',
+      'inspeccion',
+    ],
+  },
+  {
+    group: 'C',
+    keywords: [
+      'costo',
+      'costos',
+      'cost',
+      'gasto',
+      'gastos',
+      'presupuesto',
+      'budget',
+      'ahorro',
+      'savings',
+      'desperdicio',
+      'waste-cost',
+    ],
+  },
+  {
+    group: 'D',
+    keywords: [
+      'delivery',
+      'entrega',
+      'entregas',
+      'pedido',
+      'pedidos',
+      'cumplimiento',
+      'plan-vs-real',
+      'shipment',
+      'shipping',
+      'despacho',
+      'fecha-compromiso',
+    ],
+  },
+  {
+    group: 'S',
+    keywords: [
+      'safety',
+      'seguridad',
+      'incidente',
+      'incidentes',
+      'accidente',
+      'accidentes',
+      'riesgo',
+      'riesgos',
+      'epp',
+      'ergonomia',
+    ],
+  },
+  {
+    group: 'M',
+    keywords: [
+      'personal',
+      'persona',
+      'personas',
+      'empleado',
+      'empleados',
+      'asistencia',
+      'ausentismo',
+      'organigrama',
+      'org-chart',
+      'estructura-organizacional',
+      'capacitacion',
+      'headcount',
+      'turnos',
+      'plantilla',
+      'vacante',
+      'vacantes',
+      'recursos-humanos',
+      'people',
+      'human',
+      'rrhh',
+    ],
   },
   {
     group: 'administracion',
-    keywords: ['usuario', 'rol', 'permiso', 'configuracion'],
+    keywords: [
+      'usuario',
+      'usuarios',
+      'rol',
+      'roles',
+      'permiso',
+      'permisos',
+      'configuracion',
+      'accesos',
+    ],
   },
   {
     group: 'recursos',
-    keywords: ['manual', 'documentacion', 'developer', 'ayuda'],
+    keywords: ['manual', 'manual-usuario', 'developer', 'documentacion', 'ayuda'],
   },
   {
     group: 'sistema',
-    keywords: ['log', 'cambio', 'changelog', 'sistema'],
+    keywords: ['cambios', 'changelog', 'log', 'sistema', 'version', 'versiones'],
   },
   {
     group: 'visionGeneral',
@@ -87,18 +253,35 @@ const CLASSIFIER_KEYWORDS = [
   },
 ]
 
-function stripAccents(text) {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+// Busca la primera coincidencia de palabra clave dentro de un texto ya
+// normalizado -- se usa dos veces con distinta especificidad (ver
+// inferNavigationGroup: primero solo el nombre, luego todo lo demas), asi
+// que un modulo como "Scrap" (nombre) con descripcion "...de produccion"
+// cae en Q por su nombre exacto, nunca en P por una palabra generica de su
+// descripcion.
+function matchKeywordGroup(text) {
+  for (const { group, keywords } of CLASSIFIER_KEYWORDS) {
+    if (keywords.some((kw) => text.includes(stripAccents(kw)))) return group
+  }
+  return null
 }
 
 export function inferNavigationGroup(module) {
-  const haystack = stripAccents(
-    [module?.name, module?.key, module?.description].filter(Boolean).join(' '),
-  )
-  for (const { group, keywords } of CLASSIFIER_KEYWORDS) {
-    if (keywords.some((kw) => haystack.includes(kw))) return group
+  const idAndRoute = stripAccents([module?.id, module?.key].filter(Boolean).join(' '))
+  for (const { group, patterns } of EXACT_ID_ROUTE_RULES) {
+    if (patterns.some((p) => idAndRoute.includes(p))) return group
   }
-  return 'otros'
+
+  const byId = matchKeywordGroup(idAndRoute)
+  if (byId) return byId
+
+  const byName = matchKeywordGroup(stripAccents(module?.name || ''))
+  if (byName) return byName
+
+  const haystack = stripAccents(
+    [module?.id, module?.key, module?.name, module?.description].filter(Boolean).join(' '),
+  )
+  return matchKeywordGroup(haystack) || 'otros'
 }
 
 export const MODULE_REGISTRY = [
@@ -123,7 +306,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'centroDeTrabajo',
-    group: 'operacionDiaria',
+    group: 'P',
     order: 10,
   },
   {
@@ -135,7 +318,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'registroDePersonal',
-    group: 'personal',
+    group: 'M',
     order: 10,
   },
   {
@@ -159,6 +342,10 @@ export const MODULE_REGISTRY = [
   // (resolveEffectiveAccess), SUPERVISOR/LIDER necesitan que un admin los
   // habilite desde "Gestion de permisos" (mismo comportamiento por defecto
   // que tuvo cualquier modulo nuevo hasta hoy, nada especial).
+  // 2026-09-04, PQCDSM (a peticion explicita del usuario -- KPI's es
+  // transversal, no especifico de una sola familia, "el nuevo modulo ponlo
+  // en Vision General"): pasa de 'analisisControl' (grupo retirado) a
+  // 'visionGeneral', justo despues de Dashboard.
   {
     key: '/kpis',
     name: "KPI's",
@@ -168,8 +355,8 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'kpis',
-    group: 'analisisControl',
-    order: 10,
+    group: 'visionGeneral',
+    order: 20,
   },
   {
     key: '/asistencia',
@@ -180,8 +367,8 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'asistencia',
-    group: 'personal',
-    order: 20,
+    group: 'M',
+    order: 30,
   },
   {
     key: '/auditoria',
@@ -192,8 +379,8 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'auditoria',
-    group: 'analisisControl',
-    order: 20,
+    group: 'Q',
+    order: 10,
   },
   // 2026-09-02 (a peticion explicita del usuario): modulo nuevo, SOLO
   // lectura -- lista las calificaciones ya guardadas de auditorias 5S
@@ -210,8 +397,8 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'evaluaciones',
-    group: 'analisisControl',
-    order: 30,
+    group: 'Q',
+    order: 20,
   },
   // 2026-09-02 (a peticion explicita del usuario, segunda parte del pedido de
   // Takt Time real: "agrega otro modulo asi como dices con todo lo que tiene
@@ -229,7 +416,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'produccionFft',
-    group: 'operacionDiaria',
+    group: 'P',
     order: 20,
   },
   // 2026-09-04 (rediseño de sidebar, a peticion explicita del usuario):
@@ -298,7 +485,7 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'demoras',
-    group: 'operacionDiaria',
+    group: 'P',
     order: 30,
   },
   {
@@ -310,8 +497,25 @@ export const MODULE_REGISTRY = [
     permissionProtected: true,
     systemReserved: false,
     labelKey: 'planeacion',
-    group: 'operacionDiaria',
+    group: 'P',
     order: 40,
+  },
+  // 2026-09-04, PQCDSM (a peticion explicita del usuario -- "el objetivo
+  // principal es: registrar correctamente el modulo, navegacion, permiso
+  // correspondiente segun arquitectura, ubicacion automatica en M ·
+  // PERSONAL... sin inventar funcionalidad compleja"): mismo patron minimo
+  // que Demoras/Planeacion (ComingSoonPage, sin logica de negocio todavia).
+  {
+    key: '/organigrama',
+    name: 'Organigrama',
+    description: 'Estructura organizacional del personal (en desarrollo)',
+    icon: 'Network',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'organigrama',
+    group: 'M',
+    order: 20,
   },
 ]
 

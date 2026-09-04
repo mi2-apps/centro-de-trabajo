@@ -12,13 +12,17 @@
   "userManual": "用户手册",
   "changelog": "更新日志",
   "groupVisionGeneral": "总览",
-  "groupOperacionDiaria": "日常运营",
-  "groupPersonal": "人事",
-  "groupAnalisisControl": "分析与管控",
+  "groupProductividad": "生产力",
+  "groupCalidad": "质量",
+  "groupCostos": "成本",
+  "groupEntrega": "交付",
+  "groupSeguridad": "安全",
+  "groupPersonalPqcdsm": "人事",
   "groupAdministracion": "管理",
   "groupRecursos": "资源",
   "groupSistema": "系统",
   "groupOtros": "其他",
   "demoras": "延误",
-  "planeacion": "规划"
+  "planeacion": "规划",
+  "organigrama": "组织架构图"
 }

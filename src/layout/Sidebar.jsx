@@ -75,6 +75,14 @@ function useVisibleModules(role) {
 // ~46px (44-50px pedido explicitamente) -- unico ajuste de medida, el resto
 // del estilo (colores/radius/hover/activo) es literalmente el mismo de
 // antes.
+//
+// 2026-09-04, PQCDSM (mismo dia, a peticion explicita del usuario -- "quiero
+// una insignia chica de letra junto al titulo, nada de badges gigantes"):
+// `section.badgeClass` (shared/moduleRegistry.js) solo existe para las 6
+// familias PQCDSM -- cuando esta presente se muestra una insignia chica
+// (la letra del id del grupo, ej. "P") antes del titulo; las secciones de
+// soporte (Vision general/Administracion/Recursos/Sistema/Otros) no traen
+// badgeClass y se ven exactamente igual que antes de PQCDSM.
 function NavList({ sections, onItemClick }) {
   const { t } = useTranslation('navigation')
   return (
@@ -82,7 +90,17 @@ function NavList({ sections, onItemClick }) {
       {sections.map((section, sectionIdx) => (
         <div key={section.id}>
           {sectionIdx > 0 && <div className="my-2.5 border-t border-border/60" />}
-          <p className="mb-1 px-3.5 text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+          <p className="mb-1 flex items-center gap-1.5 px-3.5 text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+            {section.badgeClass && (
+              <span
+                className={cn(
+                  'flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] text-[10px] font-bold',
+                  section.badgeClass,
+                )}
+              >
+                {section.id}
+              </span>
+            )}
             {t(section.labelKey || section.id, { defaultValue: section.fallbackLabel })}
           </p>
           <div className="space-y-0.5">

@@ -12,6 +12,7 @@ import {
   Hourglass,
   LayoutDashboard,
   Map as MapIcon,
+  Network,
   Star,
   UserPlus,
   Users,
@@ -43,6 +44,7 @@ const ICONS = {
   Star: Star,
   Hourglass: Hourglass,
   CalendarRange: CalendarRange,
+  Network: Network,
 }
 
 export function getModuleIcon(iconKey) {

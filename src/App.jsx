@@ -148,6 +148,14 @@ export default function App() {
                     </RequireModuleAccess>
                   }
                 />
+                <Route
+                  path="/organigrama"
+                  element={
+                    <RequireModuleAccess>
+                      <ComingSoonPage title={t('organigrama')} />
+                    </RequireModuleAccess>
+                  }
+                />
 
                 {/* Documentación (MI Stack Reference, secciones 14d/17a) -- accesible a
                   cualquier usuario autenticado, sin gate por módulo (no son una

@@ -12,13 +12,17 @@
   "userManual": "Manual de Usuario",
   "changelog": "Cambios",
   "groupVisionGeneral": "Visión general",
-  "groupOperacionDiaria": "Operación diaria",
-  "groupPersonal": "Personal",
-  "groupAnalisisControl": "Análisis y control",
+  "groupProductividad": "Productividad",
+  "groupCalidad": "Calidad",
+  "groupCostos": "Costos",
+  "groupEntrega": "Entrega",
+  "groupSeguridad": "Seguridad",
+  "groupPersonalPqcdsm": "Personal",
   "groupAdministracion": "Administración",
   "groupRecursos": "Recursos",
   "groupSistema": "Sistema",
   "groupOtros": "Otros",
   "demoras": "Demoras",
-  "planeacion": "Planeación"
+  "planeacion": "Planeación",
+  "organigrama": "Organigrama"
 }

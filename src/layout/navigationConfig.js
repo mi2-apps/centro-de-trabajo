@@ -11,8 +11,16 @@
 // todavia, el sidebar debe crear automaticamente esa seccion"): un grupo que
 // no este en NAVIGATION_GROUPS simplemente no tiene label/order fijos --
 // aqui se le genera un label legible a partir de su id (humanizeGroupId) y
-// se ordena despues de los 7 grupos conocidos, antes de "otros" (que es el
+// se ordena despues de los grupos conocidos, antes de "otros" (que es el
 // verdadero ultimo recurso de inferNavigationGroup, siempre al final).
+//
+// 2026-09-04, PQCDSM (a peticion explicita del usuario -- "quiero
+// reorganizar el sidebar usando la metodologia PQCDSM"): las 6 familias
+// operativas de planta (P/Q/C/D/S/M, ver NAVIGATION_GROUPS en
+// shared/moduleRegistry.js) llevan ademas un `badgeClass` -- una insignia
+// chica de letra+color junto al titulo, solo para esas 6. Las secciones de
+// soporte (Vision general/Administracion/Recursos/Sistema/Otros) NUNCA
+// llevan badge, se quedan exactamente como se veian antes de PQCDSM.
 //
 // REGLA #4 (secciones vacias nunca aparecen): es automatico por construccion
 // -- esta funcion solo crea una entrada de Map por cada modulo VISIBLE que
@@ -79,6 +87,7 @@ export function groupModules(visibleModules) {
       labelKey: known?.labelKey || null,
       fallbackLabel: humanizeGroupId(id),
       order: known?.order ?? UNKNOWN_GROUP_ORDER,
+      badgeClass: known?.badgeClass || null,
       items: [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     }
   })

@@ -32,6 +32,7 @@ export const RELEASES = [
           'addedProcessAudit',
           'addedCalidadManual',
           'addedDemorasPlaneacion',
+          'addedOrganigrama',
         ],
       },
       {
@@ -42,6 +43,7 @@ export const RELEASES = [
           'changedFiveSIntro',
           'changedAreaColors',
           'changedSidebar',
+          'changedPqcdsm',
           'changedAsistenciaAreas',
           'changedLogo',
         ],

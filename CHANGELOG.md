@@ -61,6 +61,9 @@ para poder desplegar en el servidor privado (Coolify). Ver
 - Dos módulos nuevos en el menú — Demoras y Planeación — marcados "En
   desarrollo", solo navegación por ahora (mismo patrón que KPI's/
   Asistencia/Auditoría cuando se agregaron).
+- Módulo nuevo Organigrama (`/organigrama`, M · Personal) — solo navegación
+  por ahora, marcado "En desarrollo" (mismo patrón mínimo que Demoras/
+  Planeación).
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.
@@ -70,12 +73,22 @@ para poder desplegar en el servidor privado (Coolify). Ver
   campo Auditor visible que muestra el usuario de la sesión real.
 - Líneas sin personal asignado ahora se ven en amarillo (antes gris/rojo),
   tanto en la pestaña Líneas como en el tablero Área operando.
-- **Sidebar reorganizado por categorías.** El menú lateral (Visión general/
-  Operación diaria/Personal/Análisis y control/Administración/Recursos/
-  Sistema) ahora se genera dinámicamente desde `shared/moduleRegistry.js`
+- **Sidebar reorganizado por categorías.** El menú lateral ahora se genera
+  dinámicamente desde `shared/moduleRegistry.js`
   (`src/layout/navigationConfig.js`) en vez de una lista fija en el
   componente — agregar un módulo nuevo con su `group`/`order` ya no requiere
   tocar el JSX del sidebar.
+- **Metodología PQCDSM.** El menú lateral reagrupa los módulos operativos de
+  planta en las 6 familias de PQCDSM — Productividad/Calidad/Costos/
+  Entrega/Seguridad/Personal —, cada una con una insignia chica de letra y
+  color propio (azul/verde/ámbar/morado/rojo/turquesa) junto al título;
+  Administración/Recursos/Sistema se quedan como secciones de soporte, sin
+  insignia. Una categoría PQCDSM sin módulos reales asignados (hoy Costos/
+  Entrega/Seguridad) simplemente no aparece — se activa sola en cuanto se
+  registre el primer módulo de esa familia, sin tocar el sidebar. El
+  clasificador automático (`inferNavigationGroup`, usado solo cuando un
+  módulo no trae `group` explícito) se reescribió con palabras clave por
+  familia y una regla exacta dedicada para variantes de "organigrama".
 - "Personal por área" (Asistencia) ya no muestra Calidad, WC Gerente de FFT
   ni WC Supervisor como tarjetas propias.
 - **Logo real definitivo.** Se usa la imagen oficial COMPLETA (icono +
