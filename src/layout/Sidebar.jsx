@@ -129,7 +129,13 @@ function NavList({ sections, onItemClick }) {
 // abierto NO cambia.
 function SidebarHeader({ onToggle, toggleTitle, pinned }) {
   return (
-    <div className="flex min-h-16 items-center gap-2.5 border-b border-border px-3.5 py-3.5">
+    // 2026-09-04 (a peticion explicita del usuario, viendo el logo en modo oscuro en vivo --
+    // "se ve mal, haz que se vea bien"): el logo esta diseñado para fondo blanco (BrandLogo.jsx) --
+    // en vez de ceñirle una caja blanca SOLO a la imagen (se veia como un sticker suelto), TODA
+    // esta franja del header se pinta de blanco en modo oscuro (logo + boton de expandir), para
+    // que se lea como una barra de marca propia a proposito. Modo claro sin cambios (ya era
+    // blanco/casi blanco de por si).
+    <div className="flex min-h-16 items-center gap-2.5 border-b border-border px-3.5 py-3.5 dark:border-black/10 dark:bg-white">
       <BrandLogo variant="sidebar" className="flex-1" />
       {onToggle && (
         <Tooltip>

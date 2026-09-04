@@ -1,7 +1,6 @@
 import { Menu as MenuIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import BrandLogo from '@/components/BrandLogo'
 import { setCurrentUserId } from '../data/personnel/apiSync'
 import { useAuth } from '../state/auth'
 import { useIsTouchDevice } from '../ui/useIsTouchDevice'
@@ -88,7 +87,11 @@ export default function AppLayout({ mode, setMode }) {
                 <MenuIcon size={20} />
               </button>
             )}
-            <BrandLogo variant="header-compact" />
+            {/* 2026-09-04 (a peticion explicita del usuario, viendo esta barra en
+                vivo -- "quitame el logo de ahi, esta a la izquierda"): esta barra
+                global ya no muestra ningun logo -- el sidebar (siempre visible al
+                fijarlo/pasar el mouse) ya trae el logo completo, mostrarlo tambien
+                aqui era redundante. */}
             <div className="flex-1" />
             <HeaderUserActions mode={mode} setMode={setMode} />
           </div>

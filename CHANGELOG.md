@@ -82,11 +82,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   "Centro de Control" + "CONTROL OPERATIVO", todo dibujado dentro de la
   imagen) como un solo asset en login, sidebar y encabezado propio de
   Centro de Trabajo — nunca icono + texto HTML por separado
-  (`public/branding/centro-control-full.png`). La barra superior compacta
-  y el favicon usan solo el isotipo, recortado de la misma imagen oficial
-  (`centro-control-icon.png`). En modo oscuro ambas imágenes (diseñadas
-  para fondo blanco) se envuelven en una superficie clara fija en vez de
-  forzarles un fondo oscuro que no es el suyo.
+  (`public/branding/centro-control-full.png`). El favicon usa solo el
+  isotipo, recortado de la misma imagen oficial
+  (`centro-control-icon.png`). Se quita el logo redundante de la barra
+  superior compacta (el sidebar, siempre visible al fijarlo/pasar el
+  mouse, ya lo trae). En modo oscuro, el header del sidebar se pinta como
+  una franja blanca completa (logo + botón de expandir) en vez de una
+  caja ajustada solo a la imagen — el logo está diseñado para fondo
+  blanco, esta franja lo trata como marca propia en vez de forzarle un
+  fondo oscuro que no es el suyo.
 
 ### Fixed
 - **Modo oscuro.** `body` nunca definía un `color` base (solo
