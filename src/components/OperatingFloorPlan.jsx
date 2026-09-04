@@ -17,6 +17,7 @@ import { usePersonnelVersion } from '../data/personnel/usePersonnelVersion'
 import {
   AREA_STATION_SOURCE_OVERRIDE,
   canonicalOperationalAreaId,
+  EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS,
   operationalGroupMembers,
   WORK_CENTERS,
   workCenterById,
@@ -367,7 +368,15 @@ export default function OperatingFloorPlan({ readOnly = false }) {
 
   const operating = hasAnyPersonnelToday()
   const totals = getStaffingTotals()
-  const totalPeople = SHOWN_AREA_IDS.reduce((sum, id) => sum + getAreaHeadcount(id), 0)
+  // 2026-09-04 (a peticion explicita del usuario, unifica el total general en toda la app --
+  // ver EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS en catalog.js): Calidad/Gerente FFT/Supervisor/
+  // Entrenador siguen mostrando su propia card en este tablero (el usuario no pidio quitarlas
+  // de aqui, solo de Asistencia), pero YA NO cuentan en "N personas" del encabezado -- mismo
+  // criterio que Dashboard/"Resumen por area"/Asistencia.
+  const totalPeople = SHOWN_AREA_IDS.filter((id) => !EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS.has(id)).reduce(
+    (sum, id) => sum + getAreaHeadcount(id),
+    0,
+  )
 
   return (
     <div

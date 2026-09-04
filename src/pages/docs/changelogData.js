@@ -47,7 +47,7 @@ export const RELEASES = [
       },
       {
         labelKey: 'sectionFixed',
-        itemKeys: ['fixedDarkMode'],
+        itemKeys: ['fixedDarkMode', 'fixedPlantTotalConsistency'],
       },
       {
         labelKey: 'sectionPending',

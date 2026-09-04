@@ -13,6 +13,7 @@ import { getWorkstationsForLine } from '../personnel/workstations'
 import {
   AREA_STATION_SOURCE_OVERRIDE,
   canonicalOperationalAreaId,
+  EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS,
   hasLineStations,
   LINE_LIKE_AREA_IDS,
   operationalGroupMembers,
@@ -437,8 +438,15 @@ export function getStaffingTotals() {
   // su id canonico es INSUMOS (fusionadas, no eliminadas) -- su personal
   // real sigue contando en el total, exactamente igual que antes de
   // archivarlas, solo que ahora conceptualmente pertenece a Insumos.
+  //
+  // 2026-09-04 (a peticion explicita del usuario, unifica el total general
+  // en toda la app -- ver EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS en catalog.js):
+  // Calidad/Gerente FFT/Supervisor/Entrenador nunca cuentan aqui, mismo
+  // criterio que "Resumen por area"/Asistencia/"Area operando".
   const eligible = WORK_CENTERS.filter(
-    (w) => w.active !== false || canonicalOperationalAreaId(w.id) !== w.id,
+    (w) =>
+      (w.active !== false || canonicalOperationalAreaId(w.id) !== w.id) &&
+      !EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS.has(w.id),
   )
   const withIdeal = eligible.filter((w) => w.idealHeadcount != null)
   const idealTotal = withIdeal.reduce((sum, w) => sum + w.idealHeadcount, 0)
@@ -570,13 +578,13 @@ export function getActividadForEmployee(employeeId) {
    area que en el futuro se agregue a FFT_LINE_IDS queda excluida igual,
    sin tocar esta funcion de nuevo) para que no aparezca como fila propia
    Y absorbida dentro de "FFT" al mismo tiempo. */
-// Areas excluidas de "Resumen por area" (2026-09-03, a peticion explicita y repetida del
-// usuario: "te dije desde hace mucho que elimines WC CALIDAD y ENTRENADOR"). Ninguna de las 2
-// tiene headcount real propio en el modelo canonico por area: el personal de Calidad vive
-// fisicamente en lineas/Paletizado (su areaId real nunca es 'CALIDAD', solo el snapshot/
-// Employee.areaZona lo etiqueta asi) y ENTRENADOR nunca ha tenido a nadie asignado -- ambas
-// solo aparecian aqui como una tarjeta fantasma en 0 con "Sin plantilla".
-const SUMMARY_EXCLUDED_AREA_IDS = new Set(['CALIDAD', 'ENTRENADOR'])
+// Areas excluidas de "Resumen por area" -- originalmente solo CALIDAD/ENTRENADOR (2026-09-03,
+// "te dije desde hace mucho que elimines WC CALIDAD y ENTRENADOR": ninguna de las 2 tiene
+// headcount real propio en el modelo canonico por area, el personal de Calidad vive fisicamente
+// en lineas/Paletizado y ENTRENADOR nunca ha tenido a nadie asignado -- ambas solo aparecian aqui
+// como tarjeta fantasma en 0 con "Sin plantilla"). 2026-09-04: se unifica con
+// EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS (catalog.js, agrega GERENTE/SUPERVISOR) -- mismo criterio
+// de "no cuenta en el total general" en toda la app, ver ese comentario para el detalle completo.
 
 /* Cuenta real para areas cuyo personal NO vive bajo su propio areaId sino dentro de otra area,
    filtrado por rol (2026-09-03, corrige bug real: "WC CONVEYOR GENERAL hay dos personas no se
@@ -614,7 +622,7 @@ export function getAllAreaSummaries() {
         w.active !== false &&
         !FFT_LINE_IDS.includes(w.id) &&
         canonicalOperationalAreaId(w.id) === w.id &&
-        !SUMMARY_EXCLUDED_AREA_IDS.has(w.id),
+        !EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS.has(w.id),
     ).map((w) => {
       const override = AREA_STATION_SOURCE_OVERRIDE[w.id]
       const count = override

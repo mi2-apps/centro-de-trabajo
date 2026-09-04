@@ -1184,6 +1184,23 @@ export const SPECIAL_AREA_IDS = new Set([
   'SUPERVISOR',
 ])
 
+/* Personal que NUNCA cuenta en el TOTAL GENERAL de la planta (Dashboard, tablero "Área
+   operando") -- roles de apoyo/administrativos, no personal operativo de piso.
+   2026-09-04, a peticion explicita del usuario: antes existian 3 listas de exclusion
+   DISTINTAS y parciales (Centro de Trabajo "Resumen por area" excluia CALIDAD+ENTRENADOR;
+   Asistencia "Personal por area" excluia CALIDAD+GERENTE+SUPERVISOR; Dashboard y "Área
+   operando" no excluian nada) -- el mismo numero real de personas mostraba un total distinto
+   segun la pantalla. El usuario eligio explicitamente (pregunta directa, "Excluir los 4 en
+   todos lados") unificar en UN solo criterio: CALIDAD/GERENTE/SUPERVISOR/ENTRENADOR fuera del
+   total general en TODAS las vistas -- unica fuente de verdad, nunca una lista local aparte
+   por pantalla. */
+export const EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS = new Set([
+  'CALIDAD',
+  'GERENTE',
+  'SUPERVISOR',
+  'ENTRENADOR',
+])
+
 export function getAreaDetailVariant(workCenterId) {
   if (LINE_FAMILY_AREA_IDS.has(workCenterId)) return AREA_DETAIL_VARIANTS.LINE
   // Resuelto por id canonico (no el crudo) -- necesario desde que INSUMOS

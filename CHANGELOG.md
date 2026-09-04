@@ -92,6 +92,14 @@ para poder desplegar en el servidor privado (Coolify). Ver
   gráficas (Recharts) sin estilo propio mostraban su fondo blanco fijo por
   defecto en modo oscuro — se les agregó `contentStyle` con los mismos
   tokens de popover que ya usa el resto de la app. Modo claro sin cambios.
+- **Inconsistencia del total general de personal.** Dashboard y el tablero
+  "Área operando" no excluían ninguna área de apoyo, mientras que "Resumen
+  por área" (Centro de Trabajo) excluía Calidad/Entrenador y Asistencia
+  excluía Calidad/Gerente FFT/Supervisor — el mismo personal real producía
+  un total distinto según la pantalla. Se unifica en
+  `EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS` (`src/data/production/catalog.js`,
+  única fuente de verdad): Calidad/Gerente FFT/Supervisor/Entrenador nunca
+  cuentan en el total general de personal, en ninguna vista.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - SSO real de Nextcloud (OIDC), reemplaza el login propio.
