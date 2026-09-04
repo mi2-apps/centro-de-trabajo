@@ -10,5 +10,13 @@
   "evaluaciones": "Evaluations",
   "developerManual": "Developer Manual",
   "userManual": "User Manual",
-  "changelog": "Changelog"
+  "changelog": "Changelog",
+  "groupVisionGeneral": "Overview",
+  "groupOperacionDiaria": "Daily Operation",
+  "groupPersonal": "Personnel",
+  "groupAnalisisControl": "Analysis & Control",
+  "groupAdministracion": "Administration",
+  "groupRecursos": "Resources",
+  "groupSistema": "System",
+  "groupOtros": "Other"
 }

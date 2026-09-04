@@ -1,12 +1,16 @@
 import {
   Activity,
   BarChart3,
+  BookOpen,
   CalendarCheck,
   ClipboardCheck,
+  Code2,
   Factory,
   HelpCircle,
+  History,
   LayoutDashboard,
   Map as MapIcon,
+  Star,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -18,6 +22,9 @@ import {
 // (Dashboard/Factory/PersonAddAlt1/Group/QueryStats/EventAvailable/
 // FactCheck), para no tener dos mapeos MUI->Lucide distintos del mismo
 // concepto en la app.
+// 2026-09-04 (rediseño de sidebar): BookOpen/Code2/History se agregan para
+// Manual de Usuario/Developer Manual/Cambios, que ahora tambien viven en
+// MODULE_REGISTRY -- mismos iconos que Sidebar.jsx ya usaba para ellos.
 const ICONS = {
   Dashboard: LayoutDashboard,
   Factory: Factory,
@@ -28,6 +35,10 @@ const ICONS = {
   EventAvailable: CalendarCheck,
   FactCheck: ClipboardCheck,
   Activity: Activity,
+  BookOpen: BookOpen,
+  Code2: Code2,
+  History: History,
+  Star: Star,
 }
 
 export function getModuleIcon(iconKey) {

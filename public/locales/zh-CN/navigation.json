@@ -10,5 +10,13 @@
   "evaluaciones": "评估",
   "developerManual": "开发者手册",
   "userManual": "用户手册",
-  "changelog": "更新日志"
+  "changelog": "更新日志",
+  "groupVisionGeneral": "总览",
+  "groupOperacionDiaria": "日常运营",
+  "groupPersonal": "人事",
+  "groupAnalisisControl": "分析与管控",
+  "groupAdministracion": "管理",
+  "groupRecursos": "资源",
+  "groupSistema": "系统",
+  "groupOtros": "其他"
 }

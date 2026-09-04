@@ -1,25 +1,13 @@
-import {
-  Activity,
-  BarChart3,
-  BookOpen,
-  CalendarCheck,
-  ChevronsLeft,
-  ClipboardCheck,
-  Code2,
-  Factory,
-  History,
-  LayoutDashboard,
-  Star,
-  UserPlus,
-  Users,
-} from 'lucide-react'
+import { ChevronsLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { listAllModules } from '../../shared/moduleRegistry'
 import { useEffectiveModules } from '../state/auth'
+import { getModuleIcon, groupModules, iconKeyFor } from './navigationConfig'
 
 // 250-270px (rediseño visual 2026-08-28, "sidebar blanca/azul tipo
 // referencia") -- antes 232, sube dentro del rango pedido. Es un overlay de
@@ -38,105 +26,94 @@ const BRAND_BLUE = '#3B82F6'
 // El sidebar es solo UX -- la proteccion real esta en el backend
 // (requireModuleAccess en cada API), no en que este menu se muestre u oculte.
 //
-// "configurable" = true para los 5 modulos cuyo acceso (por rol + override
-// individual) un ADMINISTRADOR puede editar en vivo desde Usuarios ->
-// Gestion de permisos (ver src/state/auth.jsx useEffectiveModules). Desde
-// 2026-08-25 Usuarios y Layout 2D tambien son configurables -- decision
-// explicita del usuario (un rol con el modulo "Usuarios" tiene control total
-// de gestion de usuarios/permisos, incluido reset de contraseñas). Un
-// ADMINISTRADOR siempre tiene acceso total sin excepcion (resolveEffectiveAccess).
-// `labelKey` (fase 4, i18n, no `label` literal) -- referencia a
-// public/locales/{lng}/navigation.json, resuelta con useTranslation en
-// NavList mas abajo. es-MX (idioma por defecto, ver src/i18n.js) tiene
-// EXACTAMENTE el mismo texto que antes -- cero cambio visible para el
-// personal actual, solo cambia de donde sale el string.
-// 2026-09-01 (a peticion explicita del usuario, "quiero un orden logico...
-// por area de trabajo o algo por el estilo"): reordenado por flujo
-// funcional en vez del orden de insercion historico (que solo reflejaba
-// cuando se agrego cada modulo). Grupos, en este orden: resumen general
-// (Dashboard) -> operacion diaria de piso (Centro de Trabajo) -> flujo de
-// personal (Registro de personal, Asistencia) -> desempeño/cumplimiento
-// (KPI's, Auditoria) -> administracion (Usuarios) -> ayuda/referencia
-// (Manual de Usuario, Developer Manual, Cambios, ya al final desde antes).
-// Ningun `to`/permiso/configurable cambia, solo el ORDEN del array.
-const NAV_ITEMS = [
-  { to: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard, configurable: true },
-  { to: '/centro-trabajo', labelKey: 'centroDeTrabajo', icon: Factory, configurable: true },
-  { to: '/produccion-fft', labelKey: 'produccionFft', icon: Activity, configurable: true },
-  {
-    to: '/registro-personal',
-    labelKey: 'registroDePersonal',
-    icon: UserPlus,
-    configurable: true,
-  },
-  { to: '/asistencia', labelKey: 'asistencia', icon: CalendarCheck, configurable: true },
-  { to: '/kpis', labelKey: 'kpis', icon: BarChart3, configurable: true },
-  { to: '/auditoria', labelKey: 'auditoria', icon: ClipboardCheck, configurable: true },
-  { to: '/evaluaciones', labelKey: 'evaluaciones', icon: Star, configurable: true },
-  { to: '/usuarios', labelKey: 'usuarios', icon: Users, configurable: true },
-  // 2026-08-30: paginas de ayuda/referencia (no son funcionalidad de
-  // negocio) -- `configurable: false` + `roles` fijo en vez del sistema de
-  // permisos editable (Usuarios -> Gestion de permisos), decision explicita
-  // del usuario. Manual de Usuario y Cambios son utiles para cualquier rol;
-  // Developer Manual (esquema de BD, arquitectura interna) solo tiene
-  // sentido para quien administra el sistema -- tambien bloqueado por rol a
-  // nivel de ruta en App.jsx (ProtectedRoute roles=['ADMINISTRADOR']), no
-  // solo oculto del menu.
-  {
-    to: '/manual',
-    labelKey: 'userManual',
-    icon: BookOpen,
-    configurable: false,
-    roles: ['ADMINISTRADOR', 'SUPERVISOR', 'LIDER'],
-  },
-  {
-    to: '/developer-manual',
-    labelKey: 'developerManual',
-    icon: Code2,
-    configurable: false,
-    roles: ['ADMINISTRADOR'],
-  },
-  {
-    to: '/changelog',
-    labelKey: 'changelog',
-    icon: History,
-    configurable: false,
-    roles: ['ADMINISTRADOR', 'SUPERVISOR', 'LIDER'],
-  },
-]
+// 2026-09-04 (rediseño de sidebar + agrupacion dinamica, a peticion explicita
+// del usuario -- "NO quiero esto hardcodeado en el JSX... NO duplicar
+// fuentes de verdad"): el NAV_ITEMS plano que vivia aqui se elimina --
+// MODULE_REGISTRY (shared/moduleRegistry.js) YA ERA la fuente real de
+// nombre/icono/descripcion/permiso de cada modulo (la usan /api/modules y
+// "Gestion de permisos" desde antes); solo le faltaban `group`/`order`/
+// `labelKey`/`roles` para tambien poder armar la navegacion, asi que se
+// extendio ESE registro en vez de mantener dos listas separadas. La regla de
+// visibilidad es EXACTAMENTE la misma que el NAV_ITEMS anterior, solo que
+// ahora lee `permissionProtected`/`roles` del registro en vez de
+// `configurable`/`roles` locales:
+//   - permissionProtected:true  -> visible si allowedModules (permiso real
+//     por rol + override individual, useEffectiveModules) incluye la key.
+//   - permissionProtected:false -> visible si el rol actual esta en
+//     module.roles (fijo, no editable desde "Gestion de permisos" -- Manual
+//     de Usuario/Developer Manual/Cambios, igual que siempre).
+// listAllModules() ya viene ordenado por insercion en el registro; el ORDEN
+// visual real lo decide `order`/`group` de cada modulo (ver navigationConfig.js
+// groupModules()), no la posicion en el array.
+function useVisibleModules(role) {
+  const { modules: allowedModules, loading: permsLoading } = useEffectiveModules()
+  const items = listAllModules().filter((m) =>
+    m.permissionProtected
+      ? // Mientras carga (allowedModules === null) no se oculta nada: evita el
+        // parpadeo de "sin modulos" un instante antes de que llegue la respuesta.
+        permsLoading || allowedModules === null || allowedModules.includes(m.key)
+      : (m.roles || []).includes(role),
+  )
+  return { items, permsLoading }
+}
 
 // Estilo de item de menu (rediseño visual 2026-08-28, referencia "sidebar
 // blanca/azul"): sin card/borde individual por item (aire visual, lista
 // limpia), activo = fondo azul extremadamente claro + texto/icono azul +
 // barra vertical azul de 3px pegada al borde izquierdo (via `before:`, nunca
 // un elemento aparte) en vez del bgcolor gris grande de antes; hover = mismo
-// azul clarito mas un desplazamiento sutil (2px). Nunca toca rutas/permisos/
-// orden -- ESTO es exactamente lo mismo NAV_ITEMS/filter de siempre, solo
-// cambia la presentacion.
-function NavList({ items, onItemClick }) {
+// azul clarito mas un desplazamiento sutil (2px). Nunca toca rutas/permisos --
+// ESTO sigue siendo exactamente el mismo filtro de siempre (ver
+// useVisibleModules arriba), solo cambia la presentacion.
+//
+// 2026-09-04 (rediseño de sidebar, a peticion explicita del usuario): antes
+// `items` era una lista plana; ahora recibe `sections` ya agrupadas por
+// groupModules() (navigationConfig.js) -- un titulo de grupo (mayusculas,
+// pequeño, gris) + los modulos de esa seccion, y una linea muy sutil ANTES
+// de cada seccion salvo la primera (nunca antes/despues de todas, para no
+// duplicar el borde con el header). Altura de cada item baja de 56px a
+// ~46px (44-50px pedido explicitamente) -- unico ajuste de medida, el resto
+// del estilo (colores/radius/hover/activo) es literalmente el mismo de
+// antes.
+function NavList({ sections, onItemClick }) {
   const { t } = useTranslation('navigation')
   return (
-    <nav className="flex-1 space-y-1 px-2.5 pt-2">
-      {items.map(({ to, labelKey, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          onClick={onItemClick}
-          className={({ isActive }) =>
-            cn(
-              'relative flex min-h-[56px] items-center gap-0 rounded-[11px] px-3.5 py-3 text-foreground transition-[background-color,color,transform] duration-[180ms] ease-in-out',
-              'hover:translate-x-[2px] hover:bg-[#EFF6FF] dark:hover:bg-[rgba(59,130,246,.14)]',
-              isActive &&
-                "text-[#3B82F6] bg-[#EFF6FF] dark:bg-[rgba(59,130,246,.18)] before:absolute before:left-1 before:top-[22%] before:bottom-[22%] before:w-[3px] before:rounded before:bg-[#3B82F6] before:content-['']",
-            )
-          }
-        >
-          <span className="flex min-w-[34px] items-center text-inherit">
-            <Icon size={21} />
-          </span>
-          <span className="text-[14.5px] font-semibold text-inherit">{t(labelKey)}</span>
-        </NavLink>
+    <nav className="flex-1 overflow-y-auto px-2.5 pb-2 pt-2">
+      {sections.map((section, sectionIdx) => (
+        <div key={section.id}>
+          {sectionIdx > 0 && <div className="my-2.5 border-t border-border/60" />}
+          <p className="mb-1 px-3.5 text-[11px] font-bold uppercase tracking-[0.03em] text-muted-foreground">
+            {t(section.labelKey || section.id, { defaultValue: section.fallbackLabel })}
+          </p>
+          <div className="space-y-0.5">
+            {section.items.map((m) => {
+              const Icon = getModuleIcon(iconKeyFor(m))
+              return (
+                <NavLink
+                  key={m.key}
+                  to={m.key}
+                  end={m.key === '/'}
+                  onClick={onItemClick}
+                  className={({ isActive }) =>
+                    cn(
+                      'relative flex min-h-[46px] items-center gap-0 rounded-[11px] px-3.5 py-2.5 text-foreground transition-[background-color,color,transform] duration-[180ms] ease-in-out',
+                      'hover:translate-x-[2px] hover:bg-[#EFF6FF] dark:hover:bg-[rgba(59,130,246,.14)]',
+                      isActive &&
+                        "text-[#3B82F6] bg-[#EFF6FF] dark:bg-[rgba(59,130,246,.18)] before:absolute before:left-1 before:top-[22%] before:bottom-[22%] before:w-[3px] before:rounded before:bg-[#3B82F6] before:content-['']",
+                    )
+                  }
+                >
+                  <span className="flex min-w-[34px] items-center text-inherit">
+                    <Icon size={21} />
+                  </span>
+                  <span className="text-[14.5px] font-semibold text-inherit">
+                    {t(m.labelKey || m.key, { defaultValue: m.name })}
+                  </span>
+                </NavLink>
+              )
+            })}
+          </div>
+        </div>
       ))}
     </nav>
   )
@@ -219,20 +196,20 @@ export default function Sidebar({
   // consumidor futuro no pasa la prop.
   topOffset = 0,
 }) {
-  const { modules: allowedModules, loading: permsLoading } = useEffectiveModules()
   // Misma lista de modulos permitidos para CUALQUIER dispositivo (desktop,
   // tablet, movil) -- solo cambia el contenedor visual (overlay vs Sheet,
   // ver variant mas abajo), nunca el contenido. Bug critico corregido
   // 2026-08-25: antes existia un TOUCH_NAV_ORDER hardcodeado que en touch
   // descartaba el calculo real de permisos y dejaba ver solo 2 rutas fijas
   // sin importar el rol -- eso rompia tablet incluso para ADMINISTRADOR.
-  const items = NAV_ITEMS.filter((item) =>
-    item.configurable
-      ? // Mientras carga (allowedModules === null) no se oculta nada: evita el
-        // parpadeo de "sin modulos" un instante antes de que llegue la respuesta.
-        permsLoading || allowedModules === null || allowedModules.includes(item.to)
-      : item.roles.includes(role),
-  )
+  //
+  // Pipeline real (2026-09-04, a peticion explicita del usuario -- "usuario
+  // -> permisos -> modulos visibles -> categorias -> sidebar, NUNCA al
+  // reves"): useVisibleModules() filtra por permiso PRIMERO (arriba en este
+  // archivo), groupModules() agrupa DESPUES (navigationConfig.js) -- nunca
+  // se agrupa el catalogo completo para luego ocultar categorias.
+  const { items } = useVisibleModules(role)
+  const sections = groupModules(items)
 
   if (variant === 'overlay') {
     return (
@@ -253,7 +230,7 @@ export default function Sidebar({
           toggleTitle={pinned ? 'Dejar de fijar' : 'Fijar menú abierto'}
           pinned={pinned}
         />
-        <NavList items={items} />
+        <NavList sections={sections} />
       </div>
     )
   }
@@ -262,7 +239,7 @@ export default function Sidebar({
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
       <SheetContent side="left" style={{ width: SIDEBAR_WIDTH }} className="flex flex-col">
         <SidebarHeader />
-        <NavList items={items} onItemClick={onClose} />
+        <NavList sections={sections} onItemClick={onClose} />
       </SheetContent>
     </Sheet>
   )
