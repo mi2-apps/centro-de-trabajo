@@ -96,6 +96,8 @@
     "changedFiveSIntro": "5S 审核恢复为仅按区域（不含工位/员工），并显示当前登录用户的审核员字段。",
     "changedAreaColors": "未分配人员的产线现在显示为黄色（此前为灰色/红色），产线标签页和运营看板中均适用。",
     "changedSidebar": "侧边栏重新组织为多个类别（总览、日常运营、人事、分析与管控、管理、资源、系统），由模块注册表动态生成，而非固定列表。",
-    "changedAsistenciaAreas": "考勤模块的按区域查看人员不再将质量、FFT经理和主管显示为独立卡片。"
+    "changedAsistenciaAreas": "考勤模块的按区域查看人员不再将质量、FFT经理和主管显示为独立卡片。",
+    "addedCalidadManual": "在所有产线的\"工序单\"中为质检工位嵌入真实工艺手册（官方质量SOP）。",
+    "addedDemorasPlaneacion": "菜单中新增两个模块——延误和规划——标记为\"开发中\"，目前仅提供导航入口。"
   }
 }

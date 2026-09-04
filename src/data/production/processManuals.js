@@ -10,12 +10,18 @@
      Prueba eléctrica -> hojas 18-25
      Limpieza de TV   -> hojas 26-27
      Empaque          -> hojas 28-39
-     Etiquetado       -> hojas 40-49 */
+     Etiquetado       -> hojas 40-49
+
+   2026-09-04 (a peticion explicita del usuario, mismo mecanismo): Calidad usa un documento
+   PROPIO real -- "SOP-MTY-FFT-QA-001_v1.0.0.pdf" (SOP oficial de Calidad, 8 paginas), copiado
+   TAL CUAL a public/manuals/calidad.pdf -- no es un recorte de "manual de fft tv.docx" como los
+   otros 4, es su propio PDF de origen completo. */
 export const PROCESS_MANUALS = {
   'Prueba eléctrica': '/manuals/prueba-electrica.pdf',
   'Limpieza de TV': '/manuals/limpieza-de-tv.pdf',
   Empaque: '/manuals/empaque.pdf',
   Etiquetado: '/manuals/etiquetado.pdf',
+  Calidad: '/manuals/calidad.pdf',
 }
 
 export function processManualForRole(role) {

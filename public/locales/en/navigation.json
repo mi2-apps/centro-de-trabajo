@@ -18,5 +18,7 @@
   "groupAdministracion": "Administration",
   "groupRecursos": "Resources",
   "groupSistema": "System",
-  "groupOtros": "Other"
+  "groupOtros": "Other",
+  "demoras": "Delays",
+  "planeacion": "Planning"
 }

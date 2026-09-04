@@ -55,6 +55,12 @@ para poder desplegar en el servidor privado (Coolify). Ver
   Etiquetado (tomado del formato de Calidad), empleado autocompletado desde
   quien está asignado a esa estación hoy, puntaje por categoría calculado en
   servidor (`ProcessAudit`/`ProcessAuditAnswer`).
+- Manual de proceso real (SOP oficial de Calidad,
+  `SOP-MTY-FFT-QA-001_v1.0.0.pdf`) embebido en "Hoja de Proceso" para el
+  puesto de Calidad en todas las WC LINEA.
+- Dos módulos nuevos en el menú — Demoras y Planeación — marcados "En
+  desarrollo", solo navegación por ahora (mismo patrón que KPI's/
+  Asistencia/Auditoría cuando se agregaron).
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.

@@ -3,11 +3,13 @@ import {
   BarChart3,
   BookOpen,
   CalendarCheck,
+  CalendarRange,
   ClipboardCheck,
   Code2,
   Factory,
   HelpCircle,
   History,
+  Hourglass,
   LayoutDashboard,
   Map as MapIcon,
   Star,
@@ -39,6 +41,8 @@ const ICONS = {
   Code2: Code2,
   History: History,
   Star: Star,
+  Hourglass: Hourglass,
+  CalendarRange: CalendarRange,
 }
 
 export function getModuleIcon(iconKey) {

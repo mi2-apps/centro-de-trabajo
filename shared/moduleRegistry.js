@@ -282,6 +282,37 @@ export const MODULE_REGISTRY = [
     order: 10,
     roles: ['ADMINISTRADOR', 'SUPERVISOR', 'LIDER'],
   },
+  // 2026-09-04 (a peticion explicita del usuario, "vas a crear dos modulos
+  // nuevos... Demoras y Planeacion... ahi con msj de En desarrollo"): mismo
+  // patron ya usado para KPI's/Asistencia/Auditoria cuando se agregaron (ver
+  // nota 2026-08-28 arriba) -- SOLO navegacion, renderizan ComingSoonPage,
+  // ningun dato/API/modelo nuevo todavia. permissionProtected:true igual que
+  // el resto: ADMINISTRADOR los ve automatico, SUPERVISOR/LIDER necesitan
+  // habilitacion manual desde "Gestion de permisos".
+  {
+    key: '/demoras',
+    name: 'Demoras',
+    description: 'Registro y análisis de demoras de línea (en desarrollo)',
+    icon: 'Hourglass',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'demoras',
+    group: 'operacionDiaria',
+    order: 30,
+  },
+  {
+    key: '/planeacion',
+    name: 'Planeación',
+    description: 'Planeación de producción (en desarrollo)',
+    icon: 'CalendarRange',
+    active: true,
+    permissionProtected: true,
+    systemReserved: false,
+    labelKey: 'planeacion',
+    group: 'operacionDiaria',
+    order: 40,
+  },
 ]
 
 export function listAllModules() {

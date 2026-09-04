@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Route, Routes } from 'react-router-dom'
 import { TooltipProvider } from './components/ui/tooltip'
 import AppLayout from './layout/AppLayout'
@@ -16,6 +17,7 @@ import EvaluacionesPage from './pages/evaluaciones/EvaluacionesPage'
 import KpisPage from './pages/kpis/KpisPage'
 import ProduccionFftPage from './pages/produccion-fft/ProduccionFftPage'
 import RegistroPersonalPage from './pages/registro-personal/RegistroPersonalPage'
+import ComingSoonPage from './pages/shared/ComingSoonPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 import DefaultRedirect from './routing/DefaultRedirect'
 import ProtectedRoute from './routing/ProtectedRoute'
@@ -27,6 +29,11 @@ import ToastHost from './ui/ToastHost'
 
 export default function App() {
   const [mode, setMode] = useState('light')
+  // Solo para los 2 modulos "En desarrollo" (Demoras/Planeacion, 2026-09-04,
+  // a peticion explicita del usuario) -- mismo patron ya usado para KPI's/
+  // Asistencia/Auditoria cuando se agregaron: SOLO navegacion, sin contenido
+  // real todavia, ComingSoonPage.
+  const { t } = useTranslation('navigation')
 
   // Fase 6 (MI Stack Reference, cierre): unica fuente de modo claro/oscuro --
   // ya no convive con el ThemeProvider de MUI (removido, ver CHANGELOG),
@@ -122,6 +129,22 @@ export default function App() {
                   element={
                     <RequireModuleAccess>
                       <EvaluacionesPage />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/demoras"
+                  element={
+                    <RequireModuleAccess>
+                      <ComingSoonPage title={t('demoras')} />
+                    </RequireModuleAccess>
+                  }
+                />
+                <Route
+                  path="/planeacion"
+                  element={
+                    <RequireModuleAccess>
+                      <ComingSoonPage title={t('planeacion')} />
                     </RequireModuleAccess>
                   }
                 />

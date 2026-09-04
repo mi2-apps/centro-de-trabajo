@@ -30,6 +30,8 @@ export const RELEASES = [
           'addedProcessManuals',
           'addedFiveSAudit',
           'addedProcessAudit',
+          'addedCalidadManual',
+          'addedDemorasPlaneacion',
         ],
       },
       {

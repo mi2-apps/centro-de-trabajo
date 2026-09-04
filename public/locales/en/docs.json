@@ -96,6 +96,8 @@
     "changedFiveSIntro": "5S Audit goes back to being \"area-only\" (no station/employee), with a visible Auditor field showing the session user.",
     "changedAreaColors": "Lines with no assigned personnel now show in amber (previously gray/red), both in the Lines tab and the Operating Floor board.",
     "changedSidebar": "The sidebar is reorganized into categories (Overview, Daily Operation, Personnel, Analysis & Control, Administration, Resources, System), generated dynamically from the module registry instead of a fixed list.",
-    "changedAsistenciaAreas": "\"Personnel by Area\" in Attendance no longer shows Quality, FFT Manager, or Supervisor as their own cards."
+    "changedAsistenciaAreas": "\"Personnel by Area\" in Attendance no longer shows Quality, FFT Manager, or Supervisor as their own cards.",
+    "addedCalidadManual": "Real process manual (official Quality SOP) embedded in the \"Process Sheet\" for the Quality station across all WC LINEA.",
+    "addedDemorasPlaneacion": "Two new menu modules -- Delays and Planning -- marked \"Under development\", navigation only for now."
   }
 }

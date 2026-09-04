@@ -96,6 +96,8 @@
     "changedFiveSIntro": "La Auditoría 5'S vuelve a ser \"por área\" (sin puesto/empleado), con un campo Auditor visible que muestra el usuario de la sesión.",
     "changedAreaColors": "Las líneas sin personal asignado ahora se ven en amarillo (antes gris/rojo), tanto en la pestaña Líneas como en el tablero Área operando.",
     "changedSidebar": "El menú lateral se reorganiza en categorías (Visión general, Operación diaria, Personal, Análisis y control, Administración, Recursos, Sistema), generadas dinámicamente desde el registro de módulos en vez de una lista fija.",
-    "changedAsistenciaAreas": "\"Personal por área\" en Asistencia ya no muestra Calidad, WC Gerente de FFT ni WC Supervisor como tarjetas propias."
+    "changedAsistenciaAreas": "\"Personal por área\" en Asistencia ya no muestra Calidad, WC Gerente de FFT ni WC Supervisor como tarjetas propias.",
+    "addedCalidadManual": "Manual de proceso real (SOP oficial de Calidad) embebido en \"Hoja de Proceso\" para el puesto de Calidad en todas las WC LINEA.",
+    "addedDemorasPlaneacion": "Dos módulos nuevos en el menú -- Demoras y Planeación -- marcados \"En desarrollo\", solo navegación por ahora."
   }
 }
