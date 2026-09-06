@@ -2,3 +2,11 @@ allowBuilds:
   '@prisma/engines': true
   esbuild: true
   prisma: true
+
+# Force a single, patched esbuild across every consumer (vite, drizzle-kit, and the deprecated
+# @esbuild-kit/core-utils shim each otherwise pin a different, individually-vulnerable esbuild
+# version -- 0.21.5, 0.25.12, and 0.18.20 respectively; each embeds an old Go toolchain with
+# multiple HIGH/CRITICAL CVEs against its bundled stdlib). All three only use esbuild's stable
+# build/transform API, which has not broken across this range. CVE remediation, 2026-09.
+overrides:
+  esbuild: ^0.28.2
