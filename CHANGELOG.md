@@ -491,12 +491,21 @@ para poder desplegar en el servidor privado (Coolify). Ver
   (`src/data/demoras/exportExcel.js`) exporta siempre el mismo rango Desde/Hasta que
   ya está en pantalla (nunca vuelve a pedirle otro rango al servidor) en 9 hojas:
   Resumen (KPIs + top 5 causas), Datos (una fila por registro, con autofiltro),
-  Pareto por causa (minutos/cantidad/%/% acumulado, listo para graficar en Excel en
-  2 clics) y desgloses por línea/área, turno, día, semana ISO y hora del día. `xlsx`
-  (SheetJS) no soporta gráficas nativas al escribir un archivo -- se investigó antes
-  de prometer una que no existe de verdad; en su lugar la hoja de Pareto trae los
-  datos ya listos para que el usuario arme la gráfica real en Excel, y se le explica
-  esto mismo en vez de ocultarlo. `GET /api/demoras` sube su límite de 500 a 20000
+  Pareto por causa (minutos/cantidad/%/% acumulado) y desgloses por línea/área,
+  turno, día, semana ISO y hora del día. Migrado de `xlsx` (SheetJS edición
+  community) a `exceljs` a petición explícita del usuario, tras probar la primera
+  versión y decir que se veía "muy feo, muy basico, sin diseño, sin grafica":
+  `exceljs` sí escribe estilos reales al generar el archivo (encabezados con color y
+  negritas, bordes, zebra striping, freeze panes, celdas "Reportable" resaltadas en
+  rojo). Ninguna librería de Excel sin costo escribe gráficas nativas/editables --
+  se investigó a fondo antes de prometer una que no existe de verdad -- así que la
+  gráfica de Pareto (barras de minutos + línea de % acumulado + referencia 80%) se
+  dibuja con Canvas 2D nativo del navegador y se incrusta como imagen PNG en las
+  hojas Resumen y Pareto por causa: se ve la gráfica al abrir el archivo, pero es una
+  imagen, no un objeto de gráfica editable de Excel -- se le explica esto mismo al
+  usuario, no se le oculta. `exceljs` agrega ~270 kB (gzip) al bundle, así que se
+  carga con `import()` dinámico solo al dar clic en "Exportar Excel", sin afectar el
+  bundle inicial de toda la app. `GET /api/demoras` sube su límite de 500 a 20000
   registros para no truncar un reporte de un rango de meses sin avisar. De paso, el
   filtro de fechas por default ahora solo muestra HOY en vez de los últimos 7 días,
   a petición explícita del usuario ("que la fecha este en automatico, osea como hoy

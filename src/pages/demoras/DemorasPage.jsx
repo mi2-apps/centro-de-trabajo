@@ -30,7 +30,6 @@ import {
   DOWNTIME_REASONS,
   requiresFormalLog,
 } from '../../data/demoras/catalog'
-import { exportDemorasToExcel } from '../../data/demoras/exportExcel'
 import {
   getCurrentShift,
   LINE_FAMILY_WORK_CENTERS,
@@ -207,7 +206,7 @@ export default function DemorasPage() {
   // servidor con otro rango, asi que lo que se exporta es siempre lo mismo que se esta viendo en
   // pantalla. Aqui se resuelven nombres reales (causa/area/turno) antes de pasarlos al modulo de
   // export, que no conoce catalogos ni i18n -- ver exportExcel.js.
-  function handleExportExcel() {
+  async function handleExportExcel() {
     const rows = records.map((r) => ({
       date: new Date(r.createdAt),
       areaName: workCenterById(r.areaId)?.name || r.areaId,
@@ -218,7 +217,14 @@ export default function DemorasPage() {
       notes: r.notes || '',
       reportable: requiresFormalLog(r.durationMinutes),
     }))
-    exportDemorasToExcel({ rows, dateFrom, dateTo, t })
+    try {
+      // Import dinamico (2026-09-09): exceljs agrega ~270 kB gzip al bundle -- se carga solo al
+      // dar clic en "Exportar Excel", no en el bundle inicial que descarga cualquier visitante.
+      const { exportDemorasToExcel } = await import('../../data/demoras/exportExcel')
+      await exportDemorasToExcel({ rows, dateFrom, dateTo, t })
+    } catch (error) {
+      console.error('exportDemorasToExcel failed', error)
+    }
   }
 
   function handleGroupChange(groupKey) {
