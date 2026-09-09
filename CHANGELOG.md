@@ -489,23 +489,33 @@ para poder desplegar en el servidor privado (Coolify). Ver
   mas pusieron, que linea estuvo mas tiempo muerto... full completo pero bien
   organizado... que no invente informacion"). `exportDemorasToExcel()`
   (`src/data/demoras/exportExcel.js`) exporta siempre el mismo rango Desde/Hasta que
-  ya está en pantalla (nunca vuelve a pedirle otro rango al servidor) en 9 hojas:
-  Resumen (KPIs + top 5 causas), Datos (una fila por registro, con autofiltro),
-  Pareto por causa (minutos/cantidad/%/% acumulado) y desgloses por línea/área,
-  turno, día, semana ISO y hora del día. Migrado de `xlsx` (SheetJS edición
-  community) a `exceljs` a petición explícita del usuario, tras probar la primera
-  versión y decir que se veía "muy feo, muy basico, sin diseño, sin grafica":
-  `exceljs` sí escribe estilos reales al generar el archivo (encabezados con color y
-  negritas, bordes, zebra striping, freeze panes, celdas "Reportable" resaltadas en
-  rojo). Ninguna librería de Excel sin costo escribe gráficas nativas/editables --
-  se investigó a fondo antes de prometer una que no existe de verdad -- así que la
+  ya está en pantalla (nunca vuelve a pedirle otro rango al servidor). Reescrito dos
+  veces el mismo día tras probarlo en Excel real:
+  1) Primera versión con `xlsx` (SheetJS edición community) sin estilos ni gráfica
+     -- "muy feo, muy basico, sin diseño, sin grafica". Migrado a `exceljs`, que sí
+     escribe estilos reales al generar el archivo (encabezados con color y negritas,
+     bordes, zebra striping, celdas "Reportable" resaltadas en rojo).
+  2) Esa segunda versión repartía el reporte en 9 hojas (Resumen, Datos, Pareto,
+     y desgloses por línea/área, turno, día, semana, mes, hora) y usaba
+     `views: [{state:'frozen', ySplit: N}]` para inmovilizar encabezados -- al
+     probarla, las hojas de 1-2 filas se sentían como "muchos apartados para solo
+     una linea o dos", y la hoja Resumen se veía con el banner y el encabezado
+     duplicados: bug real de ExcelJS/Excel al usar `frozen` sin `topLeftCell` (el
+     panel congelado y el panel con scroll se renderizan superpuestos). Versión
+     final: **todo consolidado en una sola hoja**, sin freeze panes en ningún lado
+     (se verificó que el bug desaparece así), con las secciones apiladas
+     verticalmente -- KPIs, Pareto (gráfica + tabla completa) y los 6 desgloses
+     breves uno debajo del otro, terminando con el detalle completo "Datos" (única
+     sección con autofiltro; Excel solo permite uno por hoja).
+  Ninguna librería de Excel sin costo escribe gráficas nativas/editables -- se
+  investigó a fondo antes de prometer una que no existe de verdad -- así que la
   gráfica de Pareto (barras de minutos + línea de % acumulado + referencia 80%) se
-  dibuja con Canvas 2D nativo del navegador y se incrusta como imagen PNG en las
-  hojas Resumen y Pareto por causa: se ve la gráfica al abrir el archivo, pero es una
-  imagen, no un objeto de gráfica editable de Excel -- se le explica esto mismo al
-  usuario, no se le oculta. `exceljs` agrega ~270 kB (gzip) al bundle, así que se
-  carga con `import()` dinámico solo al dar clic en "Exportar Excel", sin afectar el
-  bundle inicial de toda la app. `GET /api/demoras` sube su límite de 500 a 20000
+  dibuja con Canvas 2D nativo del navegador y se incrusta como imagen PNG junto a
+  la tabla de Pareto: se ve la gráfica al abrir el archivo, pero es una imagen, no
+  un objeto de gráfica editable de Excel -- se le explica esto mismo al usuario, no
+  se le oculta. `exceljs` agrega ~270 kB (gzip) al bundle, así que se carga con
+  `import()` dinámico solo al dar clic en "Exportar Excel", sin afectar el bundle
+  inicial de toda la app. `GET /api/demoras` sube su límite de 500 a 20000
   registros para no truncar un reporte de un rango de meses sin avisar. De paso, el
   filtro de fechas por default ahora solo muestra HOY en vez de los últimos 7 días,
   a petición explícita del usuario ("que la fecha este en automatico, osea como hoy
