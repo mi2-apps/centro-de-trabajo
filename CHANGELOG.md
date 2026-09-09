@@ -483,6 +483,25 @@ para poder desplegar en el servidor privado (Coolify). Ver
   De paso se corrige que el badge "Reportable" se encimaba con el texto de causas
   largas (ej. "Falta de herramientas...") cuando envolvía a 2 líneas -- ahora fluye
   junto al texto en vez de en una fila `flex` aparte.
+- **Demoras de trabajo: exportar a Excel**, a petición explícita del usuario ("boton
+  de exportar excel... de tal fecha a tal fecha... grafica de pareto... que yo pueda
+  manipular el excel, por hora, dia, semana, mes y turno... cual fue la demora que
+  mas pusieron, que linea estuvo mas tiempo muerto... full completo pero bien
+  organizado... que no invente informacion"). `exportDemorasToExcel()`
+  (`src/data/demoras/exportExcel.js`) exporta siempre el mismo rango Desde/Hasta que
+  ya está en pantalla (nunca vuelve a pedirle otro rango al servidor) en 9 hojas:
+  Resumen (KPIs + top 5 causas), Datos (una fila por registro, con autofiltro),
+  Pareto por causa (minutos/cantidad/%/% acumulado, listo para graficar en Excel en
+  2 clics) y desgloses por línea/área, turno, día, semana ISO y hora del día. `xlsx`
+  (SheetJS) no soporta gráficas nativas al escribir un archivo -- se investigó antes
+  de prometer una que no existe de verdad; en su lugar la hoja de Pareto trae los
+  datos ya listos para que el usuario arme la gráfica real en Excel, y se le explica
+  esto mismo en vez de ocultarlo. `GET /api/demoras` sube su límite de 500 a 20000
+  registros para no truncar un reporte de un rango de meses sin avisar. De paso, el
+  filtro de fechas por default ahora solo muestra HOY en vez de los últimos 7 días,
+  a petición explícita del usuario ("que la fecha este en automatico, osea como hoy
+  que es 9 que nomas salga de este dia, ya si quiero ver lo de ayer solo cambio de
+  fecha").
 
 ### Fixed
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices

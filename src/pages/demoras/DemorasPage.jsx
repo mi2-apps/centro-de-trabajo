@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { Settings } from 'lucide-react'
+import { Download, Settings } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert } from '@/components/ui/alert'
@@ -30,6 +30,7 @@ import {
   DOWNTIME_REASONS,
   requiresFormalLog,
 } from '../../data/demoras/catalog'
+import { exportDemorasToExcel } from '../../data/demoras/exportExcel'
 import {
   getCurrentShift,
   LINE_FAMILY_WORK_CENTERS,
@@ -142,10 +143,11 @@ export default function DemorasPage() {
   const [loadingRecords, setLoadingRecords] = useState(true)
   const [dynamicReasons, setDynamicReasons] = useState([])
 
-  // Filtro por fechas del historial (2026-09-09, a peticion explicita del usuario): por default
-  // muestra los ultimos 7 dias (incluye hoy) -- mismo rango default que ya usa
-  // SortingHistoryView.jsx para su propio historico, para no inventar un criterio nuevo.
-  const [dateFrom, setDateFrom] = useState(dayjs().subtract(6, 'day').format('YYYY-MM-DD'))
+  // Filtro por fechas del historial (2026-09-09, a peticion explicita del usuario -- "que la
+  // fecha este en automatico, osea como hoy que es 9 que nomas salga de este dia, ya si quiero
+  // ver lo de ayer solo cambio de fecha"): por default solo HOY, en ambos campos -- un cambio
+  // manual en Desde y/o Hasta es la unica forma de ver otro rango.
+  const [dateFrom, setDateFrom] = useState(dayjs().format('YYYY-MM-DD'))
   const [dateTo, setDateTo] = useState(dayjs().format('YYYY-MM-DD'))
 
   const loadRecords = useCallback(async () => {
@@ -199,6 +201,25 @@ export default function DemorasPage() {
   }, [loadDynamicReasons])
 
   const dynamicReasonsByCode = new Map(dynamicReasons.map((r) => [r.code, r]))
+
+  // Exportar a Excel (2026-09-09, a peticion explicita del usuario): usa exactamente el mismo
+  // `records` ya cargado con el filtro Desde/Hasta vigente -- nunca vuelve a pedirle nada al
+  // servidor con otro rango, asi que lo que se exporta es siempre lo mismo que se esta viendo en
+  // pantalla. Aqui se resuelven nombres reales (causa/area/turno) antes de pasarlos al modulo de
+  // export, que no conoce catalogos ni i18n -- ver exportExcel.js.
+  function handleExportExcel() {
+    const rows = records.map((r) => ({
+      date: new Date(r.createdAt),
+      areaName: workCenterById(r.areaId)?.name || r.areaId,
+      reasonName: reasonLabel(t, r.reasonKey, dynamicReasonsByCode),
+      durationMinutes: r.durationMinutes,
+      shiftLabel: shiftDisplayLabel(t, r.shift),
+      createdByName: r.createdByName || '—',
+      notes: r.notes || '',
+      reportable: requiresFormalLog(r.durationMinutes),
+    }))
+    exportDemorasToExcel({ rows, dateFrom, dateTo, t })
+  }
 
   function handleGroupChange(groupKey) {
     const group = AREA_GROUPS.find((g) => g.key === groupKey)
@@ -453,6 +474,16 @@ export default function DemorasPage() {
                   className="w-[150px]"
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="ml-auto"
+                disabled={records.length === 0}
+                onClick={handleExportExcel}
+              >
+                <Download className="mr-1.5 h-4 w-4" />
+                {t('exportButton')}
+              </Button>
             </div>
 
             {loadingRecords ? (

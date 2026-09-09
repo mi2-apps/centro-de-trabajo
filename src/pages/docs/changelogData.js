@@ -51,6 +51,7 @@ export const RELEASES = [
           'addedBootstrapAdmin',
           'addedOrganigramaContent',
           'addedDemorasHistoryFilter',
+          'addedDemorasExcelExport',
         ],
       },
       {

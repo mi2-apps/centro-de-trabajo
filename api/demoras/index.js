@@ -62,7 +62,11 @@ async function handleGet(req, res) {
     .leftJoin(user, eq(downtimeRecord.createdByUserId, user.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(downtimeRecord.createdAt))
-    .limit(500)
+    // 2026-09-09: subido de 500 a 20000 -- el historial ahora se usa tambien para exportar a
+    // Excel un rango de fechas completo (posiblemente meses), y 500 registros truncaba un
+    // reporte real sin avisar. 20000 sigue siendo un techo de seguridad, no un limite que un
+    // uso real de esta pantalla vaya a alcanzar.
+    .limit(20000)
   return res.status(200).json({ records: rows })
 }
 
