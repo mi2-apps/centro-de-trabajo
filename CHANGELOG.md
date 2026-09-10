@@ -536,6 +536,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
      y "Líderes de Áreas", que cortan la línea en recto) -- de ahí que se
      viera "como si se estuviera pegando la palabra". Se rehízo ese corte en
      recto, igual que las demás etiquetas del mismo organigrama.
+- **Organigrama, segunda pasada** a petición explícita del usuario:
+  1) La etiqueta "Ingeniería" ahora flota completa arriba de una línea azul
+     continua (sin cortes), en vez de sentarse encima de un hueco en la
+     línea como las demás etiquetas -- estilo distinto, elegido explícitamente
+     por el usuario entre 2 opciones antes de tocar la imagen.
+  2) La primera persona (círculo superior, sin nombre hasta ahora) ya
+     muestra "Juan Sillas", en el mismo estilo (Georgia Bold, mismo tamaño
+     medido en píxeles contra "Juan Bocanegra") y posición que los demás
+     nombres a la izquierda de su círculo.
 
 ### Fixed
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices

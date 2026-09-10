@@ -85,6 +85,7 @@ export const RELEASES = [
           'changedDemorasAddCalidad',
           'changedMinPasswordLength',
           'changedOrganigramaV2',
+          'changedOrganigramaV3',
         ],
       },
       {
