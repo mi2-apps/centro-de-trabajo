@@ -86,7 +86,7 @@ function useVisibleModules(role) {
 function NavList({ sections, onItemClick }) {
   const { t } = useTranslation('navigation')
   return (
-    <nav className="flex-1 overflow-y-auto px-2.5 pb-2 pt-2">
+    <nav className="flex-1 overflow-y-auto overscroll-y-contain px-2.5 pb-2 pt-2">
       {sections.map((section, sectionIdx) => (
         <div key={section.id}>
           {sectionIdx > 0 && <div className="my-2.5 border-t border-border/60" />}

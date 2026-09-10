@@ -973,6 +973,13 @@ para poder desplegar en el servidor privado (Coolify). Ver
   (`scripts/delete-test-demoras-and-evaluacion-2026-09-10.mjs`, mismo patrón que los demás
   scripts de mantenimiento de este repo) por sus ids específicos, no por un filtro amplio.
   `FiveSAuditAnswer` se borró solo vía `onDelete: cascade`.
+- **La barra lateral empujaba la página al hacer scroll hasta su límite**, a petición explícita
+  del usuario ("si le doy hasta abajo y llega al límite que mi página la que está atrás no se
+  mueva hacia abajo... la barra ya no se mueve para abajo porque ya llegó hasta el último módulo
+  pero la página sí se va para abajo"): scroll chaining del navegador -- al agotar el scroll
+  interno del `<nav>` de `Sidebar.jsx`, el evento de rueda se propagaba al contenedor de la
+  página. Se agrega `overscroll-behavior-y: contain` (clase `overscroll-y-contain`) a ese `<nav>`
+  para que el scroll se quede contenido ahí.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed
