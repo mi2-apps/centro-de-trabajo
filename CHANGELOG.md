@@ -890,6 +890,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   reutilizando ese mismo valor guardado en el buscador de `UsuariosPage.jsx`, que no declaraba
   ningún `autoComplete` propio. Se agrega `autoComplete="off"` explícito a ese campo.
 
+- **`autoComplete="off"` (fix anterior) no fue suficiente** -- a petición explícita del usuario,
+  que seguía viendo su número de empleado autocompletado solo en ese buscador tras un refresh.
+  Chrome ignora "off" a propósito en campos que su heurística interna cree que son de login
+  (comportamiento documentado del navegador, no un descuido del fix anterior). Se cambia a
+  `autoComplete="new-password"` -- token que Chrome sí respeta de verdad y nunca rellena con un
+  valor guardado, aunque el campo no sea una contraseña -- más un `name` propio
+  (`usuarios-filtro-busqueda`) para que tampoco lo asocie por nombre con el campo del login, y
+  `data-1p-ignore`/`data-lpignore` para gestores de contraseñas de terceros (1Password, LastPass).
+
 - **El personal podía moverse/asignarse "solo", sin acción explícita de un ADMINISTRADOR o
   SUPERVISOR, a petición explícita del usuario ("no quiero que se muevan solos, solo yo u otro
   administrador o supervisor pueden moverlo").** Auditoría completa de todos los caminos que

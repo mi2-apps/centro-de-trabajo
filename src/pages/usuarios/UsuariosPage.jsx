@@ -182,12 +182,21 @@ export default function UsuariosPage() {
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="relative w-full sm:w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          {/* 2026-09-10, a peticion explicita del usuario: autoComplete="off" (commit anterior)
+              NO fue suficiente -- Chrome ignora "off" a proposito en campos que su heuristica
+              cree que son de login, y seguia autocompletando con el numero de empleado guardado
+              del campo autoComplete="username" del login. autoComplete="new-password" si lo
+              respeta de verdad (nunca ofrece un valor guardado ahi), mas un name propio para que
+              no lo asocie por nombre con el campo del login. */}
           <Input
             placeholder={t('usuariosPage.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
-            autoComplete="off"
+            name="usuarios-filtro-busqueda"
+            autoComplete="new-password"
+            data-1p-ignore
+            data-lpignore="true"
           />
         </div>
         <div className="hidden flex-1 sm:block" />
