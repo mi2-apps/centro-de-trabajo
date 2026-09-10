@@ -223,12 +223,17 @@ function VLineStation({ areaId, station, lineNumber, capacity, color, onSelectAr
 // misma info real que una V (nombre, personas reales via getAreaStaffing/
 // getLineWorkstationsWithOccupancy, numero de linea) pero en una franja horizontal -- ANCHA y
 // BAJA, personas en una sola fila -- nunca una tarjeta alta como las V. Mismo estilo visual
-// exacto que SortingConveyorBar (franja delgada, border-t marcado) en vez del `h-full` que
-// antes la estiraba a la altura de las V (2026-09-10, segunda pasada, a peticion explicita del
-// usuario tras verla en vivo -- "la linea 1 no esta en horizontal esta en vertical"): el
-// contenedor es un grid de 8 columnas con las V (altas) al lado, y CSS Grid estira por default
-// todos los items de una fila a la misma altura -- `self-start` en el <button> evita que esta
-// franja corta se estire, dejandola compacta arriba de su columna en vez de alta como las demas.
+// exacto que SortingConveyorBar (franja delgada, border-t marcado).
+//
+// 2026-09-10, TERCERA pasada (a peticion explicita del usuario, dos veces seguidas -- "sigue en
+// vertical... debes de poner una que esta en vertical a horizontal"): `self-start` (segunda
+// pasada) evitaba que se estirara a la altura de las V, pero el contenedor solo le daba 1/8 del
+// ancho (la misma columna angosta que una V) -- con tan poco ancho, las 4 personas igual se
+// apilaban en 4 lineas y SEGUIA viendose vertical (angosta y con varias lineas), sin importar la
+// altura. El fix real es de ANCHO, no de altura: el grid pasa de 8 a 9 columnas
+// (`sm:grid-cols-9`), las 7 V siguen ocupando 1 columna cada una (14 columnas totales entre las
+// dos partes... no, 7+2=9) y esta franja ocupa 2 columnas (`sm:col-span-2`) -- el doble de
+// ancho que una V, suficiente para que las 4 personas quepan en una sola fila de verdad.
 function HorizontalLineStation({ areaId, station, lineNumber, capacity, color, onSelectArea }) {
   const { t } = useTranslation('centroTrabajo')
   const slots = Array.from({ length: capacity }, (_, i) => station.occupants[i])
@@ -237,7 +242,7 @@ function HorizontalLineStation({ areaId, station, lineNumber, capacity, color, o
     <button
       type="button"
       onClick={() => onSelectArea(areaId)}
-      className="flex w-full flex-col gap-1.5 self-start rounded-2xl border border-t-[3px] p-2.5 text-left transition-colors hover:bg-accent"
+      className="flex w-full flex-col gap-1.5 self-start rounded-2xl border border-t-[3px] p-2.5 text-left transition-colors hover:bg-accent sm:col-span-2"
       style={{ borderColor: color }}
     >
       <p className="text-xs font-extrabold tracking-[0.4px]">{lineNumber}</p>
@@ -403,7 +408,7 @@ export default function SortingFloorPlan({ onSelectArea }) {
                 </p>
               </div>
 
-              <div className="grid flex-1 grid-cols-4 gap-3 sm:grid-cols-8">
+              <div className="grid flex-1 grid-cols-4 gap-3 sm:grid-cols-9">
                 {lineaRows.map((row) => (
                   <VLineStation
                     key={row.id}

@@ -1020,6 +1020,14 @@ para poder desplegar en el servidor privado (Coolify). Ver
   fila a la misma altura -- la línea 1 quedaba tan alta como las 7 "V" aunque su contenido fuera
   corto. Se rehace con el mismo estilo de franja delgada que "Conveyor de Sorting" (personas en
   una sola fila, no en una tarjeta) y `self-start` para que no se estire a la altura de las V.
+- **"Línea de Sorting 1" seguía viéndose vertical** tras el fix anterior, a petición explícita del
+  usuario ("sigue en vertical... debes de poner una que está en vertical a horizontal"): el fix
+  de altura (`self-start`) no bastaba porque el ancho seguía siendo el mismo de una sola columna
+  (1/8 del grid) -- con tan poco ancho, las 4 personas igual se apilaban en 4 líneas, angosto y
+  con varias líneas, así que seguía leyéndose vertical sin importar la altura. El fix real es de
+  ancho: el grid pasa de 8 a 9 columnas (`sm:grid-cols-9`), las 7 "V" siguen ocupando 1 columna
+  cada una y esta franja ahora ocupa 2 (`sm:col-span-2`) -- el doble de ancho, suficiente para
+  que las 4 personas quepan en una fila de verdad.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed
