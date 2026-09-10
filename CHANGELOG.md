@@ -293,6 +293,18 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `User` con rol `ADMINISTRADOR` si `BOOTSTRAP_ADMIN_USERNAME` +
   `BOOTSTRAP_ADMIN_PASSWORD` están seteadas y ese username no existe
   todavía. Idempotente (no-op si ya existe o si las env vars faltan).
+- **"Indicadores FFT" (Dashboard) conectado a datos reales**, a petición explícita del usuario
+  tras revisar la tarjeta en vivo y confirmar exactamente qué debía mostrar cada uno (los 4
+  llevaban desde el 2026-08-26 con "Sin fuente de datos configurada" a propósito, nunca un
+  porcentaje inventado -- ver `FFT_INDICATORS`/`FftIndicatorsCard.jsx`):
+  - **Demoras**: minutos totales de Demoras de trabajo capturados HOY, solo áreas FFT (excluye
+    Sorting -- son áreas independientes).
+  - **Producción** y **Eficiencia**: suma de `standardQty` (meta)/`actualQty` (real) de TODAS
+    las sesiones de Hora por Hora de HOY en áreas FFT. La meta nunca es un número fijo -- es la
+    suma real de lo que cada línea tenga configurado ese día; si nadie ha capturado hoy, muestra
+    "Sin captura hoy" en vez de un falso "0/0". Nuevo hook `useFftIndicators.js`.
+  - **Cumplimiento de programas** se deja intencionalmente sin conectar: ni el propio usuario
+    tenía claro qué debía representar al revisarlo, así que no se inventa un cálculo para él.
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.

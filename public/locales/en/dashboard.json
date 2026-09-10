@@ -17,7 +17,12 @@
   "fftIndicatorsCard": {
     "title": "FFT Indicators",
     "subtitle": "Efficiency, delays, production, and schedule compliance for the area",
-    "noSourceMessage": "No data source configured"
+    "noSourceMessage": "No data source configured",
+    "loadingValue": "Loading…",
+    "noCaptureToday": "No capture today",
+    "demorasValue": "{{minutes}} min today",
+    "productionValue": "{{actual}} / {{expected}} pcs",
+    "efficiencyValue": "{{pct}}%"
   },
   "recentActivityCard": {
     "title": "Recent activity",

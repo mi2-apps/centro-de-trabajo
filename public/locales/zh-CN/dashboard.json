@@ -17,7 +17,12 @@
   "fftIndicatorsCard": {
     "title": "FFT 指标",
     "subtitle": "该区域的效率、延误、产量及计划达成情况",
-    "noSourceMessage": "未配置数据源"
+    "noSourceMessage": "未配置数据源",
+    "loadingValue": "加载中…",
+    "noCaptureToday": "今日暂无记录",
+    "demorasValue": "今日 {{minutes}} 分钟",
+    "productionValue": "{{actual}} / {{expected}} 件",
+    "efficiencyValue": "{{pct}}%"
   },
   "recentActivityCard": {
     "title": "近期活动",

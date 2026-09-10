@@ -17,7 +17,12 @@
   "fftIndicatorsCard": {
     "title": "Indicadores FFT",
     "subtitle": "Eficiencia, demoras, producción y cumplimiento de programas del área",
-    "noSourceMessage": "Sin fuente de datos configurada"
+    "noSourceMessage": "Sin fuente de datos configurada",
+    "loadingValue": "Cargando…",
+    "noCaptureToday": "Sin captura hoy",
+    "demorasValue": "{{minutes}} min hoy",
+    "productionValue": "{{actual}} / {{expected}} pzs",
+    "efficiencyValue": "{{pct}}%"
   },
   "recentActivityCard": {
     "title": "Actividades recientes",

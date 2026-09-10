@@ -52,6 +52,7 @@ export const RELEASES = [
           'addedOrganigramaContent',
           'addedDemorasHistoryFilter',
           'addedDemorasExcelExport',
+          'addedFftIndicatorsConnected',
         ],
       },
       {
