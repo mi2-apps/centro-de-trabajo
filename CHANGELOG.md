@@ -933,6 +933,35 @@ para poder desplegar en el servidor privado (Coolify). Ver
      está enganchado a un hook automático (`postinstall`/`prestart`), todos son one-offs
      manuales.
 
+- **Dashboard: 2 métricas más seguían mezclando FFT y Sorting** (a petición explícita del
+  usuario, "en el área de sorting me sale esos datos pero esos datos son de FFT... son dos
+  áreas independientes"), el mismo tipo de bug que `getDailyMovementsBreakdown`/
+  `getRecentActivity` ya tenían corregido desde el 2026-09-08 pero que no se había replicado en
+  todas las métricas del Dashboard:
+  - `getShiftDistribution()` (donut "Distribución por turno") contaba TODAS las asignaciones con
+    turno oficial sin filtrar por `areaIdBelongsToActiveGroup`, así que el donut de Sorting
+    mostraba el total real de FFT (78 personas en Matutino, aunque Sorting no tuviera nadie
+    asignado).
+  - `movementsToday`/`pendingMovesCount` (hallazgo "N movimientos registrados hoy" y aprobaciones
+    pendientes) usaban `getMovesCountForDate()`/`getPendingMoves()` sin el mismo filtro.
+  Los 3 ya usan `areaIdBelongsToActiveGroup` sobre el área de destino, igual que el resto del
+  Dashboard.
+- **Estaciones: "Patines" ya no aparece** en el catálogo de estaciones de Sorting -- a petición
+  explícita del usuario ("ahí no va personal así que no debe de estar en estaciones"). Ya estaba
+  documentado en el código como equipo físico sin personal (`SORT_PATINES equipment: true`,
+  catalogSorting.js) pero seguía listado como una tarjeta más en `EstacionesTab.jsx`; se quita
+  esa entrada (sigue existiendo en el catálogo/plano de planta para otros usos, solo se retira de
+  la vista de Estaciones). Baja el conteo de "Áreas totales" de 11 a 10, correctamente.
+- **5 registros de prueba de Demoras + 1 evaluación 5S de prueba, borrados de producción** a
+  petición explícita del usuario ("son mías y las hice para probar el módulo... ya no quiero que
+  salgan aquí por motivos de producción"). Ninguno de los 2 módulos tenía una función de borrado
+  (ni en la API ni en la UI) -- verificado antes con una consulta de solo lectura que eran
+  EXACTAMENTE esos registros (mismo usuario, mismo contenido que las capturas de pantalla que
+  dio como referencia), y se borraron con un script de un solo uso
+  (`scripts/delete-test-demoras-and-evaluacion-2026-09-10.mjs`, mismo patrón que los demás
+  scripts de mantenimiento de este repo) por sus ids específicos, no por un filtro amplio.
+  `FiveSAuditAnswer` se borró solo vía `onDelete: cascade`.
+
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed
   arriba: 3 bugs reales encontrados y corregidos en el camino -- ruta de

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import { LINES_ONLY } from '../production/catalog'
 import { generalKpis } from '../production/selectors'
-import { getStaffingTotals } from '../production/personnelByArea'
-import { getMovesCountForDate, getPendingMoves } from '../personnel/repository'
+import { areaIdBelongsToActiveGroup, getStaffingTotals } from '../production/personnelByArea'
+import { getMovementsForDate, getPendingMoves } from '../personnel/repository'
 import { usePersonnelVersion } from '../personnel/usePersonnelVersion'
 import { useAuth } from '../../state/auth'
 import {
@@ -128,8 +128,17 @@ export function useDashboardMetrics() {
   const areas = getDashboardAreas()
   const statusCounts = getAreaStatusCounts(areas)
   const incompleteLines = getIncompleteLines()
-  const movementsToday = getMovesCountForDate()
-  const pendingMovesCount = getPendingMoves().filter((p) => p.status === 'PENDING').length
+  // 2026-09-10 (a peticion explicita del usuario, "en el area de sorting me sale esos datos pero
+  // esos datos son de FFT... son dos areas independientes"): mismo filtro por
+  // areaIdBelongsToActiveGroup que ya usaba getDailyMovementsBreakdown -- getMovesCountForDate()
+  // y getPendingMoves() no distinguian FFT de Sorting, asi que el dashboard de Sorting mostraba
+  // movimientos/pendientes reales de FFT.
+  const movementsToday = getMovementsForDate().filter(
+    (m) => m.type === 'MOVE' && areaIdBelongsToActiveGroup(m.toAreaId),
+  ).length
+  const pendingMovesCount = getPendingMoves().filter(
+    (p) => p.status === 'PENDING' && areaIdBelongsToActiveGroup(p.toAreaId),
+  ).length
   const canSeeApprovals = user?.role === 'SUPERVISOR' || user?.role === 'ADMINISTRADOR'
   const shifts = getShiftDistribution(totals.realTotal)
   const dailyMovements = getDailyMovementsBreakdown()

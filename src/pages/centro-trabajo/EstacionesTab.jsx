@@ -271,13 +271,6 @@ function buildSortingAreaSlots(t) {
       colorAreaId: 'SORT_DMA_DMT',
     },
     {
-      id: 'SORT_PATINES',
-      name: nameOf('SORT_PATINES'),
-      subtitle: t('estacionesTab.areaSortPatinesSubtitle'),
-      icon: <Package2 size={22} />,
-      colorAreaId: 'SORT_PATINES',
-    },
-    {
       id: 'SORT_GERENTE',
       name: nameOf('SORT_GERENTE'),
       subtitle: t('estacionesTab.areaGerenteSubtitle'),

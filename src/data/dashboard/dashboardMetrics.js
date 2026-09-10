@@ -218,9 +218,15 @@ export function workCenterShortName(id) {
    "Matutino". Por eso: se cuenta SOLO a quien tiene un `shift` que hace
    match EXACTO con una etiqueta oficial, y el resto de "Personal actual"
    cae en un bucket explicito "Sin turno registrado" -- nunca se inventa
-   a que turno pertenece alguien sin ese dato real. */
+   a que turno pertenece alguien sin ese dato real.
+
+   2026-09-10 (a peticion explicita del usuario, "en el area de sorting me sale esos datos pero
+   esos datos son de FFT... son dos areas independientes"): a esta funcion le faltaba el mismo
+   filtro por `areaIdBelongsToActiveGroup` que ya tenia getDailyMovementsBreakdown -- contaba
+   TODAS las asignaciones con turno oficial (de FFT y Sorting juntas) sin importar el grupo
+   activo, asi que el donut de Sorting mostraba el total real de FFT. */
 export function getShiftDistribution(realTotal) {
-  const assignments = getAssignmentsForDate()
+  const assignments = getAssignmentsForDate().filter((a) => areaIdBelongsToActiveGroup(a.areaId))
   const counts = new Map(OFFICIAL_SHIFTS.map((s) => [s.label, 0]))
   let matched = 0
   assignments.forEach((a) => {

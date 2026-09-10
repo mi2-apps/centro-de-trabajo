@@ -564,7 +564,6 @@
     "areaSortLineaSubtitle": "生产线",
     "areaSortLineasName": "Sorting 产线",
     "areaSortWorkAreaSubtitle": "Sorting 区域",
-    "areaSortPatinesSubtitle": "设备，无人员",
     "fftLinesNote": "{{count}} 条在用产线",
     "statusCompleteLabel": "满编（100% 或以上）",
     "statusPartialLabel": "部分（1-99%）",

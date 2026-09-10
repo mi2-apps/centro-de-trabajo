@@ -564,7 +564,6 @@
     "areaSortLineaSubtitle": "Línea de producción",
     "areaSortLineasName": "Líneas de Sorting",
     "areaSortWorkAreaSubtitle": "Área de Sorting",
-    "areaSortPatinesSubtitle": "Equipo, sin personal",
     "fftLinesNote": "{{count}} líneas activas",
     "statusCompleteLabel": "Completa (100% o más)",
     "statusPartialLabel": "Parcial (1-99%)",
