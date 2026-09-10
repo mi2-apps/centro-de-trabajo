@@ -980,6 +980,13 @@ para poder desplegar en el servidor privado (Coolify). Ver
   interno del `<nav>` de `Sidebar.jsx`, el evento de rueda se propagaba al contenedor de la
   página. Se agrega `overscroll-behavior-y: contain` (clase `overscroll-y-contain`) a ese `<nav>`
   para que el scroll se quede contenido ahí.
+- **Favicon con fondo blanco visible en la pestaña del navegador**, a petición explícita del
+  usuario ("quitar el fondo blanco de atrás que quede como los otros dos"): `centro-control-
+  icon.png` (usado en `index.html` para `<link rel="icon">`) era una imagen RGB opaca, sin canal
+  alfa -- se volvió transparente el fondo casi-blanco (`centro-control-icon-dark.png`, la versión
+  para fondo oscuro del sidebar, ya era transparente desde antes). `apple-touch-icon` se separa a
+  su propio archivo (`centro-control-icon-apple.png`, misma imagen pero opaca) a propósito: iOS
+  no maneja bien la transparencia en el ícono de "Agregar a inicio", la rellena de negro.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed

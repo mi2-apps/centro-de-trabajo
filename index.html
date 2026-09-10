@@ -3,8 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- 2026-09-10, a peticion explicita del usuario ("quitar el fondo blanco... que quede como
+         los otros dos"): centro-control-icon.png ya tiene fondo transparente (se veia como una
+         caja blanca en la pestaña del navegador). apple-touch-icon usa aparte
+         centro-control-icon-apple.png (misma imagen, opaca) a proposito: iOS no maneja bien la
+         transparencia en el icono de "Agregar a inicio", la rellena de negro. -->
     <link rel="icon" type="image/png" href="/branding/centro-control-icon.png" />
-    <link rel="apple-touch-icon" href="/branding/centro-control-icon.png" />
+    <link rel="apple-touch-icon" href="/branding/centro-control-icon-apple.png" />
     <title>Centro de Control</title>
     <script>
       // Aplica el modo oscuro guardado ANTES de que cargue React (2026-09-07, a peticion
