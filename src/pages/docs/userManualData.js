@@ -95,8 +95,8 @@ export const MODULES = [
   },
   {
     nameKey: 'organigrama',
-    status: 'proximamente',
-    statusLabelKey: 'statusProximamente',
+    status: 'disponible',
+    statusLabelKey: 'statusDisponible',
     bodyKey: 'organigramaBody',
   },
   {

@@ -84,6 +84,7 @@ export const RELEASES = [
           'changedLoginNextcloudPrimary',
           'changedDemorasAddCalidad',
           'changedMinPasswordLength',
+          'changedOrganigramaV2',
         ],
       },
       {

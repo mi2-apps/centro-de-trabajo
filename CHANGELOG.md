@@ -521,6 +521,21 @@ para poder desplegar en el servidor privado (Coolify). Ver
   a petición explícita del usuario ("que la fecha este en automatico, osea como hoy
   que es 9 que nomas salga de este dia, ya si quiero ver lo de ayer solo cambio de
   fecha").
+- **Organigrama actualizado**, a petición explícita del usuario, reemplazando
+  `public/organigrama/estructura-organizacional.png` por la nueva versión de
+  "Estructura organizacional.docx" (agrega la rama Ingeniería con Roman Herrera
+  y Cristopher, renombra "Líderes de Áreas Especializadas" a "Líderes de
+  Áreas", etc.). De paso, dos ajustes visuales pedidos explícitamente:
+  1) Grosor de conectores/círculos aumentado (~60% más pixeles azules vía
+     dilatación de imagen sobre una máscara de color ajustada al tono exacto
+     de la marca -- `distancia euclidiana < 40` respecto a `(46,132,211)` --
+     para no tocar por accidente los textos ni las fotos de perfil, que un
+     primer intento con un umbral de color más laxo sí alteraba visiblemente).
+  2) La etiqueta "Ingeniería" tenía una forma de listón con bordes diagonales
+     que se afilaban hacia la palabra (a diferencia de "Liderazgo Operativo"
+     y "Líderes de Áreas", que cortan la línea en recto) -- de ahí que se
+     viera "como si se estuviera pegando la palabra". Se rehízo ese corte en
+     recto, igual que las demás etiquetas del mismo organigrama.
 
 ### Fixed
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices
