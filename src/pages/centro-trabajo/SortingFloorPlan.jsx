@@ -221,42 +221,33 @@ function VLineStation({ areaId, station, lineNumber, capacity, color, onSelectAr
 // "Línea de Sorting 1" (2026-09-10, a peticion explicita del usuario viendo el plano en vivo --
 // "agregas una nueva linea la 1 que es en horizontal, la pones a lado derecho de la linea 8"):
 // misma info real que una V (nombre, personas reales via getAreaStaffing/
-// getLineWorkstationsWithOccupancy, numero de linea) pero en una franja horizontal -- una fila de
-// personas en vez de puntas arriba/abajo -- distinta a las otras 7, tal como pidio el usuario.
+// getLineWorkstationsWithOccupancy, numero de linea) pero en una franja horizontal -- ANCHA y
+// BAJA, personas en una sola fila -- nunca una tarjeta alta como las V. Mismo estilo visual
+// exacto que SortingConveyorBar (franja delgada, border-t marcado) en vez del `h-full` que
+// antes la estiraba a la altura de las V (2026-09-10, segunda pasada, a peticion explicita del
+// usuario tras verla en vivo -- "la linea 1 no esta en horizontal esta en vertical"): el
+// contenedor es un grid de 8 columnas con las V (altas) al lado, y CSS Grid estira por default
+// todos los items de una fila a la misma altura -- `self-start` en el <button> evita que esta
+// franja corta se estire, dejandola compacta arriba de su columna en vez de alta como las demas.
 function HorizontalLineStation({ areaId, station, lineNumber, capacity, color, onSelectArea }) {
   const { t } = useTranslation('centroTrabajo')
   const slots = Array.from({ length: capacity }, (_, i) => station.occupants[i])
-  const hasPeople = station.occupants.length > 0
-  const nameOrVacant = (o) =>
-    o ? (
-      <p className="truncate text-[11px] font-semibold">{o.employee?.name || '—'}</p>
-    ) : (
-      <p className="text-[11px] text-muted-foreground/70">{t('sortingFloorPlan.vacantLabel')}</p>
-    )
+  const nameOrVacant = (o) => (o ? o.employee?.name || '—' : t('sortingFloorPlan.vacantLabel'))
   return (
     <button
       type="button"
       onClick={() => onSelectArea(areaId)}
-      className={cn(
-        'flex h-full flex-col justify-center gap-2 rounded-xl border-2 p-3 text-center transition-colors hover:bg-accent',
-        hasPeople ? 'bg-emerald-500/[0.08]' : 'bg-black/[.02] dark:bg-white/[.03]',
-      )}
+      className="flex w-full flex-col gap-1.5 self-start rounded-2xl border border-t-[3px] p-2.5 text-left transition-colors hover:bg-accent"
       style={{ borderColor: color }}
     >
-      <p className="font-bold text-muted-foreground">{lineNumber}</p>
-      <div className="grid grid-cols-2 gap-2">
+      <p className="text-xs font-extrabold tracking-[0.4px]">{lineNumber}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
         {slots.map((o, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: slots son posiciones fijas (4 puestos), nunca se reordenan
-          <div key={i} className="rounded-lg border border-dashed border-border/70 p-1.5">
-            {nameOrVacant(o)}
-          </div>
+          <p key={i} className="text-[11px] font-semibold text-muted-foreground">
+            {i + 1}. {nameOrVacant(o)}
+          </p>
         ))}
-      </div>
-      <div
-        className="mx-auto grid h-6 w-6 place-items-center rounded-md border border-dashed border-border/70 text-muted-foreground/70"
-        title={t('sortingFloorPlan.palletLabel')}
-      >
-        <Package className="h-3.5 w-3.5" />
       </div>
     </button>
   )

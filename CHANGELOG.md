@@ -1014,6 +1014,12 @@ para poder desplegar en el servidor privado (Coolify). Ver
   para fondo oscuro del sidebar, ya era transparente desde antes). `apple-touch-icon` se separa a
   su propio archivo (`centro-control-icon-apple.png`, misma imagen pero opaca) a propósito: iOS
   no maneja bien la transparencia en el ícono de "Agregar a inicio", la rellena de negro.
+- **"Línea de Sorting 1" se veía vertical, no horizontal** (a petición explícita del usuario tras
+  ver el plano en vivo, "la línea 1 no está en horizontal está en vertical"): el contenedor de
+  las 8 líneas es un grid de 8 columnas, y CSS Grid estira por default todos los elementos de una
+  fila a la misma altura -- la línea 1 quedaba tan alta como las 7 "V" aunque su contenido fuera
+  corto. Se rehace con el mismo estilo de franja delgada que "Conveyor de Sorting" (personas en
+  una sola fila, no en una tarjeta) y `self-start` para que no se estire a la altura de las V.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed
