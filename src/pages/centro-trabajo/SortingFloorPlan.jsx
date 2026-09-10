@@ -109,9 +109,31 @@ function SimpleAreaBox({ area, onSelectArea, className, style }) {
   )
 }
 
-// Una "V" real: 1 persona en cada uno de los 4 puntos (2 arriba, en las puntas de la V; 2 abajo,
-// en las puntas de la V invertida) -- a peticion explicita del usuario ("cada punto de extremo a
-// extremo lleva una persona"). occupants ya viene ordenado por checkInAt (repository.js).
+// Renderiza `slots` (personas o `undefined` = vacante) en una fila de 2 o 3 columnas -- extraido
+// para que VLineStation lo reutilice arriba y abajo con cualquier capacidad real (4 o 5, ver
+// comentario de VLineStation mas abajo).
+function OccupantRow({ slots, nameOrVacant }) {
+  return (
+    <div className={cn('grid w-full gap-1', slots.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+      {slots.map((o, i) => (
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: slots son posiciones fijas de la V (arriba/abajo), nunca se reordenan
+          key={i}
+          className={cn(
+            i < slots.length - 1 && 'border-r border-dashed border-border/70 pr-1',
+            i > 0 && 'pl-1',
+          )}
+        >
+          {nameOrVacant(o)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Una "V" real: 1 persona por punta (2 arriba, en las puntas de la V; 2 abajo, en las puntas de
+// la V invertida) -- a peticion explicita del usuario ("cada punto de extremo a extremo lleva una
+// persona"). occupants ya viene ordenado por checkInAt (repository.js).
 //
 // 2026-09-08 (septima ronda, a peticion explicita del usuario -- "ahi te falta poner que las
 // lineas sean por separado, son 7 lineas independientes, no solo una"): cada V es ahora su
@@ -119,9 +141,20 @@ function SimpleAreaBox({ area, onSelectArea, className, style }) {
 // puestos dentro de una unica area "SORT_LINEA" compartida. El boton ya no vive en el
 // contenedor exterior (que ahora es un simple agrupador visual): cada VLineStation es su propio
 // <button> clickeable hacia su propia area real.
-function VLineStation({ areaId, station, index, color, onSelectArea }) {
+//
+// `capacity`/`lineNumber` (2026-09-10, a peticion explicita del usuario viendo el plano en vivo
+// -- "las lineas en vertical son del 2 al 8... la numero 8 es de 5 personas"): antes `index+1`
+// asumia siempre 4 personas (2 arriba/2 abajo) fijas; ahora el numero mostrado y el reparto
+// arriba/abajo (ceil(capacity/2) arriba, resto abajo) son configurables por linea -- la que se
+// muestra como "8" reparte 3 arriba/2 abajo en vez de 2/2, sin tocar a las demas.
+function VLineStation({ areaId, station, lineNumber, capacity, color, onSelectArea }) {
   const { t } = useTranslation('centroTrabajo')
-  const [topLeft, topRight, bottomLeft, bottomRight] = station.occupants
+  const topCount = Math.ceil(capacity / 2)
+  const topSlots = Array.from({ length: topCount }, (_, i) => station.occupants[i])
+  const bottomSlots = Array.from(
+    { length: capacity - topCount },
+    (_, i) => station.occupants[topCount + i],
+  )
   const hasPeople = station.occupants.length > 0
   const nameOrVacant = (o) =>
     o ? (
@@ -139,11 +172,8 @@ function VLineStation({ areaId, station, index, color, onSelectArea }) {
       )}
       style={{ borderColor: color }}
     >
-      {/* Puntas de la V (arriba, abre hacia arriba) -- 1 persona por punta. */}
-      <div className="grid w-full grid-cols-2 gap-1">
-        <div className="border-r border-dashed border-border/70 pr-1">{nameOrVacant(topLeft)}</div>
-        <div className="pl-1">{nameOrVacant(topRight)}</div>
-      </div>
+      {/* Puntas de la V (arriba, abre hacia arriba). */}
+      <OccupantRow slots={topSlots} nameOrVacant={nameOrVacant} />
       {/* V + tramo vertical BIEN visible + V invertida "parada" (la punta hacia arriba, abre
           hacia abajo) -- a peticion explicita del usuario tras ver el primer intento ("no es v
           una linea vertical y otra v parada la punta de la v invertida"): el primer intento
@@ -174,17 +204,56 @@ function VLineStation({ areaId, station, index, color, onSelectArea }) {
         />
       </svg>
       {/* Puntas de la V invertida (abajo). */}
-      <div className="grid w-full grid-cols-2 gap-1">
-        <div className="border-r border-dashed border-border/70 pr-1">
-          {nameOrVacant(bottomLeft)}
-        </div>
-        <div className="pl-1">{nameOrVacant(bottomRight)}</div>
-      </div>
-      <p className="font-bold text-muted-foreground">{index + 1}</p>
+      <OccupantRow slots={bottomSlots} nameOrVacant={nameOrVacant} />
+      <p className="font-bold text-muted-foreground">{lineNumber}</p>
       {/* Pallet abajo de todo -- a peticion explicita del usuario ("el dibujo del pallet en vez
           de que este ahi arriba es abajo"). */}
       <div
         className="grid h-6 w-6 place-items-center rounded-md border border-dashed border-border/70 text-muted-foreground/70"
+        title={t('sortingFloorPlan.palletLabel')}
+      >
+        <Package className="h-3.5 w-3.5" />
+      </div>
+    </button>
+  )
+}
+
+// "Línea de Sorting 1" (2026-09-10, a peticion explicita del usuario viendo el plano en vivo --
+// "agregas una nueva linea la 1 que es en horizontal, la pones a lado derecho de la linea 8"):
+// misma info real que una V (nombre, personas reales via getAreaStaffing/
+// getLineWorkstationsWithOccupancy, numero de linea) pero en una franja horizontal -- una fila de
+// personas en vez de puntas arriba/abajo -- distinta a las otras 7, tal como pidio el usuario.
+function HorizontalLineStation({ areaId, station, lineNumber, capacity, color, onSelectArea }) {
+  const { t } = useTranslation('centroTrabajo')
+  const slots = Array.from({ length: capacity }, (_, i) => station.occupants[i])
+  const hasPeople = station.occupants.length > 0
+  const nameOrVacant = (o) =>
+    o ? (
+      <p className="truncate text-[11px] font-semibold">{o.employee?.name || '—'}</p>
+    ) : (
+      <p className="text-[11px] text-muted-foreground/70">{t('sortingFloorPlan.vacantLabel')}</p>
+    )
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectArea(areaId)}
+      className={cn(
+        'flex h-full flex-col justify-center gap-2 rounded-xl border-2 p-3 text-center transition-colors hover:bg-accent',
+        hasPeople ? 'bg-emerald-500/[0.08]' : 'bg-black/[.02] dark:bg-white/[.03]',
+      )}
+      style={{ borderColor: color }}
+    >
+      <p className="font-bold text-muted-foreground">{lineNumber}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {slots.map((o, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: slots son posiciones fijas (4 puestos), nunca se reordenan
+          <div key={i} className="rounded-lg border border-dashed border-border/70 p-1.5">
+            {nameOrVacant(o)}
+          </div>
+        ))}
+      </div>
+      <div
+        className="mx-auto grid h-6 w-6 place-items-center rounded-md border border-dashed border-border/70 text-muted-foreground/70"
         title={t('sortingFloorPlan.palletLabel')}
       >
         <Package className="h-3.5 w-3.5" />
@@ -232,16 +301,17 @@ export default function SortingFloorPlan({ onSelectArea }) {
   usePersonnelVersion()
   const [, setConfigVersion] = useState(0)
 
-  // Los puestos reales de SORT_LINEA1..7 (1 c/u) y SORT_CONVEYOR (2) viven en la BD (scripts/
-  // split-sort-linea-2026-09-08.mjs, scripts/seed-sorting-conveyor-2026-09-08.mjs), pero
-  // getWorkstationsForLine() solo los usa si ya estan en cache (lineStationConfig.js) -- mismo
-  // patron exacto que LineDetailDrawer.jsx al abrir una WC LINEA. Sin este fetch, cada uno cae
-  // en el generador JS generico (1 solo puesto "catch-all") porque ninguno tiene
+  // Los puestos reales de SORT_LINEA1..7 (1 c/u), SORT_LINEA8 (1, nueva 2026-09-10) y
+  // SORT_CONVEYOR (2) viven en la BD (scripts/split-sort-linea-2026-09-08.mjs, scripts/seed-
+  // sorting-conveyor-2026-09-08.mjs, scripts/rename-sorting-lines-add-linea1-2026-09-10.mjs),
+  // pero getWorkstationsForLine() solo los usa si ya estan en cache (lineStationConfig.js) --
+  // mismo patron exacto que LineDetailDrawer.jsx al abrir una WC LINEA. Sin este fetch, cada uno
+  // cae en el generador JS generico (1 solo puesto "catch-all") porque ninguno tiene
   // CUSTOM_STATION_PLANS propio.
   useEffect(() => {
     let cancelled = false
     Promise.all(
-      [...SORTING_LINE_IDS, 'SORT_CONVEYOR'].map((id) => fetchLineStationConfig(id)),
+      [...SORTING_LINE_IDS, 'SORT_LINEA8', 'SORT_CONVEYOR'].map((id) => fetchLineStationConfig(id)),
     ).then(() => {
       if (!cancelled) setConfigVersion((v) => v + 1)
     })
@@ -250,16 +320,29 @@ export default function SortingFloorPlan({ onSelectArea }) {
     }
   }, [])
 
-  // 2026-09-08 (septima ronda): 7 areas reales independientes en vez de 1 sola con 7 puestos
-  // adentro -- ver comentario de catalogSorting.js/VLineStation. El header sigue mostrando un
-  // total agregado (suma de las 7) para no perder la vista rapida de "cuanta gente en total".
-  const lineaRows = SORTING_LINE_IDS.map((id) => ({
+  // 2026-09-08 (septima ronda): 8 areas reales independientes (SORT_LINEA1..8) en vez de 1 sola
+  // con 7 puestos adentro -- ver comentario de catalogSorting.js/VLineStation. El header sigue
+  // mostrando un total agregado (suma de las 8) para no perder la vista rapida de "cuanta gente
+  // en total". `lineNumber` (2026-09-10): se muestra como 2..8 para las V (idx+2, ver
+  // catalogSorting.js) y como 1 para la nueva linea horizontal.
+  const lineaRows = SORTING_LINE_IDS.map((id, idx) => ({
     id,
+    lineNumber: idx + 2,
     staffing: getAreaStaffing(id),
     station: getLineWorkstationsWithOccupancy(id)[0] || { id, occupants: [] },
   }))
-  const lineaTotalReal = lineaRows.reduce((sum, r) => sum + r.staffing.real, 0)
-  const lineaTotalIdeal = lineaRows.reduce((sum, r) => sum + (r.staffing.ideal || 0), 0)
+  const linea1Row = {
+    id: 'SORT_LINEA8',
+    lineNumber: 1,
+    staffing: getAreaStaffing('SORT_LINEA8'),
+    station: getLineWorkstationsWithOccupancy('SORT_LINEA8')[0] || {
+      id: 'SORT_LINEA8',
+      occupants: [],
+    },
+  }
+  const allLineaRows = [...lineaRows, linea1Row]
+  const lineaTotalReal = allLineaRows.reduce((sum, r) => sum + r.staffing.real, 0)
+  const lineaTotalIdeal = allLineaRows.reduce((sum, r) => sum + (r.staffing.ideal || 0), 0)
   const lineaGroupColor = statusColor({
     ideal: lineaTotalIdeal,
     real: lineaTotalReal,
@@ -329,17 +412,29 @@ export default function SortingFloorPlan({ onSelectArea }) {
                 </p>
               </div>
 
-              <div className="grid flex-1 grid-cols-4 gap-3 sm:grid-cols-7">
-                {lineaRows.map((row, idx) => (
+              <div className="grid flex-1 grid-cols-4 gap-3 sm:grid-cols-8">
+                {lineaRows.map((row) => (
                   <VLineStation
                     key={row.id}
                     areaId={row.id}
                     station={row.station}
-                    index={idx}
+                    lineNumber={row.lineNumber}
+                    capacity={row.staffing.ideal || 4}
                     color={statusColor(row.staffing)}
                     onSelectArea={onSelectArea}
                   />
                 ))}
+                {/* "Línea de Sorting 1" (2026-09-10, a peticion explicita del usuario -- "agregas
+                    una nueva linea la 1 que es en horizontal, la pones a lado derecho de la
+                    linea 8"): a la derecha de las 7 V (que van del 2 al 8), en el mismo grid. */}
+                <HorizontalLineStation
+                  areaId={linea1Row.id}
+                  station={linea1Row.station}
+                  lineNumber={linea1Row.lineNumber}
+                  capacity={linea1Row.staffing.ideal || 4}
+                  color={statusColor(linea1Row.staffing)}
+                  onSelectArea={onSelectArea}
+                />
               </div>
             </div>
           </div>

@@ -13,11 +13,13 @@
    `idealHeadcount: null` en las areas simples (RCY/FRM/KITS/PNP/DMR-DML/DMA-DMT/Patines) es
    -- SORT_CONVEYOR SI tiene ideal real (2, mismo criterio que CONVEYOR_PRINCIPAL de FFT) --
    intencional (nunca inventar un ideal que el usuario no dio -- mismo criterio que INSUMOS/
-   CALIDAD en catalog.js, "Sin plantilla definida"). SORT_LINEA1..7 (septima ronda, ver comentario
-   en su propia definicion mas abajo) SI tienen ideal real: cada una es una V con 4 personas
-   (2 por extremo) -- 7 lineas independientes, kind:'linea', SI usan
-   LINE_FAMILY_AREA_IDS/LINE_FAMILY_WORK_CENTERS (a diferencia de la version anterior de un solo
-   SORT_LINEA con 7 puestos adentro). SORT_GERENTE (Gerente de Sorting) es un area de apoyo,
+   CALIDAD en catalog.js, "Sin plantilla definida"). SORT_LINEA1..8 (ids SORT_LINEA1..7 + el
+   nuevo SORT_LINEA8, ver comentario en su propia definicion mas abajo) SI tienen ideal real: 7
+   de las 8 son una V con 4 personas (2 por extremo); la que se muestra como "Línea de Sorting 8"
+   (id SORT_LINEA7) tiene 5; la que se muestra como "Línea de Sorting 1" (id SORT_LINEA8, nueva
+   2026-09-10) es horizontal, no una V, con 4 personas -- 8 lineas independientes, kind:'linea',
+   SI usan LINE_FAMILY_AREA_IDS/LINE_FAMILY_WORK_CENTERS (a diferencia de la version anterior de
+   un solo SORT_LINEA con 7 puestos adentro). SORT_GERENTE (Gerente de Sorting) es un area de apoyo,
    mismo criterio que GERENTE en catalog.js (FFT): idealHeadcount:1, isProduction:false. Las
    estaciones reales (capacity, nombre de cada puesto) se configuran despues en vivo desde
    "Configurar puestos" (LineDetailDrawer.jsx), mismo mecanismo ya usado por WC LINEA -- ver
@@ -59,8 +61,16 @@ export const SORTING_WORK_CENTERS = [
   // SORTING_LINE_FAMILY_AREA_IDS/SORTING_LINE_FAMILY_WORK_CENTERS mas abajo. Cada una tiene
   // exactamente 1 Workstation real capacity:4 en la BD (ver scripts/split-sort-linea-2026-09-08.mjs,
   // que reemplaza el sembrado anterior de 1 area con 7 puestos).
+  //
+  // 2026-09-10 (a peticion explicita del usuario, viendo el plano en vivo -- "agregas una nueva
+  // linea la 1 que es en horizontal, la pones a lado derecho de la linea 8"): SORT_LINEA1..7 (ids
+  // SIN cambiar para no perder su historial real de asignaciones/demoras ya capturado) se
+  // renumeraron de 2 a 8 -- SORT_LINEA8 es la nueva "Linea 1", horizontal (distinta forma visual,
+  // ver SortingFloorPlan.jsx), 4 personas igual que las demas (confirmado explicitamente por el
+  // usuario, no una V como las otras 7). Va primero en este array para que
+  // SORTING_LINE_FAMILY_WORK_CENTERS itere en orden de numero real (1,2,3...8), no de id.
   {
-    id: 'SORT_LINEA1',
+    id: 'SORT_LINEA8',
     name: 'Línea de Sorting 1',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -69,7 +79,7 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA2',
+    id: 'SORT_LINEA1',
     name: 'Línea de Sorting 2',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -78,7 +88,7 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA3',
+    id: 'SORT_LINEA2',
     name: 'Línea de Sorting 3',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -87,7 +97,7 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA4',
+    id: 'SORT_LINEA3',
     name: 'Línea de Sorting 4',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -96,7 +106,7 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA5',
+    id: 'SORT_LINEA4',
     name: 'Línea de Sorting 5',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -105,7 +115,7 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA6',
+    id: 'SORT_LINEA5',
     name: 'Línea de Sorting 6',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
@@ -114,13 +124,25 @@ export const SORTING_WORK_CENTERS = [
     idealHeadcount: 4,
   },
   {
-    id: 'SORT_LINEA7',
+    id: 'SORT_LINEA6',
     name: 'Línea de Sorting 7',
     kind: 'linea',
     type: 'PRODUCTION_LINE',
     isProduction: true,
     dailyTarget: null,
     idealHeadcount: 4,
+  },
+  {
+    id: 'SORT_LINEA7',
+    name: 'Línea de Sorting 8',
+    kind: 'linea',
+    type: 'PRODUCTION_LINE',
+    isProduction: true,
+    dailyTarget: null,
+    // 2026-09-10 (a peticion explicita del usuario, viendo el plano en vivo -- "la numero 8 es de
+    // 5 personas"): unica de las 8 lineas con capacidad real de 5 en vez de 4 -- no se inventa,
+    // es lo que el usuario confirmo para esta linea especifica.
+    idealHeadcount: 5,
   },
   {
     id: 'SORT_RCY',

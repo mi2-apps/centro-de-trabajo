@@ -88,6 +88,7 @@ export const RELEASES = [
           'changedMinPasswordLength',
           'changedOrganigramaV2',
           'changedOrganigramaV3',
+          'changedSortingLinesRenumbered',
         ],
       },
       {

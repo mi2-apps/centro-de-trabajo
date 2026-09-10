@@ -570,6 +570,20 @@ para poder desplegar en el servidor privado (Coolify). Ver
      muestra "Juan Sillas", en el mismo estilo (Georgia Bold, mismo tamaño
      medido en píxeles contra "Juan Bocanegra") y posición que los demás
      nombres a la izquierda de su círculo.
+- **Líneas de Sorting: 8 en vez de 7**, a petición explícita del usuario viendo el plano en vivo
+  ("las líneas en vertical son del 2 al 8... la número 8 es de 5 personas... agregas una nueva
+  línea la 1 que es en horizontal, la pones a lado derecho de la línea 8"): las 7 "V" que ya
+  existían (`SORT_LINEA1..7`, ids sin cambiar para no perder su historial real de asignaciones/
+  demoras ya capturado) se renumeraron de "1-7" a "2-8" -- solo el nombre/número mostrado, nunca
+  el id. La que ahora se llama "Línea de Sorting 8" tiene 5 personas reales en vez de 4 (única
+  entre las 8, confirmado explícitamente por el usuario); `VLineStation`
+  (`SortingFloorPlan.jsx`) ya reparte arriba/abajo según la capacidad real de cada línea (2/2 o
+  3/2) en vez de asumir siempre 4. Se agrega `SORT_LINEA8`, la nueva "Línea de Sorting 1": misma
+  info real (personal asignado, capacidad 4) que las demás pero horizontal, no una V -- nuevo
+  componente `HorizontalLineStation`, colocado a la derecha de la línea 8 en el mismo plano.
+  Migración de datos real aplicada a producción
+  (`scripts/rename-sorting-lines-add-linea1-2026-09-10.mjs`): renombra los `WorkArea`/
+  `Workstation` ya existentes y crea los nuevos para la línea 1.
 
 ### Fixed
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices
