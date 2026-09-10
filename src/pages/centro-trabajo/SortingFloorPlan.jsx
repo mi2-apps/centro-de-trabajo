@@ -221,38 +221,58 @@ function VLineStation({ areaId, station, lineNumber, capacity, color, onSelectAr
 // "Línea de Sorting 1" (2026-09-10, a peticion explicita del usuario viendo el plano en vivo --
 // "agregas una nueva linea la 1 que es en horizontal, la pones a lado derecho de la linea 8"):
 // misma info real que una V (nombre, personas reales via getAreaStaffing/
-// getLineWorkstationsWithOccupancy, numero de linea) pero en una franja horizontal -- ANCHA y
-// BAJA, personas en una sola fila -- nunca una tarjeta alta como las V. Mismo estilo visual
-// exacto que SortingConveyorBar (franja delgada, border-t marcado).
+// getLineWorkstationsWithOccupancy, numero de linea), en una fila horizontal de personas en vez
+// de puntas arriba/abajo -- esa es la UNICA diferencia real con una V.
 //
-// 2026-09-10, TERCERA pasada (a peticion explicita del usuario, dos veces seguidas -- "sigue en
-// vertical... debes de poner una que esta en vertical a horizontal"): `self-start` (segunda
-// pasada) evitaba que se estirara a la altura de las V, pero el contenedor solo le daba 1/8 del
-// ancho (la misma columna angosta que una V) -- con tan poco ancho, las 4 personas igual se
-// apilaban en 4 lineas y SEGUIA viendose vertical (angosta y con varias lineas), sin importar la
-// altura. El fix real es de ANCHO, no de altura: el grid pasa de 8 a 9 columnas
-// (`sm:grid-cols-9`), las 7 V siguen ocupando 1 columna cada una (14 columnas totales entre las
-// dos partes... no, 7+2=9) y esta franja ocupa 2 columnas (`sm:col-span-2`) -- el doble de
-// ancho que una V, suficiente para que las 4 personas quepan en una sola fila de verdad.
+// 2026-09-10, CUARTA pasada (a peticion explicita del usuario tras verla en vivo 3 veces --
+// "ya esta en horizontal pero no tiene el diseño como las otras 7... quiero el mismo diseño y
+// que la card este en medio ahorita esta muy arriba"):
+// 1) Mismo diseño exacto que VLineStation (border-2 rounded-xl, mismo bg segun hasPeople, mismo
+//    pallet abajo) en vez del estilo de franja delgada de SortingConveyorBar -- antes se veian
+//    visualmente distintas (una "tarjeta" gruesa vs. una "franja" delgada), ahora son la misma
+//    tarjeta, solo con las personas en una fila en vez de una V.
+// 2) `self-center` (antes `self-start`, que la dejaba pegada arriba de su columna alta): centrada
+//    verticalmente dentro de la fila del grid, igual que se veria si compartiera la altura real
+//    de las V pero sin estirarse a fuerza.
+// Sigue ocupando 2 columnas (`sm:col-span-2`, ver comentario de mas arriba en el JSX) -- ese fix
+// de ancho ya funciono, no se toca.
 function HorizontalLineStation({ areaId, station, lineNumber, capacity, color, onSelectArea }) {
   const { t } = useTranslation('centroTrabajo')
   const slots = Array.from({ length: capacity }, (_, i) => station.occupants[i])
-  const nameOrVacant = (o) => (o ? o.employee?.name || '—' : t('sortingFloorPlan.vacantLabel'))
+  const hasPeople = station.occupants.length > 0
+  const nameOrVacant = (o) =>
+    o ? (
+      <p className="truncate font-semibold">{o.employee?.name || '—'}</p>
+    ) : (
+      <p className="text-muted-foreground/70">{t('sortingFloorPlan.vacantLabel')}</p>
+    )
   return (
     <button
       type="button"
       onClick={() => onSelectArea(areaId)}
-      className="flex w-full flex-col gap-1.5 self-start rounded-2xl border border-t-[3px] p-2.5 text-left transition-colors hover:bg-accent sm:col-span-2"
+      className={cn(
+        'flex flex-col items-center gap-1 self-center rounded-xl border-2 p-2.5 text-center text-[12px] transition-colors hover:bg-accent sm:col-span-2',
+        hasPeople ? 'bg-emerald-500/[0.08]' : 'bg-black/[.02] dark:bg-white/[.03]',
+      )}
       style={{ borderColor: color }}
     >
-      <p className="text-xs font-extrabold tracking-[0.4px]">{lineNumber}</p>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
+      <div className="grid w-full grid-cols-4 gap-1">
         {slots.map((o, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: slots son posiciones fijas (4 puestos), nunca se reordenan
-          <p key={i} className="text-[11px] font-semibold text-muted-foreground">
-            {i + 1}. {nameOrVacant(o)}
-          </p>
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: slots son posiciones fijas (4 puestos), nunca se reordenan
+            key={i}
+            className={cn(i < slots.length - 1 && 'border-r border-dashed border-border/70 pr-1')}
+          >
+            {nameOrVacant(o)}
+          </div>
         ))}
+      </div>
+      <p className="font-bold text-muted-foreground">{lineNumber}</p>
+      <div
+        className="grid h-6 w-6 place-items-center rounded-md border border-dashed border-border/70 text-muted-foreground/70"
+        title={t('sortingFloorPlan.palletLabel')}
+      >
+        <Package className="h-3.5 w-3.5" />
       </div>
     </button>
   )

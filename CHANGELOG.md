@@ -1028,6 +1028,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   ancho: el grid pasa de 8 a 9 columnas (`sm:grid-cols-9`), las 7 "V" siguen ocupando 1 columna
   cada una y esta franja ahora ocupa 2 (`sm:col-span-2`) -- el doble de ancho, suficiente para
   que las 4 personas quepan en una fila de verdad.
+- **"Línea de Sorting 1" ya horizontal, pero con diseño distinto a las otras 7 y pegada arriba**
+  (a petición explícita del usuario tras confirmar que el fix de ancho funcionó, "ya está en
+  horizontal pero no tiene el diseño como las otras 7, quiero el mismo diseño y que la card esté
+  en medio, ahorita está muy arriba"): se reemplaza el estilo de franja delgada (heredado de
+  "Conveyor de Sorting") por el mismo diseño exacto de las 7 "V" (tarjeta `border-2 rounded-xl`,
+  mismo fondo según si tiene gente asignada, mismo ícono de tarima abajo) -- la única diferencia
+  real ahora es que las 4 personas se acomodan en una fila en vez de una V. Se cambia también
+  `self-start` por `self-center` para que quede centrada verticalmente en su celda del grid en
+  vez de pegada arriba.
 
 ### Pending (bloqueado en credenciales externas — ver checklist entregado al usuario)
 - Ninguno -- SSO de Nextcloud confirmado funcionando en vivo (ver Fixed
