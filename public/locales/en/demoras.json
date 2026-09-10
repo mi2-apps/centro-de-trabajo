@@ -40,6 +40,7 @@
   "areaGroupAccesorios": "Accessories",
   "areaGroupMidea": "Midea",
   "areaGroupPaletizado": "Palletizing",
+  "areaGroupSortLines": "Sorting lines",
   "shift.MATUTINO": "Day",
   "shift.TIEMPO_EXTRA": "Overtime",
   "shift.NOCHE": "Night",
@@ -105,6 +106,18 @@
     "calidad": "Quality",
     "calificaciones-distintas": "Different gradings",
     "duplicado": "Duplicate",
-    "modelo": "Model"
+    "modelo": "Model",
+    "sort-falta-material-virgen": "Missing virgin material (station)",
+    "sort-falla-sistema": "System failure",
+    "sort-internet-lento": "Slow internet",
+    "sort-falta-falla-escaner": "Scanner missing/failing",
+    "sort-falta-falla-impresora": "Printer missing/failing",
+    "sort-falta-rollo-etiqueta": "Missing label roll",
+    "sort-falta-lpn-virgen": "Missing virgin LPN",
+    "sort-conveyor-saturado": "Conveyor saturated",
+    "sort-falta-personal": "Missing staff",
+    "sort-juntas-platicas": "Meetings/talks",
+    "sort-reclasificacion": "Reclassification",
+    "sort-wc": "Restroom"
   }
 }

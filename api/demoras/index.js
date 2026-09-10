@@ -1,7 +1,7 @@
 // Modulo Demoras (2026-09-04, a peticion explicita del usuario -- catalogo real de causas de
 // tiempo muerto + "esto debe de hacer Registro de demora"). Ver src/data/demoras/catalog.js
-// (DOWNTIME_REASONS, UNICA fuente de las causas validas) y server-lib/db/schema.js
-// (DowntimeRecord, migracion drizzle/0008_add_downtime_record.sql).
+// (FFT_DOWNTIME_REASONS/SORTING_DOWNTIME_REASONS, UNICA fuente de las causas validas) y
+// server-lib/db/schema.js (DowntimeRecord, migracion drizzle/0008_add_downtime_record.sql).
 //
 // NOTA DE ALCANCE (a peticion explicita del usuario, tras confirmar que la clasificacion real de
 // TVs vive en SmartControl/BinManager -- sistema externo, solo lectura desde este repo): este
@@ -11,18 +11,40 @@
 import { and, desc, eq, gte, lt } from 'drizzle-orm'
 import { requireAuth } from '../../server-lib/auth.js'
 import { db, downtimeReason, downtimeRecord, user } from '../../server-lib/db/client.js'
-import { parseDateOnly } from '../../server-lib/personnel.js'
 import { canUserAccessModule } from '../../server-lib/permissionService.js'
-import { DOWNTIME_REASON_KEYS } from '../../src/data/demoras/catalog.js'
+import { parseDateOnly } from '../../server-lib/personnel.js'
+import {
+  FFT_DOWNTIME_REASON_KEYS,
+  SORTING_DOWNTIME_REASON_KEYS,
+} from '../../src/data/demoras/catalog.js'
 
-// reasonKey valido = una de las 15 causas estaticas (catalog.js) O una causa dinamica ACTIVA
-// agregada despues por un ADMINISTRADOR (ver api/demoras/reasons/*.js, 2026-09-08).
-async function isValidReasonKey(reasonKey) {
-  if (DOWNTIME_REASON_KEYS.has(reasonKey)) return true
+// 2026-09-10 (a peticion explicita del usuario, "son dos areas independientes"): duplicado a
+// proposito en vez de importar isSortingAreaId de src/data/production/personnelByArea.js -- ese
+// archivo importa (transitivamente) production/areaGroup.js, que lee localStorage al cargar el
+// modulo; eso no existe en un entorno serverless y tumbaria esta ruta. Mismo criterio ya usado en
+// otros lados de este repo: cada endpoint es autosuficiente, sin compartir helpers cliente/server.
+function isSortingAreaId(areaId) {
+  return typeof areaId === 'string' && areaId.startsWith('SORT_')
+}
+
+// reasonKey valido = una de las causas estaticas del area real (FFT o Sorting segun el prefijo
+// SORT_ del areaId, catalog.js) O una causa dinamica ACTIVA del mismo grupo, agregada despues por
+// un ADMINISTRADOR (ver api/demoras/reasons/*.js, 2026-09-08; areaGroup por causa, 2026-09-10).
+async function isValidReasonKey(reasonKey, areaId) {
+  const areaGroup = isSortingAreaId(areaId) ? 'SORTING' : 'FFT'
+  const staticKeys =
+    areaGroup === 'SORTING' ? SORTING_DOWNTIME_REASON_KEYS : FFT_DOWNTIME_REASON_KEYS
+  if (staticKeys.has(reasonKey)) return true
   const [row] = await db
     .select({ id: downtimeReason.id })
     .from(downtimeReason)
-    .where(and(eq(downtimeReason.code, reasonKey), eq(downtimeReason.active, true)))
+    .where(
+      and(
+        eq(downtimeReason.code, reasonKey),
+        eq(downtimeReason.active, true),
+        eq(downtimeReason.areaGroup, areaGroup),
+      ),
+    )
     .limit(1)
   return Boolean(row)
 }
@@ -75,7 +97,7 @@ async function handlePost(req, res) {
   if (!areaId || typeof areaId !== 'string') {
     return res.status(400).json({ error: 'Falta areaId.' })
   }
-  if (!reasonKey || !(await isValidReasonKey(reasonKey))) {
+  if (!reasonKey || !(await isValidReasonKey(reasonKey, areaId))) {
     return res.status(400).json({ error: 'Causa de demora invalida.' })
   }
   const duration = Number(durationMinutes)

@@ -56,7 +56,11 @@ export const DATA_DICTIONARY = [
         'String?',
         'lleno cuando el origen es login local con un número no registrado (api/auth/login.js, code NOT_REGISTERED)',
       ],
-      ['name', 'String?', 'Nextcloud lo manda solo; un número de empleado no -- el admin lo escribe al aprobar'],
+      [
+        'name',
+        'String?',
+        'Nextcloud lo manda solo; un número de empleado no -- el admin lo escribe al aprobar',
+      ],
       ['note', 'String?', 'motivo opcional, solo en el flujo SSO'],
       ['status', 'AccessRequestStatus', 'PENDING | APPROVED | DENIED'],
       ['decidedByUserId', 'String?', ''],
@@ -270,7 +274,7 @@ export const DATA_DICTIONARY = [
       [
         'reasonKey',
         'String',
-        'una de las 15 causas estáticas de src/data/demoras/catalog.js (DOWNTIME_REASONS) O el `code` de una fila activa en DowntimeReason (2026-09-08) -- texto libre, sin FK real a ninguna de las dos tablas',
+        'una de las causas estáticas de src/data/demoras/catalog.js (FFT_DOWNTIME_REASONS o SORTING_DOWNTIME_REASONS, según el prefijo SORT_ del areaId) O el `code` de una fila activa en DowntimeReason con el mismo areaGroup (2026-09-08, +areaGroup 2026-09-10) -- texto libre, sin FK real a ninguna de las dos tablas',
       ],
       ['durationMinutes', 'Int', ''],
       [
@@ -285,8 +289,21 @@ export const DATA_DICTIONARY = [
     model: 'DowntimeReason',
     purposeKey: 'developerManualData.dataDictionary_DowntimeReason_purpose',
     fields: [
-      ['name / code', 'String / String', 'code es el slug de name, único; nunca clave de traducción -- se muestra igual en es-MX/en/zh-CN'],
-      ['active / sortOrder', 'Boolean / Int', 'soft-delete + orden manual, igual que HourlyProductionDowntimeCause'],
+      [
+        'name / code',
+        'String / String',
+        'code es el slug de name, único; nunca clave de traducción -- se muestra igual en es-MX/en/zh-CN',
+      ],
+      [
+        'areaGroup',
+        'String',
+        "'FFT' | 'SORTING' (default 'FFT', migración 0016, 2026-09-10) -- cada área tiene su propio catálogo, nunca compartido",
+      ],
+      [
+        'active / sortOrder',
+        'Boolean / Int',
+        'soft-delete + orden manual, igual que HourlyProductionDowntimeCause',
+      ],
     ],
   },
   {

@@ -27,8 +27,9 @@ import {
 import { cn } from '@/lib/utils'
 import {
   DELAY_LOG_THRESHOLD_MINUTES,
-  DOWNTIME_REASONS,
+  FFT_DOWNTIME_REASONS,
   requiresFormalLog,
+  SORTING_DOWNTIME_REASONS,
 } from '../../data/demoras/catalog'
 import {
   getCurrentShift,
@@ -36,6 +37,9 @@ import {
   OFFICIAL_SHIFTS,
   workCenterById,
 } from '../../data/production/catalog'
+import { SORTING_LINE_FAMILY_WORK_CENTERS } from '../../data/production/catalogSorting'
+import { isSortingAreaId } from '../../data/production/personnelByArea'
+import { useAreaGroup } from '../../data/production/useAreaGroup'
 import { useAuth } from '../../state/auth'
 import { EmptyState } from '../../ui'
 import DemorasCausesAdmin from './DemorasCausesAdmin'
@@ -49,13 +53,32 @@ import DemorasCausesAdmin from './DemorasCausesAdmin'
    ALCANCE (confirmado explicitamente con el usuario tras encontrar que la clasificacion real de
    TVs vive en SmartControl/BinManager, sistema externo de solo lectura desde este repo): esta
    pantalla SOLO registra/lista demoras -- no existe un bloqueo tecnico de "no dejar clasificar la
-   siguiente TV", eso queda como politica de proceso del supervisor. */
-const AREA_GROUPS = [
+   siguiente TV", eso queda como politica de proceso del supervisor.
+
+   2026-09-10 (a peticion explicita del usuario, "nuevo modulo asi... eso va para el area de
+   sorting"): el modulo ahora tambien funciona para Sorting, con su propia lista de areas
+   (SORTING_AREA_GROUPS) y su propio catalogo de causas (SORTING_DOWNTIME_REASONS, catalog.js) --
+   nunca comparte nada con FFT, mismo criterio de areas independientes de toda la app
+   (useAreaGroup()). Los grupos de Sorting que no son "Lineas" reusan el nombre real del area
+   (workCenterById) en vez de un labelKey nuevo por cada uno -- son codigos (RCY/FRM/KITS/...),
+   no frases que necesiten traduccion. */
+const FFT_AREA_GROUPS = [
   { key: 'LINEAS', labelKey: 'areaGroupLines' },
   { key: 'INSUMOS', labelKey: 'areaGroupInsumos', areaId: 'INSUMOS' },
   { key: 'ACCESORIOS', labelKey: 'areaGroupAccesorios', areaId: 'ACCESORIOS' },
   { key: 'MIDEA', labelKey: 'areaGroupMidea', areaId: 'HIGH_VALUE' },
   { key: 'PALETIZADO', labelKey: 'areaGroupPaletizado', areaId: 'PALETIZADO' },
+]
+
+const SORTING_AREA_GROUPS = [
+  { key: 'SORT_LINEAS', labelKey: 'areaGroupSortLines' },
+  { key: 'SORT_CONVEYOR', areaId: 'SORT_CONVEYOR' },
+  { key: 'SORT_RCY', areaId: 'SORT_RCY' },
+  { key: 'SORT_FRM', areaId: 'SORT_FRM' },
+  { key: 'SORT_KITS', areaId: 'SORT_KITS' },
+  { key: 'SORT_PNP', areaId: 'SORT_PNP' },
+  { key: 'SORT_DMR_DML', areaId: 'SORT_DMR_DML' },
+  { key: 'SORT_DMA_DMT', areaId: 'SORT_DMA_DMT' },
 ]
 
 // 2026-09-07 (a peticion explicita del usuario, "el de turnos se ponga en automatico con el
@@ -84,27 +107,32 @@ function makeEmptyForm(persisted) {
   }
 }
 
-// Memoria de "Area/Linea" por usuario + turno (2026-09-08, a peticion explicita del usuario):
-// nunca en el servidor -- es una comodidad de captura, no un dato de negocio (mismo criterio ya
-// usado en este proyecto para tema/idioma en localStorage, ver App.jsx/i18n.js). Se guarda por
-// userId (nunca se hereda la seleccion de otra persona en un dispositivo compartido) + shift.id
-// (expira solo -- al cruzar a un turno nuevo, no hay seleccion guardada para ese turno todavia).
+// Memoria de "Area/Linea" por usuario + turno + area activa (2026-09-08, a peticion explicita del
+// usuario; +areaGroup 2026-09-10): nunca en el servidor -- es una comodidad de captura, no un
+// dato de negocio (mismo criterio ya usado en este proyecto para tema/idioma en localStorage, ver
+// App.jsx/i18n.js). Se guarda por userId (nunca se hereda la seleccion de otra persona en un
+// dispositivo compartido) + shift.id (expira solo -- al cruzar a un turno nuevo, no hay seleccion
+// guardada para ese turno todavia) + areaGroup (FFT/SORTING nunca comparten la ultima
+// linea/area recordada -- son grupos de valores completamente distintos).
 const LINE_MEMORY_PREFIX = 'demoras:lastLine'
 
-function readPersistedLineSelection(userId, shiftId) {
+function readPersistedLineSelection(userId, shiftId, areaGroup) {
   if (!userId || !shiftId) return null
   try {
-    const raw = localStorage.getItem(`${LINE_MEMORY_PREFIX}:${userId}:${shiftId}`)
+    const raw = localStorage.getItem(`${LINE_MEMORY_PREFIX}:${userId}:${shiftId}:${areaGroup}`)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-function writePersistedLineSelection(userId, shiftId, selection) {
+function writePersistedLineSelection(userId, shiftId, areaGroup, selection) {
   if (!userId || !shiftId) return
   try {
-    localStorage.setItem(`${LINE_MEMORY_PREFIX}:${userId}:${shiftId}`, JSON.stringify(selection))
+    localStorage.setItem(
+      `${LINE_MEMORY_PREFIX}:${userId}:${shiftId}:${areaGroup}`,
+      JSON.stringify(selection),
+    )
   } catch {}
 }
 
@@ -114,19 +142,28 @@ function shiftDisplayLabel(t, raw) {
   return official ? t(`shift.${official.id}`) : raw
 }
 
-// Resuelve el label a mostrar para un reasonKey, sea una de las 15 causas estaticas (traducidas
-// via reasons.KEY) o una causa dinamica agregada por un ADMINISTRADOR (2026-09-08) -- estas
-// ultimas se guardan ya en texto real, nunca como clave de traduccion (ver DemorasCausesAdmin.jsx
-// y api/demoras/reasons/*.js), asi que se muestran tal cual, igual en los 3 idiomas.
+// Resuelve el label a mostrar para un reasonKey, sea una causa estatica (FFT o Sorting,
+// traducidas via reasons.KEY) o una causa dinamica agregada por un ADMINISTRADOR (2026-09-08) --
+// estas ultimas se guardan ya en texto real, nunca como clave de traduccion (ver
+// DemorasCausesAdmin.jsx y api/demoras/reasons/*.js), asi que se muestran tal cual, igual en los
+// 3 idiomas. Se revisan ambas listas estaticas (no solo la del area activa): el historial puede
+// mostrar registros ya filtrados de cualquiera de los 2 grupos.
 function reasonLabel(t, key, dynamicReasonsByCode) {
-  if (DOWNTIME_REASONS.some((r) => r.key === key)) return t(`reasons.${key}`)
+  if (FFT_DOWNTIME_REASONS.some((r) => r.key === key)) return t(`reasons.${key}`)
+  if (SORTING_DOWNTIME_REASONS.some((r) => r.key === key)) return t(`reasons.${key}`)
   return dynamicReasonsByCode.get(key)?.name || key
 }
 
 export default function DemorasPage() {
   const { t } = useTranslation('demoras')
   const { user } = useAuth()
+  const areaGroup = useAreaGroup()
   const isAdmin = user?.role === 'ADMINISTRADOR'
+  const AREA_GROUPS = areaGroup === 'SORTING' ? SORTING_AREA_GROUPS : FFT_AREA_GROUPS
+  const DOWNTIME_REASONS = areaGroup === 'SORTING' ? SORTING_DOWNTIME_REASONS : FFT_DOWNTIME_REASONS
+  const LINE_OPTIONS =
+    areaGroup === 'SORTING' ? SORTING_LINE_FAMILY_WORK_CENTERS : LINE_FAMILY_WORK_CENTERS
+  const LINEAS_GROUP_KEY = areaGroup === 'SORTING' ? 'SORT_LINEAS' : 'LINEAS'
   // 2026-09-04 (a peticion explicita del usuario, viendo la pantalla en vivo -- "a los de rol de
   // lider solo les debe de salir ese cuadro y ya"): LIDER solo ve el formulario de registro, sin
   // el historial de "Registros recientes" -- ni siquiera se pide la lista al servidor para ese
@@ -134,7 +171,7 @@ export default function DemorasPage() {
   const showHistory = user?.role !== 'LIDER'
   const [showCausesAdmin, setShowCausesAdmin] = useState(false)
   const [form, setForm] = useState(() =>
-    makeEmptyForm(readPersistedLineSelection(user?.id, getCurrentShift().id)),
+    makeEmptyForm(readPersistedLineSelection(user?.id, getCurrentShift().id, areaGroup)),
   )
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -149,6 +186,10 @@ export default function DemorasPage() {
   const [dateFrom, setDateFrom] = useState(dayjs().format('YYYY-MM-DD'))
   const [dateTo, setDateTo] = useState(dayjs().format('YYYY-MM-DD'))
 
+  // 2026-09-10 (a peticion explicita del usuario, "son dos areas independientes"): el endpoint no
+  // filtra por area (trae FFT y Sorting juntos), asi que se filtra aqui por el grupo activo antes
+  // de mostrar/exportar nada -- mismo criterio ya aplicado hoy en el Dashboard
+  // (getShiftDistribution/movementsToday, dashboardMetrics.js).
   const loadRecords = useCallback(async () => {
     setLoadingRecords(true)
     try {
@@ -157,11 +198,14 @@ export default function DemorasPage() {
       if (dateTo) params.set('dateTo', dateTo)
       const res = await fetch(`/api/demoras?${params}`, { credentials: 'include' })
       const data = await res.json().catch(() => null)
-      setRecords(data?.records || [])
+      const rows = (data?.records || []).filter(
+        (r) => isSortingAreaId(r.areaId) === (areaGroup === 'SORTING'),
+      )
+      setRecords(rows)
     } finally {
       setLoadingRecords(false)
     }
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, areaGroup])
 
   // Agrupado por dia calendario (2026-09-09, a peticion explicita del usuario -- "organiza bien
   // el historial, estructuralo bien"): el servidor ya manda los registros ordenados desc por
@@ -185,11 +229,15 @@ export default function DemorasPage() {
   // includeInactive=1 (2026-09-08): el Select de captura filtra .active localmente mas abajo,
   // pero el historial necesita poder resolver el nombre real de una causa YA desactivada (el
   // reasonKey de un registro viejo no desaparece solo porque el admin la desactivo despues).
+  // areaGroup (2026-09-10): las causas dinamicas tambien son propias de cada area, ver migracion
+  // 0016/api/demoras/reasons/index.js.
   const loadDynamicReasons = useCallback(async () => {
-    const res = await fetch('/api/demoras/reasons?includeInactive=1', { credentials: 'include' })
+    const res = await fetch(`/api/demoras/reasons?includeInactive=1&areaGroup=${areaGroup}`, {
+      credentials: 'include',
+    })
     const data = await res.json().catch(() => null)
     setDynamicReasons(data?.reasons || [])
-  }, [])
+  }, [areaGroup])
 
   useEffect(() => {
     if (showHistory) loadRecords()
@@ -198,6 +246,14 @@ export default function DemorasPage() {
   useEffect(() => {
     loadDynamicReasons()
   }, [loadDynamicReasons])
+
+  // 2026-09-10: al cambiar el toggle FFT/Sorting, cualquier Area/Linea/causa ya elegida en el
+  // formulario deja de ser valida (son catalogos completamente distintos) -- se resiembra desde
+  // la memoria del area nueva (normalmente vacia la primera vez) en vez de arrastrar un areaId de
+  // un grupo al otro.
+  useEffect(() => {
+    setForm(makeEmptyForm(readPersistedLineSelection(user?.id, getCurrentShift().id, areaGroup)))
+  }, [areaGroup, user?.id])
 
   const dynamicReasonsByCode = new Map(dynamicReasons.map((r) => [r.code, r]))
 
@@ -231,7 +287,7 @@ export default function DemorasPage() {
     const group = AREA_GROUPS.find((g) => g.key === groupKey)
     setForm((prev) => {
       const next = { ...prev, groupKey, lineId: '', areaId: group?.areaId || '' }
-      writePersistedLineSelection(user?.id, next.shift, {
+      writePersistedLineSelection(user?.id, next.shift, areaGroup, {
         groupKey: next.groupKey,
         lineId: next.lineId,
         areaId: next.areaId,
@@ -243,7 +299,7 @@ export default function DemorasPage() {
   function handleLineChange(lineId) {
     setForm((prev) => {
       const next = { ...prev, lineId, areaId: lineId }
-      writePersistedLineSelection(user?.id, next.shift, {
+      writePersistedLineSelection(user?.id, next.shift, areaGroup, {
         groupKey: next.groupKey,
         lineId: next.lineId,
         areaId: next.areaId,
@@ -284,7 +340,7 @@ export default function DemorasPage() {
       if (currentShiftId === form.shift) {
         setForm((prev) => ({ ...prev, reasonKey: '', durationMinutes: '', notes: '' }))
       } else {
-        setForm(makeEmptyForm(readPersistedLineSelection(user?.id, currentShiftId)))
+        setForm(makeEmptyForm(readPersistedLineSelection(user?.id, currentShiftId, areaGroup)))
       }
       await loadRecords()
     } catch (err) {
@@ -300,6 +356,7 @@ export default function DemorasPage() {
   if (showCausesAdmin) {
     return (
       <DemorasCausesAdmin
+        areaGroup={areaGroup}
         onBack={() => {
           setShowCausesAdmin(false)
           loadDynamicReasons()
@@ -344,14 +401,14 @@ export default function DemorasPage() {
                 <SelectContent>
                   {AREA_GROUPS.map((g) => (
                     <SelectItem key={g.key} value={g.key}>
-                      {t(g.labelKey)}
+                      {g.labelKey ? t(g.labelKey) : workCenterById(g.areaId)?.name || g.areaId}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {form.groupKey === 'LINEAS' && (
+            {form.groupKey === LINEAS_GROUP_KEY && (
               <div>
                 <Label className="mb-1.5 block text-xs">{t('fieldLine')}</Label>
                 <Select value={form.lineId} onValueChange={handleLineChange}>
@@ -359,7 +416,7 @@ export default function DemorasPage() {
                     <SelectValue placeholder={t('fieldLinePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {LINE_FAMILY_WORK_CENTERS.map((w) => (
+                    {LINE_OPTIONS.map((w) => (
                       <SelectItem key={w.id} value={w.id}>
                         {workCenterById(w.id).name}
                       </SelectItem>

@@ -40,6 +40,7 @@
   "areaGroupAccesorios": "Accesorios",
   "areaGroupMidea": "Midea",
   "areaGroupPaletizado": "Paletizado",
+  "areaGroupSortLines": "Líneas de Sorting",
   "shift.MATUTINO": "Matutino",
   "shift.TIEMPO_EXTRA": "Tiempo extra",
   "shift.NOCHE": "Noche",
@@ -105,6 +106,18 @@
     "calidad": "Calidad",
     "calificaciones-distintas": "Calificaciones distintas",
     "duplicado": "Duplicado",
-    "modelo": "Modelo"
+    "modelo": "Modelo",
+    "sort-falta-material-virgen": "Falta material virgen (estación)",
+    "sort-falla-sistema": "Falla del sistema",
+    "sort-internet-lento": "Internet lento",
+    "sort-falta-falla-escaner": "Falta/falla escáner",
+    "sort-falta-falla-impresora": "Falta/falla impresora",
+    "sort-falta-rollo-etiqueta": "Falta de rollo (etiqueta)",
+    "sort-falta-lpn-virgen": "Falta de LPN virgen",
+    "sort-conveyor-saturado": "Conveyor saturado",
+    "sort-falta-personal": "Falta personal",
+    "sort-juntas-platicas": "Juntas/Pláticas",
+    "sort-reclasificacion": "Reclasificación",
+    "sort-wc": "WC"
   }
 }

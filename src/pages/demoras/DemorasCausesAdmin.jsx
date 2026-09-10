@@ -18,10 +18,16 @@ import { showToast } from '../../ui/toast'
 /* Configuracion de causas dinamicas de Demoras (2026-09-08, a peticion explicita del usuario --
    "solo yo pueda agregar mas demoras" para no depender de un cambio de codigo cada vez). Mismo
    patron exacto que HourlyCausesAdmin.jsx (hora-por-hora), pero SIN agrupacion por area -- aqui
-   el catalogo es uno solo, global, para las 5 areas de Demoras. Exclusivo de ADMINISTRADOR (mismo
-   criterio de gating por rol ya usado en el backend, api/demoras/reasons/*.js). Reordenar es con
-   flechas arriba/abajo (nunca drag-and-drop), igual que el resto de catalogos configurables. */
-export default function DemorasCausesAdmin({ onBack }) {
+   el catalogo es uno solo, para las areas de un mismo grupo (FFT o Sorting). Exclusivo de
+   ADMINISTRADOR (mismo criterio de gating por rol ya usado en el backend,
+   api/demoras/reasons/*.js). Reordenar es con flechas arriba/abajo (nunca drag-and-drop), igual
+   que el resto de catalogos configurables.
+
+   `areaGroup` (2026-09-10, prop recibida de DemorasPage.jsx/useAreaGroup()): edita el catalogo
+   del area que este activa al abrir esta pantalla -- FFT y Sorting nunca comparten causas, mismo
+   criterio de areas independientes de toda la app. Una causa creada aqui queda fija a ese grupo
+   (migracion 0016, DowntimeReason.areaGroup). */
+export default function DemorasCausesAdmin({ areaGroup, onBack }) {
   const { t } = useTranslation('demoras')
   const [causes, setCauses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,7 +37,7 @@ export default function DemorasCausesAdmin({ onBack }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/demoras/reasons?includeInactive=1', {
+      const res = await fetch(`/api/demoras/reasons?includeInactive=1&areaGroup=${areaGroup}`, {
         credentials: 'include',
       })
       const data = await res.json().catch(() => null)
@@ -39,7 +45,7 @@ export default function DemorasCausesAdmin({ onBack }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [areaGroup])
 
   useEffect(() => {
     load()
@@ -90,7 +96,7 @@ export default function DemorasCausesAdmin({ onBack }) {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), areaGroup }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || t('saveErrorGeneric'))

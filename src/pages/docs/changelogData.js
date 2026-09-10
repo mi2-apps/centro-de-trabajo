@@ -53,6 +53,7 @@ export const RELEASES = [
           'addedDemorasHistoryFilter',
           'addedDemorasExcelExport',
           'addedFftIndicatorsConnected',
+          'addedDemorasSorting',
         ],
       },
       {

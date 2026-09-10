@@ -2,13 +2,24 @@
 // pueda agregar mas demoras" para no depender de un cambio de codigo cada vez). Mismo criterio
 // exacto que api/hora-por-hora/causes/index.js: GET lo consume tanto el selector de captura (solo
 // activas) como la pantalla de administracion (todas, via ?includeInactive=1); POST (crear causa
-// nueva) es exclusivo de ADMINISTRADOR. Las 15 causas originales (src/data/demoras/catalog.js)
-// viven aparte, sin fila aqui -- esta tabla es solo el complemento que un admin agregue despues.
-import { asc, eq } from 'drizzle-orm'
+// nueva) es exclusivo de ADMINISTRADOR. Las causas estaticas originales
+// (src/data/demoras/catalog.js) viven aparte, sin fila aqui -- esta tabla es solo el complemento
+// que un admin agregue despues.
+//
+// `areaGroup` (2026-09-10, ver migracion 0016): FFT y Sorting tienen su propio catalogo, nunca
+// compartido -- mismo criterio de areas independientes de toda la app. GET filtra por
+// ?areaGroup=FFT|SORTING (el cliente sabe cual esta activo via useAreaGroup()); si no se manda,
+// default 'FFT' por compatibilidad con quien llame a este endpoint sin el parametro nuevo. POST
+// exige areaGroup explicito en el body -- una causa nueva siempre se crea para el area que el
+// admin tenia activa al momento, nunca se asume.
+import { and, asc, eq } from 'drizzle-orm'
 import { requireAuth } from '../../../server-lib/auth.js'
 import { db, downtimeReason } from '../../../server-lib/db/client.js'
 import { canUserAccessModule } from '../../../server-lib/permissionService.js'
-import { DOWNTIME_REASON_KEYS } from '../../../src/data/demoras/catalog.js'
+import {
+  FFT_DOWNTIME_REASON_KEYS,
+  SORTING_DOWNTIME_REASON_KEYS,
+} from '../../../src/data/demoras/catalog.js'
 
 function slugify(name) {
   return name
@@ -19,15 +30,20 @@ function slugify(name) {
     .replace(/^-+|-+$/g, '')
 }
 
+function normalizeAreaGroup(value) {
+  return value === 'SORTING' ? 'SORTING' : 'FFT'
+}
+
 async function handleGet(req, res) {
+  const areaGroup = normalizeAreaGroup(req.query?.areaGroup)
   const includeInactive = req.query?.includeInactive === '1'
-  const rows = includeInactive
-    ? await db.select().from(downtimeReason).orderBy(asc(downtimeReason.sortOrder))
-    : await db
-        .select()
-        .from(downtimeReason)
-        .where(eq(downtimeReason.active, true))
-        .orderBy(asc(downtimeReason.sortOrder))
+  const conditions = [eq(downtimeReason.areaGroup, areaGroup)]
+  if (!includeInactive) conditions.push(eq(downtimeReason.active, true))
+  const rows = await db
+    .select()
+    .from(downtimeReason)
+    .where(and(...conditions))
+    .orderBy(asc(downtimeReason.sortOrder))
   return res.status(200).json({ reasons: rows })
 }
 
@@ -37,15 +53,19 @@ async function handlePost(req, res) {
   }
   const trimmedName = req.body?.name?.trim()
   if (!trimmedName) return res.status(400).json({ error: 'Falta el nombre de la causa.' })
+  const areaGroup = normalizeAreaGroup(req.body?.areaGroup)
 
   const baseCode = slugify(trimmedName) || 'causa'
   const existing = await db
     .select({ code: downtimeReason.code, sortOrder: downtimeReason.sortOrder })
     .from(downtimeReason)
+    .where(eq(downtimeReason.areaGroup, areaGroup))
   const existingCodes = new Set(existing.map((r) => r.code))
+  const staticKeys =
+    areaGroup === 'SORTING' ? SORTING_DOWNTIME_REASON_KEYS : FFT_DOWNTIME_REASON_KEYS
   let code = baseCode
   let n = 2
-  while (existingCodes.has(code) || DOWNTIME_REASON_KEYS.has(code)) {
+  while (existingCodes.has(code) || staticKeys.has(code)) {
     code = `${baseCode}-${n}`
     n += 1
   }
@@ -53,7 +73,7 @@ async function handlePost(req, res) {
 
   const [created] = await db
     .insert(downtimeReason)
-    .values({ name: trimmedName, code, sortOrder: nextOrder })
+    .values({ name: trimmedName, code, areaGroup, sortOrder: nextOrder })
     .returning()
 
   return res.status(201).json({ reason: created })

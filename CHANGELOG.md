@@ -305,6 +305,19 @@ para poder desplegar en el servidor privado (Coolify). Ver
     "Sin captura hoy" en vez de un falso "0/0". Nuevo hook `useFftIndicators.js`.
   - **Cumplimiento de programas** se deja intencionalmente sin conectar: ni el propio usuario
     tenía claro qué debía representar al revisarlo, así que no se inventa un cálculo para él.
+- **Demoras de trabajo ahora también funciona para Sorting**, a petición explícita del usuario
+  ("nuevo módulo así pero con estas afectaciones... eso va para el área de Sorting"), con su
+  propia lista de áreas (Conveyor, Líneas de Sorting, RCY, FRM, KITS, PNP, DMR/DML, DMA/DMT) y su
+  propio catálogo de 12 causas -- tomado tal cual de la nota manuscrita del usuario
+  ("Afectaciones Sorting (clasificación)"): Falta material virgen (estación) -- fusiona la
+  variante "(almacén)" que venía tachada en la nota, no son 2 causas--, Falla del sistema,
+  Internet lento, Falta/falla escáner, Falta/falla impresora, Falta de rollo (etiqueta), Falta de
+  LPN virgen, Conveyor saturado, Falta personal, Juntas/Pláticas, Reclasificación, WC. FFT y
+  Sorting nunca comparten catálogo de causas ni historial -- mismo criterio de áreas
+  independientes de toda la app (`useAreaGroup()`), reactivo al toggle FFT/Sorting sin necesitar
+  refrescar la página. Las causas dinámicas que un ADMINISTRADOR agregue después ("Configurar
+  causas") también quedan fijas a un área (`DowntimeReason.areaGroup`, migración 0016) -- antes
+  ese catálogo era global y una causa nueva se habría visto en las 2 áreas por error.
 
 ### Changed
 - Formato de código en todo el repo (Biome), sin cambios de comportamiento.

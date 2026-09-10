@@ -40,6 +40,7 @@
   "areaGroupAccesorios": "配件",
   "areaGroupMidea": "美的",
   "areaGroupPaletizado": "码垛",
+  "areaGroupSortLines": "Sorting产线",
   "shift.MATUTINO": "白班",
   "shift.TIEMPO_EXTRA": "加班",
   "shift.NOCHE": "夜班",
@@ -105,6 +106,18 @@
     "calidad": "质量",
     "calificaciones-distintas": "评级不一致",
     "duplicado": "重复",
-    "modelo": "型号"
+    "modelo": "型号",
+    "sort-falta-material-virgen": "缺原材料（工位）",
+    "sort-falla-sistema": "系统故障",
+    "sort-internet-lento": "网络慢",
+    "sort-falta-falla-escaner": "扫描枪缺失/故障",
+    "sort-falta-falla-impresora": "打印机缺失/故障",
+    "sort-falta-rollo-etiqueta": "缺标签卷",
+    "sort-falta-lpn-virgen": "缺原始LPN",
+    "sort-conveyor-saturado": "传送带饱和",
+    "sort-falta-personal": "缺人手",
+    "sort-juntas-platicas": "会议/沟通",
+    "sort-reclasificacion": "重新分类",
+    "sort-wc": "洗手间"
   }
 }

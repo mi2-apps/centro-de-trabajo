@@ -1105,16 +1105,21 @@ export const downtimeRecord = pgTable(
 // Causas de demora agregadas en vivo por un ADMINISTRADOR (2026-09-08, a peticion explicita del
 // usuario -- "solo yo pueda agregar mas demoras" para no depender de un cambio de codigo cada
 // vez). Mismo patron ya usado para HourlyProductionDowntimeCause (arriba, hora-por-hora): tabla
-// plana con code/name/active/sortOrder, sin tracking de creador. Las 15 causas originales
-// (src/data/demoras/catalog.js, DOWNTIME_REASONS) NO se tocan -- siguen siendo texto estatico
-// traducido en public/locales/*/demoras.json, sin fila aqui. Esta tabla es SOLO el complemento
-// dinamico: cualquier causa que un ADMINISTRADOR agregue despues vive aqui, con su `name` ya en
-// texto real (nunca una clave de traduccion) porque nadie va a traducirla a mano en los 3 idiomas
-// cada vez -- se muestra igual en es-MX/en/zh-CN, mismo criterio que los nombres reales de
-// Workstation/WorkArea. `code` se deriva del name (slug) y DowntimeRecord.reasonKey (texto libre,
-// sin FK) puede apuntar a cualquiera de las dos fuentes indistintamente -- ver
-// server-lib/demoraReasons.js. Desactivar (active:false) es soft-delete: nunca borra el
-// historial ya guardado con ese reasonKey.
+// plana con code/name/active/sortOrder, sin tracking de creador. Las causas estaticas originales
+// (src/data/demoras/catalog.js, FFT_DOWNTIME_REASONS/SORTING_DOWNTIME_REASONS) NO se tocan --
+// siguen siendo texto estatico traducido en public/locales/*/demoras.json, sin fila aqui. Esta
+// tabla es SOLO el complemento dinamico: cualquier causa que un ADMINISTRADOR agregue despues
+// vive aqui, con su `name` ya en texto real (nunca una clave de traduccion) porque nadie va a
+// traducirla a mano en los 3 idiomas cada vez -- se muestra igual en es-MX/en/zh-CN, mismo
+// criterio que los nombres reales de Workstation/WorkArea. `code` se deriva del name (slug) y
+// DowntimeRecord.reasonKey (texto libre, sin FK) puede apuntar a cualquiera de las dos fuentes
+// indistintamente -- ver server-lib/demoraReasons.js. Desactivar (active:false) es soft-delete:
+// nunca borra el historial ya guardado con ese reasonKey.
+//
+// `areaGroup` ('FFT'/'SORTING', 2026-09-10 -- migracion 0016): FFT y Sorting nunca comparten
+// catalogo de causas, mismo criterio de areas independientes de toda la app. Default 'FFT' en la
+// columna real (las filas que ya existian en produccion antes de este cambio son todas de FFT --
+// Demoras no existia para Sorting hasta ahora).
 export const downtimeReason = pgTable(
   'DowntimeReason',
   {
@@ -1124,6 +1129,7 @@ export const downtimeReason = pgTable(
       .$defaultFn(() => cuid()),
     name: text().notNull(),
     code: text().notNull(),
+    areaGroup: text().default('FFT').notNull(),
     active: boolean().default(true).notNull(),
     sortOrder: integer().default(0).notNull(),
     createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
