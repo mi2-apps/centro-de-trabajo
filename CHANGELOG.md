@@ -606,6 +606,18 @@ para poder desplegar en el servidor privado (Coolify). Ver
   que se quita la llamada (y el archivo `server-lib/db/bootstrapAdmin.js`, ya sin uso) del
   servidor directamente: esa lógica solo servía para sembrar el primer ADMINISTRADOR (empleado
   3647), que ya existe, así que no hace falta que siga corriendo.
+- **La limpieza de personal FFT (arriba, "Changed") no quitó a nadie de la vista visual** -- el
+  plano/lista de Centro de Trabajo no lee la tabla `Employee` directamente para el personal
+  "esperado" de cada área: lee `REAL_PERSONNEL_SNAPSHOT`
+  (`src/data/production/realPersonnelSnapshot.js`), un snapshot estático del Excel original
+  incrustado en el bundle del frontend, independiente de la base de datos (`getPeopleByArea()` en
+  `personnelByArea.js` itera ese arreglo, no una consulta a `Employee`). Por eso, tras borrar los
+  134 `Employee` de producción, el usuario seguía viendo "toda la gente" igual. Corregido en el
+  lugar correcto: se marca `areaZona: null` + `status: 'BAJA'` en las 103 entradas de ese snapshot
+  que no correspondían a los 10 números de empleado protegidos (mismo patrón exacto ya usado antes
+  para las 8 personas de baja anteriores -- nunca se borra texto/fotos/historial documentado del
+  archivo, solo se oculta del plano visual, igual que "Vaciar layout" hace vía
+  `Employee.baselineSuppressed` para quien sí tiene ficha viva).
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices
   tenían operator classes de btree emparejadas con la columna equivocada
   (ej. `"employeeId" date_ops` cuando `employeeId` es `text`, no `date`) --
