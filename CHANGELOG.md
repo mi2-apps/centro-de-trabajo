@@ -584,6 +584,17 @@ para poder desplegar en el servidor privado (Coolify). Ver
   Migración de datos real aplicada a producción
   (`scripts/rename-sorting-lines-add-linea1-2026-09-10.mjs`): renombra los `WorkArea`/
   `Workstation` ya existentes y crea los nuevos para la línea 1.
+- **Catálogo de personal FFT limpiado antes de la primera toma de asistencia real** (a petición
+  explícita del usuario, "quitar a toda la gente que tenemos en FFT toda menos a los que están
+  en usuarios... eliminan la db para que ya mañana ahora sí se guarden los verdaderos"): de 141
+  `Employee` reales (datos heredados de un import de Excel, ya no confiables), se conservan solo
+  los 7 que corresponden a cuentas `User` reales activas hoy (Badillo, Kely Morales, Marco
+  Andrade, Yessica Luna, Evelin Bautista, Juan Godínez, Bocanegra) y se borran las otras 134,
+  junto con su historial asociado (117 `Attendance`, 208 `DailyAssignment`, 207
+  `EmployeeMovement`) para no dejar registros huérfanos -- borrado permanente, no baja lógica,
+  a petición explícita tras advertir que era irreversible. Sorting no se tocó (0 empleados reales
+  ahí). Migración real aplicada a producción
+  (`scripts/delete-non-user-fft-personnel-2026-09-10.mjs`), en una sola transacción.
 
 ### Fixed
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices
