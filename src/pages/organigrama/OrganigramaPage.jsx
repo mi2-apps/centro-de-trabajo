@@ -61,27 +61,29 @@ function PersonNode({ person, onSelect }) {
   )
 }
 
-// Conector delgado (2026-09-11, a peticion explicita del usuario -- "las lineas azules estén
-// más delgadas"): 2px, en vez del grosor grueso de la imagen anterior. Tronco vertical +
-// barra horizontal repartida entre los hijos, con caidas verticales a cada uno -- mismo
-// truco clasico de organigramas en CSS puro (li con ::before/::after), aqui hecho con divs
-// simples ya que solo hay un puñado de filas fijas, nunca un arbol generico recursivo.
+// Conector (2026-09-11, tercera pasada -- a peticion explicita del usuario: "las lineas
+// azules estan muy delgadas... el diseño ya no tiene sentido"): 2px (w-0.5/h-0.5) quedo
+// demasiado delgado, sube a 3px -- mas delgado que el grosor grueso de la imagen original,
+// pero visible de verdad. Tronco vertical + barra horizontal repartida entre los hijos, con
+// caidas verticales a cada uno -- mismo truco clasico de organigramas en CSS puro (li con
+// ::before/::after), aqui hecho con divs simples ya que solo hay un puñado de filas fijas,
+// nunca un arbol generico recursivo.
 function ConnectorRow({ label, people, onSelect }) {
   const count = people.length
   return (
-    <div className="mt-6 flex flex-col items-center">
-      <div className="h-10 w-0.5 bg-blue-500" />
-      {label && <p className="mb-4 text-sm font-bold">{label}</p>}
+    <div className="mt-8 flex flex-col items-center">
+      <div className="h-8 w-[3px] bg-blue-500" />
+      {label && <p className="mb-3 text-sm font-bold">{label}</p>}
       <div className="relative flex items-start justify-center">
         {count > 1 && (
           <div
-            className="absolute top-0 h-0.5 bg-blue-500"
+            className="absolute top-0 h-[3px] bg-blue-500"
             style={{ left: `${50 / count}%`, right: `${50 / count}%` }}
           />
         )}
         {people.map((person) => (
-          <div key={person.id} className="flex flex-col items-center px-8">
-            <div className="h-8 w-0.5 bg-blue-500" />
+          <div key={person.id} className="flex flex-col items-center px-6">
+            <div className="h-6 w-[3px] bg-blue-500" />
             <PersonNode person={person} onSelect={onSelect} />
           </div>
         ))}
@@ -123,13 +125,6 @@ export default function OrganigramaPage() {
             people={cain.children}
             onSelect={setSelected}
           />
-
-          {/* Separador (2026-09-11, a peticion explicita del usuario -- "son diferentes areas y
-              diferentes puestos... separalos mas"): "Area Leaders" (Accessories/Boxes &
-              Supplies/Palletizing) es un grupo real distinto de "Operational Leadership"
-              (Production/Training), no una continuacion visual del mismo -- una linea divisoria
-              + mas espacio antes de que retome el tronco hacia abajo. */}
-          <div className="mt-10 h-px w-2/3 bg-border" />
 
           <ConnectorRow
             label="Area Leaders"

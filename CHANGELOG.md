@@ -678,6 +678,12 @@ para poder desplegar en el servidor privado (Coolify). Ver
   divisoria real entre "Operational Leadership" y "Area Leaders" -- son grupos de áreas distintas
   (Production/Training vs. Accessories/Boxes & Supplies/Palletizing), no una continuación visual
   del mismo grupo.
+- **Organigrama: se revierte la línea divisoria y se engrosan un poco las líneas** (a petición
+  explícita del usuario viendo el resultado en vivo, "muy delgadas las líneas azules y el diseño
+  ya no tiene sentido"): la línea divisoria gris entre "Operational Leadership" y "Area Leaders"
+  se veía suelta, sin relación visual con el árbol -- se quita por completo. Las líneas de
+  conexión suben de 2px a 3px (siguen más delgadas que el grosor grueso de la imagen original,
+  pero ya visibles de verdad).
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba
