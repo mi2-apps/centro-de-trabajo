@@ -722,7 +722,24 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `public/locales/{es-MX,en,zh-CN}/organigrama.json`. Ningún otro módulo, ruta, permiso ni tabla
   de la base de datos se tocó -- el organigrama sigue siendo 100% datos estáticos, sin backend
   propio.
-
+- **Organigrama: corrección visual sobre la misma implementación** (a petición explícita del
+  usuario, "no quiero un rediseño nuevo... solo corregir alineación, proporciones y espaciado").
+  3 correcciones reales, sin tocar jerarquía/nombres/puestos/fotos:
+  1) El nombre de Oscar se truncaba con "..." -- se quita `truncate` de los nombres (nunca
+     ellipsis, a petición explícita), usan `line-clamp-2` igual que los puestos; Oscar usa un
+     ancho de tarjeta mayor (`cardWidth` en `orgChartData.js`) para caber completo.
+  2) Bug real de simetría: Cain (con 2 filas de 3 tarjetas debajo) y Felipe (sin descendientes)
+     compartían fila bajo "Production Management" -- Felipe quedaba lejos del centro real porque
+     ese centro se calculaba sobre el ancho de la columna de Cain (inflada por sus
+     descendientes), no sobre la posición real de las 2 tarjetas. Se corrige dejando esa fila
+     angosta (solo las 2 tarjetas) y desplazando los grupos de Cain (`descendantShift` en
+     `OrganigramaPage.jsx`) para que queden centrados bajo su tarjeta específicamente -- Cain y
+     Felipe quedan simétricos y cercanos, sus descendientes se siguen expandiendo más abajo sin
+     empujarlos. Solo aplica desde `sm:` (vía variable CSS), nunca en mobile.
+  3) Espaciado general reducido (~15-20%): stems más cortos, un solo stem cuando no hay pill de
+     grupo en vez de dos, padding del contenedor más ajustado.
+  Archivos: `OrganigramaPage.jsx`, `orgChartData.js`. Ningún otro módulo, ruta, permiso ni tabla
+  se tocó.
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

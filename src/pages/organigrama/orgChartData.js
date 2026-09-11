@@ -25,6 +25,11 @@ export const ORG_CHART = {
   phone: null,
   email: null,
   hireDate: null,
+  // Correccion visual (2026-09-11, sexta pasada -- a peticion explicita del usuario, "el nombre
+  // aparece cortado... la card puede aumentar ligeramente de ancho SOLAMENTE para Oscar"): las
+  // demas tarjetas usan el ancho estandar (CARD_WIDTH en OrganigramaPage.jsx), Oscar necesita
+  // mas espacio por su nombre completo.
+  cardWidth: 280,
   children: [
     {
       id: 'juan-sillas',
