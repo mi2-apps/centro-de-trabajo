@@ -595,6 +595,17 @@ para poder desplegar en el servidor privado (Coolify). Ver
   a petición explícita tras advertir que era irreversible. Sorting no se tocó (0 empleados reales
   ahí). Migración real aplicada a producción
   (`scripts/delete-non-user-fft-personnel-2026-09-10.mjs`), en una sola transacción.
+- **14 altas automáticas del sync de SmartControl marcadas BAJA antes de la primera toma de
+  asistencia real** (a petición explícita del usuario viendo "Personal sin asignar" con 9
+  personas, "borra a esos también porfa debe estar ahí ya en 0"): el sync periódico
+  (`server-lib/personnel-sync.js`) había agregado 14 `Employee` reales (folio real + actividad
+  reciente en SmartControl) sin área asignada (`areaZona: 'PRODUCCION'`, nunca mapea a un
+  WORK_CENTER) justo antes de esta limpieza. Se marcan con el mismo mecanismo real de "Baja"
+  (`unassignedReason: 'BAJA'`, `active: false`) en vez de borrarlos: borrarlos los habría dejado
+  expuestos a que el propio sync (cada ~30 min) los vuelva a crear, ya que su alta automática solo
+  se salta números de empleado que YA EXISTEN en `Employee` sin importar si están activos.
+  Migración real aplicada a producción
+  (`scripts/mark-baja-stray-smartcontrol-adds-2026-09-11.mjs`).
 
 ### Fixed
 - **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del
