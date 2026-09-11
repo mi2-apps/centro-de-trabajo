@@ -651,6 +651,13 @@ para poder desplegar en el servidor privado (Coolify). Ver
   un área con varios puestos es otro componente, `src/state/dndAssign.jsx`): mismo cambio de una
   columna angosta a cuadrícula de 2-3 columnas con scroll corto, mismo dato/comportamiento
   (disponible/completa, ocupación real).
+- **Diálogos de "Registrar personal" y "Elige una estación" ensanchados**, a petición explícita
+  del usuario ("se ve amontonado, más ancho la card"): ambos usaban el ancho por defecto de
+  `DialogContent` (`max-w-xs`, 320px, o `max-w-[420px]` en el de registro) -- muy angosto para 3
+  columnas de nombres de puesto largos ("Ayudante General Conveyor General 2"), forzaba texto
+  envuelto en 3 líneas. Ambos suben a `max-w-[680px]`
+  (`RegisterPersonnelDialog.jsx`/`dndAssign.jsx`), mismo patrón de ancho en píxeles que ya usan
+  los demás diálogos del proyecto.
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

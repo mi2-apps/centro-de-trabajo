@@ -11,7 +11,7 @@ export default function RegisterPersonnelDialog({ open, onClose, fixedAreaId = n
   const { t } = useTranslation('centroTrabajo')
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-[420px]">
+      <DialogContent className="max-w-[680px]">
         <DialogHeader>
           <DialogTitle>{t('registerPersonnelDialog.title')}</DialogTitle>
         </DialogHeader>

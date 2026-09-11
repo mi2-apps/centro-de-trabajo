@@ -250,7 +250,7 @@ export function DndAssignProvider({ children }) {
         open={Boolean(stationPicker)}
         onOpenChange={(next) => !next && setStationPicker(null)}
       >
-        <DialogContent>
+        <DialogContent className="max-w-[680px]">
           {stationPicker && (
             <>
               <DialogHeader>
