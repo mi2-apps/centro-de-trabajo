@@ -647,6 +647,14 @@ para poder desplegar en el servidor privado (Coolify). Ver
   momento se limpia de verdad (asignación, movimiento, vínculo, supresión de baseline) -- nunca
   toca a alguien recién creado en este dispositivo que todavía no tiene vínculo. Corrige de raíz
   la necesidad de borrar `localStorage` a mano cada vez que se corrige algo del lado del servidor.
+- **"Bajas" vaciado por completo a petición explícita del usuario** ("no se borran esos... pa un
+  futuro ponga ahí en baja ya sea gente que yo sé que de verdad están de baja"): se quita
+  `status: 'BAJA'` de las últimas 9 entradas del snapshot que quedaban de antes de esta sesión
+  (Rosa María Rodríguez Cruz, Miguel Ángel Ortega Martínez, Ramiro Aguilar Rubio, Daniela, Valentín
+  Cruz Martínez, Juan Eduardo Cuéllar Ruiz, Kevin Alejandro Cira Ramírez, Olga Lidia Lara Dávila,
+  Diego Julián Marín Zamudio, Jose Gustavo Aguilar Corpus, Javier Aguilar De Dios) -- "Bajas" queda
+  en 0 en vez de conservar bajas históricas del Excel; de aquí en adelante se marca baja solo
+  cuando el usuario lo confirme desde la propia UI.
 - **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del
   usuario, "la elimino y vuelve a aparecer"): `runBootstrapAdmin()` (`server-lib/prod-server.js`)
   corría en cada arranque del servidor (cada deploy) y recreaba esa cuenta si no existía, mientras

@@ -331,7 +331,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'LC',
     asistencia: 'F',
     fechaIngreso: '09/03/2026',
-    status: 'BAJA',
   },
   {
     id: 'base-4',
@@ -418,7 +417,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'EM',
     asistencia: 'F',
     fechaIngreso: '13/10/2025',
-    status: 'BAJA',
   },
   {
     id: 'base-12',
@@ -462,7 +460,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'EM',
     asistencia: 'F',
     fechaIngreso: '08/06/2026',
-    status: 'BAJA',
   },
   {
     id: 'base-17',
@@ -601,7 +598,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     rawZona: null,
     actividad: 'L',
     asistencia: 'F',
-    status: 'BAJA',
   },
   {
     id: 'base-32',
@@ -633,7 +629,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     rawZona: 'PRODUCCION',
     actividad: 'L',
     asistencia: 'F',
-    status: 'BAJA',
   },
   {
     id: 'base-35',
@@ -743,7 +738,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'M',
     asistencia: 'F',
     fechaIngreso: '23/07/2026',
-    status: 'BAJA',
   },
   {
     id: 'base-50',
@@ -765,7 +759,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'M',
     asistencia: 'F',
     fechaIngreso: '08/11/2026',
-    status: 'BAJA',
   },
   {
     id: 'base-55',
@@ -886,7 +879,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     actividad: 'LIDER',
     asistencia: 'F',
     fechaIngreso: '20/01/2026',
-    status: 'BAJA',
   },
   {
     id: 'base-68',
@@ -1410,7 +1402,6 @@ export const REAL_PERSONNEL_SNAPSHOT = [
     areaZona: null,
     rawZona: 'Produccion',
     fechaIngreso: '08/12/2026',
-    status: 'BAJA',
   },
   {
     id: 'sem34-7',
