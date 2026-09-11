@@ -633,6 +633,11 @@ para poder desplegar en el servidor privado (Coolify). Ver
   arranca la primera toma de asistencia real de mañana, para que nada aparezca solo mientras
   tanto -- se reactiva con un solo cambio (`PERSONNEL_SYNC_PAUSED = false`) cuando el usuario lo
   pida.
+- **Se agrega la ficha de personal (`Employee`) que le faltaba a Lizbeth Monsiva** (empleado 3651,
+  LIDER real con cuenta de Usuario desde el 2026-09-08), a petición explícita del usuario: a
+  diferencia de los otros 6 líderes + gerente, ella nunca tuvo fila `Employee`, por lo que no
+  quedó entre los 7 conservados en la limpieza de personal FFT de esta sesión -- ahora son 8.
+  Migración real aplicada a producción (`scripts/add-lizbeth-employee-2026-09-11.mjs`).
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba
