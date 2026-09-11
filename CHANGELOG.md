@@ -684,6 +684,13 @@ para poder desplegar en el servidor privado (Coolify). Ver
   se veía suelta, sin relación visual con el árbol -- se quita por completo. Las líneas de
   conexión suben de 2px a 3px (siguen más delgadas que el grosor grueso de la imagen original,
   pero ya visibles de verdad).
+- **Organigrama: se revierten los dos cambios de espaciado/línea anteriores, vuelve a la
+  organización original** (a petición explícita del usuario viendo el resultado en vivo, "está
+  mal organizado ese organigrama, debes de volver a como estaba antes organizado y solo bajar el
+  grosor de las líneas azules"): las separaciones extra entre niveles y el ancho a 3px de los dos
+  intentos anteriores no mejoraban el diseño -- se restaura exactamente el layout original (mismo
+  espaciado compacto: `h-6`/`mb-1`/`px-4`/`h-5`) con líneas en 2px, sin la línea divisoria.
+
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

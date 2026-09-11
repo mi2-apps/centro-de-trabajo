@@ -61,29 +61,27 @@ function PersonNode({ person, onSelect }) {
   )
 }
 
-// Conector (2026-09-11, tercera pasada -- a peticion explicita del usuario: "las lineas
-// azules estan muy delgadas... el diseño ya no tiene sentido"): 2px (w-0.5/h-0.5) quedo
-// demasiado delgado, sube a 3px -- mas delgado que el grosor grueso de la imagen original,
-// pero visible de verdad. Tronco vertical + barra horizontal repartida entre los hijos, con
-// caidas verticales a cada uno -- mismo truco clasico de organigramas en CSS puro (li con
-// ::before/::after), aqui hecho con divs simples ya que solo hay un puñado de filas fijas,
-// nunca un arbol generico recursivo.
+// Conector delgado (2026-09-11, a peticion explicita del usuario -- "las lineas azules estén
+// más delgadas"): 2px, en vez del grosor grueso de la imagen anterior. Tronco vertical +
+// barra horizontal repartida entre los hijos, con caidas verticales a cada uno -- mismo
+// truco clasico de organigramas en CSS puro (li con ::before/::after), aqui hecho con divs
+// simples ya que solo hay un puñado de filas fijas, nunca un arbol generico recursivo.
 function ConnectorRow({ label, people, onSelect }) {
   const count = people.length
   return (
-    <div className="mt-8 flex flex-col items-center">
-      <div className="h-8 w-[3px] bg-blue-500" />
-      {label && <p className="mb-3 text-sm font-bold">{label}</p>}
+    <div className="flex flex-col items-center">
+      <div className="h-6 w-0.5 bg-blue-500" />
+      {label && <p className="mb-1 text-sm font-bold">{label}</p>}
       <div className="relative flex items-start justify-center">
         {count > 1 && (
           <div
-            className="absolute top-0 h-[3px] bg-blue-500"
+            className="absolute top-0 h-0.5 bg-blue-500"
             style={{ left: `${50 / count}%`, right: `${50 / count}%` }}
           />
         )}
         {people.map((person) => (
-          <div key={person.id} className="flex flex-col items-center px-6">
-            <div className="h-6 w-[3px] bg-blue-500" />
+          <div key={person.id} className="flex flex-col items-center px-4">
+            <div className="h-5 w-0.5 bg-blue-500" />
             <PersonNode person={person} onSelect={onSelect} />
           </div>
         ))}
@@ -115,7 +113,7 @@ export default function OrganigramaPage() {
       </div>
 
       <div className={`${cardClass} overflow-x-auto p-6`}>
-        <div className="flex min-w-[900px] flex-col items-center">
+        <div className="flex min-w-[720px] flex-col items-center">
           <PersonNode person={ORG_CHART} onSelect={setSelected} />
 
           <ConnectorRow people={[cain, felipe]} onSelect={setSelected} />
