@@ -15,9 +15,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import { mountApiRoutes } from './api-routes.js'
-import { runPersonnelSync } from './personnel-sync.js'
 import { runMigrations } from './db/runMigrations.js'
-import { runBootstrapAdmin } from './db/bootstrapAdmin.js'
+import { runPersonnelSync } from './personnel-sync.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.join(__dirname, '..', 'dist')
@@ -27,7 +26,11 @@ const distDir = path.join(__dirname, '..', 'dist')
 // (nunca desde fuera), asi que llega a la Postgres interna sin depender del
 // puerto externo/firewall.
 await runMigrations()
-await runBootstrapAdmin()
+// 2026-09-11: se quita runBootstrapAdmin() a peticion explicita del usuario -- las variables
+// BOOTSTRAP_ADMIN_USERNAME/BOOTSTRAP_ADMIN_PASSWORD siguen puestas en Coolify (no editables desde
+// su panel) y recreaban en cada deploy una cuenta duplicada ("roman.herrera@miglobal.com.mx")
+// que el usuario borraba manualmente una y otra vez. Ya cumplio su proposito (el primer
+// ADMINISTRADOR, empleado 3647, ya existe) -- no hace falta que siga corriendo.
 
 const app = express()
 app.use(express.json())

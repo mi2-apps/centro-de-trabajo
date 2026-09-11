@@ -597,6 +597,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   (`scripts/delete-non-user-fft-personnel-2026-09-10.mjs`), en una sola transacción.
 
 ### Fixed
+- **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del
+  usuario, "la elimino y vuelve a aparecer"): `runBootstrapAdmin()` (`server-lib/prod-server.js`)
+  corría en cada arranque del servidor (cada deploy) y recreaba esa cuenta si no existía, mientras
+  `BOOTSTRAP_ADMIN_USERNAME`/`BOOTSTRAP_ADMIN_PASSWORD` siguieran puestas en Coolify -- confirmado
+  vía logs en vivo (`[bootstrap-admin] "roman.herrera@miglobal.com.mx" ya existe, no se toca`) en
+  cada arranque. El usuario no pudo editar/borrar esas variables desde el panel de Coolify, así
+  que se quita la llamada (y el archivo `server-lib/db/bootstrapAdmin.js`, ya sin uso) del
+  servidor directamente: esa lógica solo servía para sembrar el primer ADMINISTRADOR (empleado
+  3647), que ya existe, así que no hace falta que siga corriendo.
 - **Bug real en `drizzle/0000_aberrant_mariko_yashida.sql`**: varios índices
   tenían operator classes de btree emparejadas con la columna equivocada
   (ej. `"employeeId" date_ops` cuando `employeeId` es `text`, no `date`) --
