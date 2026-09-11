@@ -638,6 +638,13 @@ para poder desplegar en el servidor privado (Coolify). Ver
   diferencia de los otros 6 líderes + gerente, ella nunca tuvo fila `Employee`, por lo que no
   quedó entre los 7 conservados en la limpieza de personal FFT de esta sesión -- ahora son 8.
   Migración real aplicada a producción (`scripts/add-lizbeth-employee-2026-09-11.mjs`).
+- **Selector de puesto ("Rol / Estación de hoy") rediseñado en cuadrícula**, a petición explícita
+  del usuario viendo WC Paletizado (20 puestos reales) desde "Registrar personal": el `<Select>`
+  nativo de antes mostraba una sola columna angosta -- había que hacer scroll uno por uno para
+  ver los 20 puestos ("no se ven todos"). Se reemplaza por una cuadrícula de tarjetas (2-3
+  columnas según el ancho, con scroll corto), mismo dato y comportamiento de siempre
+  (`RegisterPersonnelForm.jsx`): nombre del puesto, ocupación real (`X/Y`), "— completa" si está
+  llena (deshabilitada), y el indicador de habilidad compatible cuando aplica.
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

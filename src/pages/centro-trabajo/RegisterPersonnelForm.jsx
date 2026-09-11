@@ -518,31 +518,55 @@ export default function RegisterPersonnelForm({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="rpf-station">{t('registerPersonnelForm.stationLabel')}</Label>
-        <Select
-          value={form.stationId}
-          onValueChange={(v) => setForm((f) => ({ ...f, stationId: v }))}
+        {/* Cuadrícula (2026-09-11, a petición explícita del usuario viendo Paletizado con 20
+            puestos reales, "no se ven todos"): el <Select> nativo de antes solo mostraba una
+            columna angosta -- había que hacer scroll uno por uno para ver los 20. Ahora se
+            listan como tarjetas en cuadrícula (2-3 columnas según el ancho), todas visibles con
+            un solo scroll corto en vez de uno largo. Mismo dato/comportamiento de siempre
+            (form.stationId sigue siendo el nombre del puesto, disabled si está llena). */}
+        <div
+          id="rpf-station"
+          className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto rounded-lg border border-border p-2 sm:grid-cols-3"
         >
-          <SelectTrigger id="rpf-station">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {stations.map((s) => {
-              const occ = getStationOccupancy(areaId, s.name)
-              const compatible = form.employee ? hasSkill(form.employee.id, s.name) : false
-              return (
-                <SelectItem key={s.id} value={s.name} disabled={occ.isFull}>
-                  {t('registerPersonnelForm.stationOption', {
-                    name: s.name,
-                    count: occ.count,
-                    capacity: occ.capacity,
-                  })}
+          {stations.map((s) => {
+            const occ = getStationOccupancy(areaId, s.name)
+            const compatible = form.employee ? hasSkill(form.employee.id, s.name) : false
+            const selected = form.stationId === s.name
+            return (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={selected}
+                disabled={occ.isFull}
+                onClick={() => setForm((f) => ({ ...f, stationId: s.name }))}
+                className={cn(
+                  'flex flex-col items-start gap-0.5 rounded-lg border p-2 text-left text-xs transition-colors',
+                  occ.isFull
+                    ? 'cursor-not-allowed border-border/60 opacity-50'
+                    : selected
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:bg-accent',
+                )}
+              >
+                <span className="font-semibold leading-tight">{s.name}</span>
+                <span
+                  className={cn(
+                    'text-[11px]',
+                    occ.isFull ? 'text-destructive' : 'text-muted-foreground',
+                  )}
+                >
+                  {occ.count}/{occ.capacity}
                   {occ.isFull ? t('registerPersonnelForm.stationFullSuffix') : ''}
-                  {compatible ? t('registerPersonnelForm.compatibleSkillSuffix') : ''}
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
+                </span>
+                {compatible && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                    {t('registerPersonnelForm.compatibleSkillSuffix')}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
