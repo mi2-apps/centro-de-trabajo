@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Children, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cardClass, pageClass, pageSubtitleClass, pageTitleClass } from '@/lib/pageStyles'
@@ -10,6 +10,16 @@ import { ORG_CHART } from './orgChartData'
 // (puesto/area/departamento/jefe directo/fecha de ingreso/celular/correo), lineas mas
 // delgadas, y el CONTENIDO siempre en ingles (orgChartData.js, nunca via i18n). El shell de
 // la pagina (titulo/subtitulo del modulo) si sigue el idioma normal de la app.
+//
+// SEGUNDA PASADA (mismo dia, a peticion explicita del usuario -- "no esta bien estructurado",
+// viendolo en vivo): la primera version apilaba "Operational Leadership" y "Area Leaders" como
+// filas SUELTAS, cada una centrada en el ANCHO TOTAL de la pagina -- como Cain no esta
+// centrado (comparte fila con Felipe), esas 2 filas terminaban colgando visualmente de Johnatan
+// (el hijo de en medio de la fila de arriba) o del centro de la pagina, nunca de Cain de
+// verdad. Se reescribe como un arbol RECURSIVO real (TreeNode): cada subarbol se dibuja dentro
+// de la columna de SU PROPIO padre, asi "Operational Leadership"/"Area Leaders" quedan
+// centrados bajo Cain especificamente, sin importar que Felipe (sin descendientes) este a su
+// lado en la misma fila.
 const FALLBACK = '—'
 
 function initialsOf(name) {
@@ -61,13 +71,15 @@ function PersonNode({ person, onSelect }) {
   )
 }
 
-// Conector delgado (2026-09-11, a peticion explicita del usuario -- "las lineas azules estén
-// más delgadas"): 2px, en vez del grosor grueso de la imagen anterior. Tronco vertical +
-// barra horizontal repartida entre los hijos, con caidas verticales a cada uno -- mismo
-// truco clasico de organigramas en CSS puro (li con ::before/::after), aqui hecho con divs
-// simples ya que solo hay un puñado de filas fijas, nunca un arbol generico recursivo.
-function ConnectorRow({ label, people, onSelect }) {
-  const count = people.length
+// Conector delgado (2px, a peticion explicita del usuario -- "las lineas azules estén más
+// delgadas"). Tronco vertical + barra horizontal repartida entre los hijos, con caidas
+// verticales a cada uno -- mismo truco clasico de organigramas en CSS puro (li con
+// ::before/::after). `items-start` en la fila es lo que permite que columnas de distinta
+// altura (Cain, con su propio subarbol debajo; Felipe, sin nada debajo) arranquen alineadas
+// arriba sin estirarse a la misma altura.
+function ConnectorRow({ label, children }) {
+  const items = Children.toArray(children)
+  const count = items.length
   return (
     <div className="flex flex-col items-center">
       <div className="h-6 w-0.5 bg-blue-500" />
@@ -79,13 +91,39 @@ function ConnectorRow({ label, people, onSelect }) {
             style={{ left: `${50 / count}%`, right: `${50 / count}%` }}
           />
         )}
-        {people.map((person) => (
-          <div key={person.id} className="flex flex-col items-center px-4">
+        {items.map((child) => (
+          <div key={child.key} className="flex flex-col items-center px-4">
             <div className="h-5 w-0.5 bg-blue-500" />
-            <PersonNode person={person} onSelect={onSelect} />
+            {child}
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// Nodo de arbol recursivo: se dibuja a si mismo y, si tiene hijos, dibuja SU PROPIA
+// ConnectorRow debajo, dentro de su misma columna -- nunca como fila suelta al nivel de la
+// pagina. Cain tiene DOS grupos reales (Operational Leadership, Area Leaders) -- ambos cuelgan
+// de su columna, uno debajo del otro, exactamente como el organigrama original.
+function TreeNode({ person, onSelect }) {
+  return (
+    <div className="flex flex-col items-center">
+      <PersonNode person={person} onSelect={onSelect} />
+      {person.children?.length > 0 && (
+        <ConnectorRow label={person.groupLabel}>
+          {person.children.map((child) => (
+            <TreeNode key={child.id} person={child} onSelect={onSelect} />
+          ))}
+        </ConnectorRow>
+      )}
+      {person.secondGroupChildren?.length > 0 && (
+        <ConnectorRow label={person.secondGroupLabel}>
+          {person.secondGroupChildren.map((child) => (
+            <TreeNode key={child.id} person={child} onSelect={onSelect} />
+          ))}
+        </ConnectorRow>
+      )}
     </div>
   )
 }
@@ -102,8 +140,6 @@ function InfoRow({ label, value }) {
 export default function OrganigramaPage() {
   const { t } = useTranslation('organigrama')
   const [selected, setSelected] = useState(null)
-  const cain = ORG_CHART.children[0]
-  const felipe = ORG_CHART.children[1]
 
   return (
     <div className={pageClass}>
@@ -114,21 +150,7 @@ export default function OrganigramaPage() {
 
       <div className={`${cardClass} overflow-x-auto p-6`}>
         <div className="flex min-w-[720px] flex-col items-center">
-          <PersonNode person={ORG_CHART} onSelect={setSelected} />
-
-          <ConnectorRow people={[cain, felipe]} onSelect={setSelected} />
-
-          <ConnectorRow
-            label="Operational Leadership"
-            people={cain.children}
-            onSelect={setSelected}
-          />
-
-          <ConnectorRow
-            label="Area Leaders"
-            people={cain.secondGroupChildren}
-            onSelect={setSelected}
-          />
+          <TreeNode person={ORG_CHART} onSelect={setSelected} />
         </div>
       </div>
 

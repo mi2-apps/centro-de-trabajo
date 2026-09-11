@@ -690,6 +690,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   grosor de las líneas azules"): las separaciones extra entre niveles y el ancho a 3px de los dos
   intentos anteriores no mejoraban el diseño -- se restaura exactamente el layout original (mismo
   espaciado compacto: `h-6`/`mb-1`/`px-4`/`h-5`) con líneas en 2px, sin la línea divisoria.
+- **Organigrama: bug real de jerarquía corregido -- "Operational Leadership"/"Area Leaders"
+  colgaban de Johnatan, no de Cain** (a petición explícita del usuario viendo el resultado en
+  vivo, "no está bien estructurado"): la versión anterior apilaba esos 2 grupos como filas
+  SUELTAS centradas en el ancho total de la página -- como Cain no está centrado (comparte fila
+  con Felipe), esas filas terminaban colgando visualmente del hijo de en medio de arriba
+  (Johnatan) o del centro de la página, nunca de Cain de verdad. Se reescribe
+  `OrganigramaPage.jsx` como un árbol recursivo real (`TreeNode`): cada subárbol se dibuja
+  dentro de la columna de SU PROPIO padre, así ambos grupos quedan centrados bajo Cain
+  específicamente sin importar que Felipe (sin descendientes) esté a su lado en la misma fila.
 
 
 ### Fixed
