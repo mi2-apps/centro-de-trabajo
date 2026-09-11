@@ -1,5 +1,14 @@
 {
-  "pageTitle": "组织架构图",
-  "pageSubtitle": "部门组织结构",
-  "imageAlt": "组织架构图：部门组织结构，包括管理层、运营领导层和专业区域负责人"
+  "eyebrow": "我们的组织",
+  "pageTitle": "组织架构图 — 工作中心",
+  "pageSubtitle": "人才、领导力与协作，共创卓越成果。",
+  "calloutText": "卓越团队成就卓越成果。",
+  "imageAlt": "组织架构图：部门组织结构，包括管理层、运营领导层和专业区域负责人",
+  "infoPosition": "职位",
+  "infoArea": "区域",
+  "infoDepartment": "部门",
+  "infoManager": "直属上级",
+  "infoHireDate": "入职日期",
+  "infoPhone": "手机号",
+  "infoEmail": "邮箱"
 }

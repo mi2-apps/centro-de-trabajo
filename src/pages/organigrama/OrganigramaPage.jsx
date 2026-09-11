@@ -1,26 +1,28 @@
+import { Users } from 'lucide-react'
 import { Children, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { cardClass, pageClass, pageSubtitleClass, pageTitleClass } from '@/lib/pageStyles'
+import { cardClass, pageClass } from '@/lib/pageStyles'
+import { cn } from '@/lib/utils'
 import { ORG_CHART } from './orgChartData'
 
 // Modulo Organigrama (2026-09-11, reconstruccion completa a peticion explicita del usuario):
 // reemplaza la imagen plana estructura-organizacional.png (2026-09-09) por un arbol
-// interactivo real -- el usuario pidio que darle clic a alguien muestre su foto + info
-// (puesto/area/departamento/jefe directo/fecha de ingreso/celular/correo), lineas mas
-// delgadas, y el CONTENIDO siempre en ingles (orgChartData.js, nunca via i18n). El shell de
-// la pagina (titulo/subtitulo del modulo) si sigue el idioma normal de la app.
+// interactivo real -- darle clic a alguien muestra su foto + info (puesto/area/departamento/
+// jefe directo/fecha de ingreso/celular/correo). El shell de la pagina (label/subtitulo del
+// modulo, etiquetas de la tarjeta de info) sigue el idioma normal de la app via i18n; el
+// CONTENIDO del arbol en si (nombres/puestos reales de orgChartData.js) queda fijo, nunca via
+// i18n, tal cual el usuario lo definio.
 //
-// SEGUNDA PASADA (mismo dia, a peticion explicita del usuario -- "no esta bien estructurado",
-// viendolo en vivo): la primera version apilaba "Operational Leadership" y "Area Leaders" como
-// filas SUELTAS, cada una centrada en el ANCHO TOTAL de la pagina -- como Cain no esta
-// centrado (comparte fila con Felipe), esas 2 filas terminaban colgando visualmente de Johnatan
-// (el hijo de en medio de la fila de arriba) o del centro de la pagina, nunca de Cain de
-// verdad. Se reescribe como un arbol RECURSIVO real (TreeNode): cada subarbol se dibuja dentro
-// de la columna de SU PROPIO padre, asi "Operational Leadership"/"Area Leaders" quedan
-// centrados bajo Cain especificamente, sin importar que Felipe (sin descendientes) este a su
-// lado en la misma fila.
+// QUINTA PASADA (mismo dia, rediseño visual completo a peticion explicita del usuario, spec
+// detallado + imagen de referencia -- "convertirlo en un organigrama empresarial moderno,
+// compacto, profesional"): tarjetas HORIZONTALES (foto izquierda + nombre/puesto derecha, ancho
+// fijo, misma altura en toda la fila via line-clamp), etiquetas de grupo en pill azul, conectores
+// con nodos/puntos, encabezado de pagina con eyebrow + titulo + subtitulo. Arbol recursivo
+// (TreeNode, ver cuarta pasada) sin cambios de fondo -- Oscar Enrique Pizano Guzman se agrega
+// como nueva raiz en orgChartData.js (ver ese archivo), Juan Sillas es ahora su unico hijo.
 const FALLBACK = '—'
+const CARD_WIDTH = 208
 
 function initialsOf(name) {
   return name
@@ -31,8 +33,8 @@ function initialsOf(name) {
     .join('')
 }
 
-function PersonAvatar({ person, size = 88 }) {
-  const style = { width: size, height: size }
+function PersonAvatar({ person, size = 48 }) {
+  const style = { width: size, height: size, minWidth: size }
   if (person.photo) {
     return (
       <img
@@ -46,54 +48,79 @@ function PersonAvatar({ person, size = 88 }) {
   return (
     <div
       style={style}
-      className="flex items-center justify-center rounded-full border-2 border-blue-500 bg-blue-500/10 text-lg font-bold text-blue-600 dark:text-blue-400"
+      className="flex items-center justify-center rounded-full border-2 border-blue-500 bg-blue-500/10 font-bold text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
     >
       {initialsOf(person.name)}
     </div>
   )
 }
 
+// Tarjeta horizontal (2026-09-11, quinta pasada -- a peticion explicita del usuario, "cards
+// horizontales pequeñas y elegantes... mismo ancho, mismo alto"): ancho fijo (CARD_WIDTH) y
+// min-h fijo para que TODAS las tarjetas de una misma fila midan exactamente lo mismo sin
+// importar si el puesto es corto o largo -- line-clamp-2 evita que un puesto largo estire la
+// tarjeta mas que las demas.
 function PersonNode({ person, onSelect }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(person)}
-      className="flex flex-col items-center gap-1.5 rounded-xl p-2 text-center transition-colors hover:bg-accent"
+      style={{ width: CARD_WIDTH }}
+      className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md dark:bg-card/80"
     >
-      {person.title && (
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          {person.title}
-        </span>
-      )}
       <PersonAvatar person={person} />
-      <span className="text-sm font-bold">{person.name}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-bold leading-tight">{person.name}</p>
+        {person.title && (
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-tight text-muted-foreground">
+            {person.title}
+          </p>
+        )}
+      </div>
     </button>
   )
 }
 
-// Conector delgado (2px, a peticion explicita del usuario -- "las lineas azules estén más
-// delgadas"). Tronco vertical + barra horizontal repartida entre los hijos, con caidas
-// verticales a cada uno -- mismo truco clasico de organigramas en CSS puro (li con
-// ::before/::after). `items-start` en la fila es lo que permite que columnas de distinta
-// altura (Cain, con su propio subarbol debajo; Felipe, sin nada debajo) arranquen alineadas
-// arriba sin estirarse a la misma altura.
+// Pill de encabezado de grupo ("Production Management"/"Operational Leadership"/"Area
+// Leaders") -- a peticion explicita del usuario, "no quiero que sean simplemente texto gris
+// flotando... convertirlos en pequeños pills/etiquetas elegantes".
+function GroupLabel({ children }) {
+  return (
+    <span className="whitespace-nowrap rounded-full bg-blue-500/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+      {children}
+    </span>
+  )
+}
+
+// Nodo/punto azul en los conectores (2026-09-11, a peticion explicita del usuario -- "agregar
+// pequeños puntos/nodos azules donde tenga sentido").
+function Dot() {
+  return <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+}
+
+// Conector delgado (1.5px), solo lineas verticales/horizontales en angulos de 90° -- nunca
+// diagonales. `flex-col` en mobile (grupos se acomodan verticalmente, sin la barra horizontal)
+// y `sm:flex-row` en tablet/desktop (el abanico clasico de organigrama), a peticion explicita
+// del usuario para el comportamiento responsive.
 function ConnectorRow({ label, children }) {
   const items = Children.toArray(children)
   const count = items.length
   return (
     <div className="flex flex-col items-center">
-      <div className="h-6 w-0.5 bg-blue-500" />
-      {label && <p className="mb-1 text-sm font-bold">{label}</p>}
-      <div className="relative flex items-start justify-center">
+      <Dot />
+      <div className="h-4 w-px bg-blue-400" />
+      {label && <GroupLabel>{label}</GroupLabel>}
+      <div className="h-4 w-px bg-blue-400" />
+      <div className="relative flex flex-col items-center gap-3 sm:flex-row sm:items-start sm:justify-center sm:gap-3">
         {count > 1 && (
           <div
-            className="absolute top-0 h-0.5 bg-blue-500"
+            className="absolute top-0 hidden h-px bg-blue-400 sm:block"
             style={{ left: `${50 / count}%`, right: `${50 / count}%` }}
           />
         )}
         {items.map((child) => (
-          <div key={child.key} className="flex flex-col items-center px-4">
-            <div className="h-5 w-0.5 bg-blue-500" />
+          <div key={child.key} className="flex flex-col items-center px-2">
+            <div className="hidden h-4 w-px bg-blue-400 sm:block" />
             {child}
           </div>
         ))}
@@ -102,22 +129,29 @@ function ConnectorRow({ label, children }) {
   )
 }
 
-// Nodo de arbol recursivo: se dibuja a si mismo y, si tiene hijos, dibuja SU PROPIA
-// ConnectorRow debajo, dentro de su misma columna -- nunca como fila suelta al nivel de la
-// pagina. Cain tiene DOS grupos reales (Operational Leadership, Area Leaders) -- ambos cuelgan
-// de su columna, uno debajo del otro, exactamente como el organigrama original.
+// Nodo de arbol recursivo (2026-09-11, cuarta pasada -- corrige bug real: antes "Operational
+// Leadership"/"Area Leaders" colgaban del centro de la pagina, no de Cain especificamente):
+// cada persona dibuja su propia tarjeta y, si tiene hijos, su propia ConnectorRow debajo,
+// DENTRO de su misma columna -- nunca como fila suelta al nivel de la pagina. Cain tiene DOS
+// grupos reales (Operational Leadership, Area Leaders), ambos cuelgan de su columna.
 function TreeNode({ person, onSelect }) {
+  const hasChildren = person.children?.length > 0
+  const hasSecondGroup = person.secondGroupChildren?.length > 0
   return (
     <div className="flex flex-col items-center">
       <PersonNode person={person} onSelect={onSelect} />
-      {person.children?.length > 0 && (
-        <ConnectorRow label={person.groupLabel}>
-          {person.children.map((child) => (
-            <TreeNode key={child.id} person={child} onSelect={onSelect} />
-          ))}
-        </ConnectorRow>
+      {hasChildren && (
+        <>
+          <Dot />
+          <div className="h-4 w-px bg-blue-400" />
+          <ConnectorRow label={person.groupLabel}>
+            {person.children.map((child) => (
+              <TreeNode key={child.id} person={child} onSelect={onSelect} />
+            ))}
+          </ConnectorRow>
+        </>
       )}
-      {person.secondGroupChildren?.length > 0 && (
+      {hasSecondGroup && (
         <ConnectorRow label={person.secondGroupLabel}>
           {person.secondGroupChildren.map((child) => (
             <TreeNode key={child.id} person={child} onSelect={onSelect} />
@@ -143,13 +177,26 @@ export default function OrganigramaPage() {
 
   return (
     <div className={pageClass}>
-      <div className="mb-5">
-        <p className={pageTitleClass}>{t('pageTitle')}</p>
-        <p className={pageSubtitleClass}>{t('pageSubtitle')}</p>
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[2px] text-blue-600 dark:text-blue-400">
+            {t('eyebrow')}
+          </p>
+          <p className="mt-1 text-[1.35rem] font-extrabold tracking-[-0.4px] text-foreground sm:text-[1.6rem]">
+            {t('pageTitle')}
+          </p>
+          <p className="mt-1 text-[13px] font-medium text-muted-foreground">{t('pageSubtitle')}</p>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 dark:bg-blue-500/10">
+          <Users className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+          <p className="text-[12px] font-semibold leading-snug text-blue-700 dark:text-blue-300">
+            {t('calloutText')}
+          </p>
+        </div>
       </div>
 
-      <div className={`${cardClass} overflow-x-auto p-6`}>
-        <div className="flex min-w-[720px] flex-col items-center">
+      <div className={cn(cardClass, 'overflow-x-auto p-6 sm:p-8')}>
+        <div className="flex min-w-fit flex-col items-center">
           <TreeNode person={ORG_CHART} onSelect={setSelected} />
         </div>
       </div>
@@ -165,13 +212,13 @@ export default function OrganigramaPage() {
                 <PersonAvatar person={selected} size={112} />
               </div>
               <div className="px-6 pb-6">
-                <InfoRow label="Position" value={selected.title} />
-                <InfoRow label="Area" value={selected.area} />
-                <InfoRow label="Department" value={selected.department} />
-                <InfoRow label="Direct Manager" value={selected.manager} />
-                <InfoRow label="Hire Date" value={selected.hireDate} />
-                <InfoRow label="Cell Phone" value={selected.phone} />
-                <InfoRow label="Email" value={selected.email} />
+                <InfoRow label={t('infoPosition')} value={selected.title} />
+                <InfoRow label={t('infoArea')} value={selected.area} />
+                <InfoRow label={t('infoDepartment')} value={selected.department} />
+                <InfoRow label={t('infoManager')} value={selected.manager} />
+                <InfoRow label={t('infoHireDate')} value={selected.hireDate} />
+                <InfoRow label={t('infoPhone')} value={selected.phone} />
+                <InfoRow label={t('infoEmail')} value={selected.email} />
               </div>
             </>
           )}

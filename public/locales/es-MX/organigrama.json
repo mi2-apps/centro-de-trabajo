@@ -1,5 +1,14 @@
 {
-  "pageTitle": "Organigrama",
-  "pageSubtitle": "Estructura organizacional del área",
-  "imageAlt": "Organigrama: estructura organizacional del área, con directivos, liderazgo operativo y líderes de áreas especializadas"
+  "eyebrow": "Nuestra organización",
+  "pageTitle": "Organigrama — Centro de Trabajo",
+  "pageSubtitle": "Talento, liderazgo y colaboración para alcanzar grandes resultados.",
+  "calloutText": "Grandes equipos construyen grandes resultados.",
+  "imageAlt": "Organigrama: estructura organizacional del área, con directivos, liderazgo operativo y líderes de áreas especializadas",
+  "infoPosition": "Puesto",
+  "infoArea": "Área",
+  "infoDepartment": "Departamento",
+  "infoManager": "Jefe directo",
+  "infoHireDate": "Fecha de ingreso",
+  "infoPhone": "Celular",
+  "infoEmail": "Correo"
 }

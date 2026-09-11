@@ -1,5 +1,14 @@
 {
-  "pageTitle": "Org Chart",
-  "pageSubtitle": "Area organizational structure",
-  "imageAlt": "Org chart: area organizational structure, with directors, operational leadership, and specialized area leads"
+  "eyebrow": "Our organization",
+  "pageTitle": "Org Chart — Work Center",
+  "pageSubtitle": "Talent, leadership, and collaboration to achieve great results.",
+  "calloutText": "Great teams build great results.",
+  "imageAlt": "Org chart: area organizational structure, with directors, operational leadership, and specialized area leads",
+  "infoPosition": "Position",
+  "infoArea": "Area",
+  "infoDepartment": "Department",
+  "infoManager": "Direct Manager",
+  "infoHireDate": "Hire Date",
+  "infoPhone": "Cell Phone",
+  "infoEmail": "Email"
 }

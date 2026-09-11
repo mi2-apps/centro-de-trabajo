@@ -699,6 +699,29 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `OrganigramaPage.jsx` como un árbol recursivo real (`TreeNode`): cada subárbol se dibuja
   dentro de la columna de SU PROPIO padre, así ambos grupos quedan centrados bajo Cain
   específicamente sin importar que Felipe (sin descendientes) esté a su lado en la misma fila.
+- **Organigrama: rediseño visual completo**, a petición explícita del usuario (spec detallado +
+  imagen de referencia -- "convertirlo en un organigrama empresarial moderno, compacto,
+  profesional"). Cambios reales:
+  1) Se agrega a **Oscar Enrique Pizano Guzman** (Dirección General) como nueva raíz del árbol,
+     arriba de Juan Sillas -- sin foto real todavía (avatar con iniciales "OP", nunca se inventa
+     una fotografía); Juan Sillas gana puesto ("Dirección / Liderazgo") y jefe directo (Oscar).
+  2) Tarjetas pasan de verticales a **horizontales** (foto circular a la izquierda + nombre/puesto
+     a la derecha), ancho y alto fijos en toda la fila (`line-clamp-2` evita que un puesto largo
+     estire una tarjeta más que las demás).
+  3) Se agrega el encabezado de grupo "Production Management" (antes no existía) entre Juan
+     Sillas y la fila Cain/Felipe; junto con "Operational Leadership"/"Area Leaders", los 3 pasan
+     de texto suelto a **pills** azules.
+  4) Conectores con **nodos/puntos azules** en las uniones, siempre en ángulos de 90° (nunca
+     diagonales).
+  5) Encabezado de página nuevo: eyebrow ("Nuestra organización") + título + subtítulo + tarjeta
+     lateral con ícono, todo vía i18n (los 3 idiomas) -- a diferencia del CONTENIDO del árbol en
+     sí (nombres/puestos reales), que sigue fijo en `orgChartData.js`, nunca vía i18n.
+  6) Responsive: en pantallas angostas (`sm:` y menos) los grupos se acomodan en columna en vez
+     de la fila en abanico, sin scroll horizontal extraño.
+  Archivos: `OrganigramaPage.jsx`, `orgChartData.js`,
+  `public/locales/{es-MX,en,zh-CN}/organigrama.json`. Ningún otro módulo, ruta, permiso ni tabla
+  de la base de datos se tocó -- el organigrama sigue siendo 100% datos estáticos, sin backend
+  propio.
 
 
 ### Fixed
