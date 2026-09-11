@@ -658,6 +658,20 @@ para poder desplegar en el servidor privado (Coolify). Ver
   envuelto en 3 líneas. Ambos suben a `max-w-[680px]`
   (`RegisterPersonnelDialog.jsx`/`dndAssign.jsx`), mismo patrón de ancho en píxeles que ya usan
   los demás diálogos del proyecto.
+- **Organigrama reconstruido como árbol interactivo real**, a petición explícita del usuario:
+  reemplaza la imagen plana `estructura-organizacional.png` (una sola foto sin interacción) por
+  un componente real (`OrganigramaPage.jsx` + `orgChartData.js`). Darle clic a alguien abre su
+  foto (recortada de la imagen original) + info: puesto, área, departamento, jefe directo, fecha
+  de ingreso, celular y correo (estos 3 últimos en blanco por ahora, a petición explícita del
+  usuario -- nunca se inventa un dato real de una persona). Líneas de conexión más delgadas
+  (2px, antes gruesas). Cambios reales de estructura pedidos por el usuario: Juan Bocanegra y los
+  2 de Ingeniería (Roman Herrera/Cristopher) se quitan del organigrama; Cain Bautista sube a
+  Production Manager; se agregan Felipe (mismo puesto que Cain) y Johnatan (mismo puesto que
+  Diego Zamudio, sin foto todavía -- avatar con iniciales); Diego Zamudio queda como Production
+  Team Leader; Elías sube de Líder a Palletizing (FFT) Team Leader. Todo el CONTENIDO del
+  organigrama (nombres/puestos/áreas) queda fijo en inglés a petición explícita ("el organigrama
+  debe estar en ingles"), independiente del idioma que tenga elegido el usuario en el resto de la
+  app -- `orgChartData.js` nunca pasa por i18n a propósito.
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba
