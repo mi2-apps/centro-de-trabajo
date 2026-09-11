@@ -606,6 +606,24 @@ para poder desplegar en el servidor privado (Coolify). Ver
   se salta números de empleado que YA EXISTEN en `Employee` sin importar si están activos.
   Migración real aplicada a producción
   (`scripts/mark-baja-stray-smartcontrol-adds-2026-09-11.mjs`).
+- **Apartado "Bajas" vaciado de ruido antes de la primera toma de asistencia real**, a petición
+  explícita del usuario ("vacíalo porfa... no quiero que choquen... pa un futuro ponga ahí en
+  baja ya sea gente que yo sé que de verdad están de baja"): dos correcciones sobre lo de arriba.
+  1) Las 103 entradas de `realPersonnelSnapshot.js` marcadas `status: 'BAJA'` en la limpieza
+  anterior se revierten a solo `areaZona: null` (sin el status) -- eso ya bastaba para ocultarlas
+  del plano/layout, y así no aparecen en "Bajas" mezcladas con las 10 que sí eran de baja
+  confirmada desde antes de esta sesión. 2) Los 14 `Employee` marcados BAJA por el punto anterior
+  se borran por completo en vez de dejarlos inactivos: como son gente real con folio de
+  SmartControl que pudo seguir trabajando, dejarlos con `active=false` los habría bloqueado de
+  verdad (`INACTIVE_EMPLOYEE`) si alguno se presenta mañana con su número real -- justo el
+  choque que el usuario quería evitar. Migración real aplicada a producción
+  (`scripts/delete-stray-smartcontrol-adds-2026-09-11.mjs`).
+- **Contador general de planta no contaba al Gerente de FFT**, a petición explícita del usuario
+  ("veo un 6/161 pero hay 7 en el layout, 6 en línea y 1 en gerente de FFT... ahí los que salgan
+  en el layout deben de salir en el contador"): `GERENTE` se quita de
+  `EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS` (`catalog.js`) -- decisión puntual solo para ese rol;
+  CALIDAD/SUPERVISOR/ENTRENADOR se quedan excluidos igual que antes (decisión unificada
+  2026-09-04, sin tocar).
 
 ### Fixed
 - **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del

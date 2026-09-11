@@ -1251,10 +1251,14 @@ export const SPECIAL_AREA_IDS = new Set([
    segun la pantalla. El usuario eligio explicitamente (pregunta directa, "Excluir los 4 en
    todos lados") unificar en UN solo criterio: CALIDAD/GERENTE/SUPERVISOR/ENTRENADOR fuera del
    total general en TODAS las vistas -- unica fuente de verdad, nunca una lista local aparte
-   por pantalla. */
+   por pantalla.
+
+   2026-09-11: GERENTE se quita de esta exclusion, a peticion explicita del usuario viendo el
+   contador real ("veo un 6/161 pero hay 7 en el layout, 6 en linea y 1 en gerente de FFT...
+   ahi los que salgan en el layout deben de salir en el contador") -- decision puntual solo
+   para GERENTE, CALIDAD/SUPERVISOR/ENTRENADOR siguen excluidos igual que antes. */
 export const EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS = new Set([
   'CALIDAD',
-  'GERENTE',
   'SUPERVISOR',
   'ENTRENADOR',
   // 2026-09-08 (toggle FFT/Sorting, a peticion explicita del usuario -- "que solo salga las
