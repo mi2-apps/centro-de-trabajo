@@ -672,6 +672,12 @@ para poder desplegar en el servidor privado (Coolify). Ver
   organigrama (nombres/puestos/áreas) queda fijo en inglés a petición explícita ("el organigrama
   debe estar en ingles"), independiente del idioma que tenga elegido el usuario en el resto de la
   app -- `orgChartData.js` nunca pasa por i18n a propósito.
+- **Organigrama: más separación entre niveles/grupos** (a petición explícita del usuario, "estás
+  juntando mucho abajo... son diferentes áreas y diferentes puestos, separalos más"): más espacio
+  vertical entre cada nivel del árbol y entre las tarjetas de una misma fila, más una línea
+  divisoria real entre "Operational Leadership" y "Area Leaders" -- son grupos de áreas distintas
+  (Production/Training vs. Accessories/Boxes & Supplies/Palletizing), no una continuación visual
+  del mismo grupo.
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

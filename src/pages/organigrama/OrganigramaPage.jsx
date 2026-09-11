@@ -69,9 +69,9 @@ function PersonNode({ person, onSelect }) {
 function ConnectorRow({ label, people, onSelect }) {
   const count = people.length
   return (
-    <div className="flex flex-col items-center">
-      <div className="h-6 w-0.5 bg-blue-500" />
-      {label && <p className="mb-1 text-sm font-bold">{label}</p>}
+    <div className="mt-6 flex flex-col items-center">
+      <div className="h-10 w-0.5 bg-blue-500" />
+      {label && <p className="mb-4 text-sm font-bold">{label}</p>}
       <div className="relative flex items-start justify-center">
         {count > 1 && (
           <div
@@ -80,8 +80,8 @@ function ConnectorRow({ label, people, onSelect }) {
           />
         )}
         {people.map((person) => (
-          <div key={person.id} className="flex flex-col items-center px-4">
-            <div className="h-5 w-0.5 bg-blue-500" />
+          <div key={person.id} className="flex flex-col items-center px-8">
+            <div className="h-8 w-0.5 bg-blue-500" />
             <PersonNode person={person} onSelect={onSelect} />
           </div>
         ))}
@@ -113,7 +113,7 @@ export default function OrganigramaPage() {
       </div>
 
       <div className={`${cardClass} overflow-x-auto p-6`}>
-        <div className="flex min-w-[720px] flex-col items-center">
+        <div className="flex min-w-[900px] flex-col items-center">
           <PersonNode person={ORG_CHART} onSelect={setSelected} />
 
           <ConnectorRow people={[cain, felipe]} onSelect={setSelected} />
@@ -123,6 +123,13 @@ export default function OrganigramaPage() {
             people={cain.children}
             onSelect={setSelected}
           />
+
+          {/* Separador (2026-09-11, a peticion explicita del usuario -- "son diferentes areas y
+              diferentes puestos... separalos mas"): "Area Leaders" (Accessories/Boxes &
+              Supplies/Palletizing) es un grupo real distinto de "Operational Leadership"
+              (Production/Training), no una continuacion visual del mismo -- una linea divisoria
+              + mas espacio antes de que retome el tronco hacia abajo. */}
+          <div className="mt-10 h-px w-2/3 bg-border" />
 
           <ConnectorRow
             label="Area Leaders"
