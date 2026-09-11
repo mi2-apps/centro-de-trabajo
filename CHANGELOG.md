@@ -624,6 +624,15 @@ para poder desplegar en el servidor privado (Coolify). Ver
   `EXCLUDED_FROM_PLANT_TOTAL_AREA_IDS` (`catalog.js`) -- decisión puntual solo para ese rol;
   CALIDAD/SUPERVISOR/ENTRENADOR se quedan excluidos igual que antes (decisión unificada
   2026-09-04, sin tocar).
+- **Sync automático con SmartControl pausado temporalmente** (a petición explícita del usuario,
+  tras ver que los 14 `Employee` del punto anterior volvieron a aparecer solos en "Personal sin
+  asignar"): no era un bug -- el sync (cada 30 min, `server-lib/personnel-sync.js`) vuelve a dar
+  de alta a cualquier folio real de SmartControl con actividad reciente que no exista ya en
+  `Employee`, así que cada borrado manual se deshacía solo en el siguiente ciclo. El usuario
+  prefirió pausar el sync (`PERSONNEL_SYNC_PAUSED = true` en `server-lib/prod-server.js`) mientras
+  arranca la primera toma de asistencia real de mañana, para que nada aparezca solo mientras
+  tanto -- se reactiva con un solo cambio (`PERSONNEL_SYNC_PAUSED = false`) cuando el usuario lo
+  pida.
 
 ### Fixed
 - **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del

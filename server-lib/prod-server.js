@@ -60,6 +60,14 @@ app.listen(PORT, '0.0.0.0', () => {
 // serverless, sin proceso propio -- ese remoto ya esta retirado para este repo de todas formas).
 // Nunca debe tumbar el servidor: cualquier error (SmartControl caido, credenciales faltantes) se
 // loguea y se reintenta en el siguiente ciclo, nunca se propaga.
+//
+// PAUSADO 2026-09-11 (a peticion explicita del usuario, justo antes de la primera toma de
+// asistencia real de mañana): cada corrida (cada 30 min) volvia a dar de alta gente real de
+// SmartControl que el usuario ya habia borrado a mano de "Personal sin asignar" -- no era un bug,
+// es la automatizacion funcionando como se penso, pero el usuario prefirio pausarla mientras
+// arranca la captura real de mañana, para que nada aparezca solo mientras tanto. Reactivar: poner
+// PERSONNEL_SYNC_PAUSED en false cuando el usuario lo pida.
+const PERSONNEL_SYNC_PAUSED = true
 const PERSONNEL_SYNC_INTERVAL_MS = 30 * 60 * 1000
 async function runPersonnelSyncSafely() {
   try {
@@ -75,5 +83,9 @@ async function runPersonnelSyncSafely() {
     console.error('[personnel-sync] error:', e.message)
   }
 }
-setTimeout(runPersonnelSyncSafely, 60 * 1000)
-setInterval(runPersonnelSyncSafely, PERSONNEL_SYNC_INTERVAL_MS)
+if (PERSONNEL_SYNC_PAUSED) {
+  console.log('[personnel-sync] pausado (PERSONNEL_SYNC_PAUSED=true en prod-server.js)')
+} else {
+  setTimeout(runPersonnelSyncSafely, 60 * 1000)
+  setInterval(runPersonnelSyncSafely, PERSONNEL_SYNC_INTERVAL_MS)
+}
