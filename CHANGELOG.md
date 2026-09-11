@@ -635,6 +635,18 @@ para poder desplegar en el servidor privado (Coolify). Ver
   pida.
 
 ### Fixed
+- **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba
+  en el servidor** -- bug real encontrado en vivo esta sesión (borrar a alguien de la DB, o
+  incluso borrarlo y que el sync de SmartControl lo recreara y se volviera a borrar, no cambiaba
+  nada visualmente hasta borrar `localStorage` a mano: "ni se borran"). `pollOnce()`
+  (`src/data/personnel/apiSync.js`) solo agregaba/actualizaba con lo que traía `/api/personnel/
+  roster` en cada sondeo, nunca quitaba una asignación/movimiento/vínculo local cuyo empleado ya
+  no aparece ahí (el roster solo devuelve `Employee.active=true`, así que su ausencia SIEMPRE
+  significa borrado o dado de baja). Ahora, en cada poll, cualquier `localId` con un vínculo YA
+  CONOCIDO (`serverIdByLocalId`, persistido) cuyo `serverId` ya no está en el roster de ese
+  momento se limpia de verdad (asignación, movimiento, vínculo, supresión de baseline) -- nunca
+  toca a alguien recién creado en este dispositivo que todavía no tiene vínculo. Corrige de raíz
+  la necesidad de borrar `localStorage` a mano cada vez que se corrige algo del lado del servidor.
 - **Cuenta duplicada `roman.herrera@miglobal.com.mx` reaparecía sola** (a petición explícita del
   usuario, "la elimino y vuelve a aparecer"): `runBootstrapAdmin()` (`server-lib/prod-server.js`)
   corría en cada arranque del servidor (cada deploy) y recreaba esa cuenta si no existía, mientras

@@ -498,10 +498,55 @@ async function pollOnce() {
     }
   })
 
-  if (newDynamicEmployees.length || dynamicEmployeesHealed) {
-    writeEmployees([...dynamicEmployees, ...newDynamicEmployees])
+  // Reconciliacion de bajas/borrados reales (2026-09-11, bug real encontrado en vivo: local solo
+  // agregaba/actualizaba, nunca se enteraba cuando un Employee se borraba o desactivaba del lado
+  // del servidor -- ese empleado quedaba "vivo" localmente para siempre (asignacion/movimiento
+  // viejo, visible en el layout) hasta que alguien borrara localStorage a mano. `roster` arriba ya
+  // trae SOLO Employee.active=true (ver api/personnel/roster.js) -- cualquier localId con un
+  // vinculo YA CONOCIDO (serverIdByLocalId, persistido, no solo lo visto en este poll) cuyo
+  // serverId ya no aparece en el roster de hoy fue borrado o dado de baja: se limpia su
+  // asignacion/movimiento/vinculo local. Nunca toca a alguien sin vinculo todavia (recien creado
+  // en este dispositivo, no es lo mismo que "ya no existe").
+  const currentServerIds = new Set(roster.map((r) => r.employeeId))
+  const staleLocalIds = []
+  serverIdByLocalId.forEach((sId, lId) => {
+    if (!currentServerIds.has(sId)) staleLocalIds.push(lId)
+  })
+
+  let finalDynamicEmployees = [...dynamicEmployees, ...newDynamicEmployees]
+  let finalAssignments = assignments
+  let finalMovements = movements
+  let employeesChanged = newDynamicEmployees.length > 0 || dynamicEmployeesHealed
+
+  if (staleLocalIds.length) {
+    const staleSet = new Set(staleLocalIds)
+    const prevDynamicCount = finalDynamicEmployees.length
+    finalDynamicEmployees = finalDynamicEmployees.filter((e) => !staleSet.has(e.id))
+    if (finalDynamicEmployees.length !== prevDynamicCount) employeesChanged = true
+
+    const prevAssignmentsCount = finalAssignments.length
+    finalAssignments = finalAssignments.filter((a) => !staleSet.has(a.employeeId))
+    if (finalAssignments.length !== prevAssignmentsCount) changed = true
+
+    const prevMovementsCount = finalMovements.length
+    finalMovements = finalMovements.filter((m) => !staleSet.has(m.employeeId))
+    if (finalMovements.length !== prevMovementsCount) changed = true
+
+    staleLocalIds.forEach((lId) => {
+      serverIdByLocalId.delete(lId)
+      baselineSuppressed.delete(lId)
+    })
+    writeServerIdByLocalId(Object.fromEntries(serverIdByLocalId))
     changed = true
   }
+
+  if (employeesChanged) {
+    writeEmployees(finalDynamicEmployees)
+    changed = true
+  }
+  if (finalAssignments !== assignments)
+    assignments.splice(0, assignments.length, ...finalAssignments)
+  if (finalMovements !== movements) movements.splice(0, movements.length, ...finalMovements)
 
   // ── Solicitudes de movimiento (PendingMove) -- fusion cross-device del mismo tipo que el
   // roster de arriba: agrega al store local cualquier solicitud PENDING que el servidor ya
