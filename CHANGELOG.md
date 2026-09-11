@@ -645,6 +645,12 @@ para poder desplegar en el servidor privado (Coolify). Ver
   columnas según el ancho, con scroll corto), mismo dato y comportamiento de siempre
   (`RegisterPersonnelForm.jsx`): nombre del puesto, ocupación real (`X/Y`), "— completa" si está
   llena (deshabilitada), y el indicador de habilidad compatible cuando aplica.
+- **Mismo rediseño en cuadrícula, ahora en el picker real de arrastrar/mover** (a petición
+  explícita del usuario, "sigue en lista, no veo cambio" -- el cambio anterior tocó
+  `RegisterPersonnelForm.jsx`, pero el picker que en verdad se abre al arrastrar/mover a alguien a
+  un área con varios puestos es otro componente, `src/state/dndAssign.jsx`): mismo cambio de una
+  columna angosta a cuadrícula de 2-3 columnas con scroll corto, mismo dato/comportamiento
+  (disponible/completa, ocupación real).
 
 ### Fixed
 - **El store local (localStorage) nunca "se enteraba" cuando un `Employee` se borraba/desactivaba

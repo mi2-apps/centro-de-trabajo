@@ -269,7 +269,11 @@ export function DndAssignProvider({ children }) {
                   <b>{formatEmployeeNumber(stationPicker.employee.employeeNumber)}</b>{' '}
                   {t('dndAssign.pickerInstructions')}
                 </p>
-                <div className="flex flex-col gap-2">
+                {/* Cuadrícula (2026-09-11, a petición explícita del usuario viendo Paletizado
+                    con 20 puestos reales, "no se ven todos"): antes era una sola columna de
+                    filas anchas, necesitaba scroll largo uno por uno. Ahora 2-3 columnas según
+                    el ancho, con scroll corto -- mismo dato/comportamiento de siempre. */}
+                <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
                   {pickerStations.map((s) => (
                     <button
                       key={s.id}
@@ -281,13 +285,13 @@ export function DndAssignProvider({ children }) {
                         finalize(employee, current, targetAreaId, s.name)
                       }}
                       className={cn(
-                        'flex items-center justify-between rounded-[20px] border border-border p-2.5 text-left transition-colors',
+                        'flex flex-col items-start gap-1.5 rounded-[20px] border border-border p-2.5 text-left transition-colors',
                         s.isAvailable
                           ? 'cursor-pointer hover:border-blue-500'
                           : 'cursor-not-allowed opacity-50',
                       )}
                     >
-                      <span className="text-[13.5px] font-bold">{s.name}</span>
+                      <span className="text-[13.5px] font-bold leading-tight">{s.name}</span>
                       <span
                         className={cn(
                           'inline-flex h-5 items-center rounded-full px-2 text-[10.5px] font-bold',
